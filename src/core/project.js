@@ -1,10 +1,10 @@
-import { DECORS, MODULE_TYPES, isApplianceType } from '../catalog/materials.js';
+import { DECORS, MODULE_TYPES, isApplianceType, FRONT_STYLES, HANDLE_STYLES, LEG_STYLES, FIXTURE_TYPES } from '../catalog/materials.js';
 
 export const SCHEMA_VERSION = 1;
 export const MAX_MODULES = 32;
 export const round = n => Math.round((n + Number.EPSILON) * 1000) / 1000;
 let sequence = 0;
-export function newId() { return globalThis.crypto?.randomUUID?.() || `m-${Date.now().toString(36)}-${++sequence}`; }
+export function newId(prefix='m') { return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now().toString(36)}-${++sequence}`; }
 
 const applianceDefaults = {
   washer: { width: 600, height: 850, depth: 600 },
@@ -15,8 +15,7 @@ const applianceDefaults = {
 
 export function createModule(type = 'base') {
   if (!(type in MODULE_TYPES)) throw new Error('Неизвестный модуль');
-  const appliance = applianceDefaults[type];
-  const wall = type === 'wall';
+  const appliance = applianceDefaults[type], wall = type === 'wall';
   return {
     id: newId(), type,
     width: appliance?.width ?? 600,
@@ -25,9 +24,18 @@ export function createModule(type = 'base') {
     board: 18, frontThickness: 18, back: 3, gap: 2, bodyEdge: 0.8, frontEdge: 2,
     feet: wall || isApplianceType(type) ? 0 : 140,
     elevation: wall ? 1500 : 0,
+    offsetX: 0, offsetZ: 0,
     bodySubstrate: 'ldsp', frontSubstrate: 'mdf', bodyDecor: 'white', frontDecor: 'olive',
     bodyColor: DECORS.white.color, frontColor: DECORS.olive.color, gloss: false, grain: 'v',
+    doorCount: 0, frontStyle: 'flat', handleStyle: 'bar', legStyle: 'round',
+    frontOverhangTop: 0, frontOverhangBottom: 0, frontOverhangLeft: 0, frontOverhangRight: 0,
   };
+}
+
+export function createFixture(type='sink', targetModuleId='') {
+  if (!(type in FIXTURE_TYPES)) throw new Error('Неизвестный встраиваемый элемент');
+  const sink = type === 'sink';
+  return { id:newId('f'), type, targetModuleId, width:sink?500:560, depth:sink?400:490, offsetX:0, offsetZ:0, radius:sink?18:8 };
 }
 
 export function createProject() {
@@ -36,9 +44,10 @@ export function createProject() {
     schemaVersion: SCHEMA_VERSION,
     name: 'Моя кухня',
     room: { width: 3000, depth: 2500, height: 2700, wallColor: '#f3f1ec', floorColor: '#d8d4cc' },
-    ui: { language: 'ru', showDimensions: true },
+    ui: { language: 'ru', showDimensions: true, dimensionMode:'main', theme:'dark', explode:0, moveMode:false },
     modules: [createModule(), sink, createModule('washer')],
-    countertop: { enabled: true, depth: 620, thickness: 20, overhang: 0, decor: 'marble', color: DECORS.marble.color, gloss: false },
+    fixtures: [],
+    countertop: { enabled: true, depth: 620, thickness: 20, overhang: 0, decor: 'marble', color: DECORS.marble.color, gloss: false, lengthMode:'auto', length:1700, offsetX:0 },
   };
 }
 
@@ -50,9 +59,28 @@ function color(value) { if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test
 
 export function ensureProjectDefaults(p) {
   if (!p.room) p.room = { width: 3000, depth: 2500, height: 2700, wallColor: '#f3f1ec', floorColor: '#d8d4cc' };
-  if (!p.ui) p.ui = { language: 'ru', showDimensions: true };
+  if (!p.ui) p.ui = {};
   p.ui.language = p.ui.language === 'en' ? 'en' : 'ru';
   if (typeof p.ui.showDimensions !== 'boolean') p.ui.showDimensions = true;
+  if (!['main','selected','all'].includes(p.ui.dimensionMode)) p.ui.dimensionMode='main';
+  if (!['light','dark'].includes(p.ui.theme)) p.ui.theme='dark';
+  if (!Number.isFinite(p.ui.explode)) p.ui.explode=0;
+  p.ui.explode=Math.max(0,Math.min(600,p.ui.explode));
+  if (typeof p.ui.moveMode!=='boolean') p.ui.moveMode=false;
+  if (!Array.isArray(p.fixtures)) p.fixtures=[];
+  if (!p.countertop) p.countertop={enabled:true,depth:620,thickness:20,overhang:0,decor:'marble',color:DECORS.marble.color,gloss:false};
+  if (!['auto','manual'].includes(p.countertop.lengthMode)) p.countertop.lengthMode='auto';
+  if (!Number.isFinite(p.countertop.length)) p.countertop.length=p.modules?.filter(m=>m.type!=='wall').reduce((s,m)=>s+(m.width||0),0)||1700;
+  if (!Number.isFinite(p.countertop.offsetX)) p.countertop.offsetX=0;
+  for (const m of p.modules||[]) {
+    if (!Number.isFinite(m.offsetX)) m.offsetX=0;
+    if (!Number.isFinite(m.offsetZ)) m.offsetZ=0;
+    if (!Number.isFinite(m.doorCount)) m.doorCount=0;
+    if (!FRONT_STYLES[m.frontStyle]) m.frontStyle='flat';
+    if (!HANDLE_STYLES[m.handleStyle]) m.handleStyle='bar';
+    if (!LEG_STYLES[m.legStyle]) m.legStyle='round';
+    for(const k of ['frontOverhangTop','frontOverhangBottom','frontOverhangLeft','frontOverhangRight']) if(!Number.isFinite(m[k]))m[k]=0;
+  }
   return p;
 }
 
@@ -69,8 +97,12 @@ export function validateProject(raw) {
     ids.add(m.id); member(m.type, Object.keys(MODULE_TYPES), 'тип модуля');
     number(m.width, 200, 1400, 'Ширина'); number(m.height, 200, 2400, 'Высота корпуса'); number(m.depth, 200, 900, 'Глубина корпуса');
     number(m.board, 12, 30, 'Толщина корпуса'); number(m.frontThickness, 12, 30, 'Толщина фасада'); number(m.back, 2, 8, 'Задняя стенка');
-    number(m.feet, 0, 200, 'Ножки'); number(m.elevation, 0, 2500, 'Отметка низа'); number(m.gap, 1, 6, 'Зазор');
+    number(m.feet, 0, 300, 'Ножки'); number(m.elevation, 0, 2500, 'Отметка низа'); number(m.gap, 1, 8, 'Зазор');
     number(m.bodyEdge, 0, 3, 'Кромка корпуса'); number(m.frontEdge, 0, 3, 'Кромка фасада');
+    number(m.offsetX,-10000,10000,'Смещение X'); number(m.offsetZ,-10000,10000,'Смещение Z');
+    number(m.doorCount,0,4,'Количество фасадов');
+    for(const k of ['frontOverhangTop','frontOverhangBottom','frontOverhangLeft','frontOverhangRight']) number(m[k],0,400,k);
+    member(m.frontStyle,Object.keys(FRONT_STYLES),'тип фасада'); member(m.handleStyle,Object.keys(HANDLE_STYLES),'тип ручки'); member(m.legStyle,Object.keys(LEG_STYLES),'тип ножек');
     member(m.bodySubstrate, ['ldsp','mdf','plywood'], 'материал корпуса'); member(m.frontSubstrate, ['ldsp','mdf','plywood'], 'материал фасада');
     member(m.bodyDecor, Object.keys(DECORS), 'декор корпуса'); member(m.frontDecor, Object.keys(DECORS), 'декор фасада');
     member(m.grain, ['u','v'], 'волокна'); color(m.bodyColor); color(m.frontColor);
@@ -78,8 +110,14 @@ export function validateProject(raw) {
   }
   const t = p.countertop;
   if (!t || typeof t.enabled !== 'boolean' || typeof t.gloss !== 'boolean') throw new Error('Некорректная столешница');
-  number(t.depth, 300, 1000, 'Глубина столешницы'); number(t.thickness, 10, 60, 'Толщина столешницы'); number(t.overhang, 0, 150, 'Боковой свес');
-  member(t.decor, Object.keys(DECORS), 'декор столешницы'); color(t.color);
+  number(t.depth, 300, 1200, 'Глубина столешницы'); number(t.thickness, 8, 100, 'Толщина столешницы'); number(t.overhang, 0, 300, 'Боковой свес');
+  number(t.length,200,20000,'Длина столешницы'); number(t.offsetX,-10000,10000,'Смещение столешницы');
+  member(t.lengthMode,['auto','manual'],'режим длины столешницы'); member(t.decor, Object.keys(DECORS), 'декор столешницы'); color(t.color);
+  if (!Array.isArray(p.fixtures) || p.fixtures.length>20) throw new Error('Некорректный список встраиваемых элементов');
+  for(const f of p.fixtures){
+    if(!f||typeof f.id!=='string'||!FIXTURE_TYPES[f.type]||!ids.has(f.targetModuleId)) throw new Error('Некорректный встраиваемый элемент');
+    number(f.width,100,1200,'Ширина выреза');number(f.depth,100,900,'Глубина выреза');number(f.offsetX,-1000,1000,'Смещение выреза X');number(f.offsetZ,-1000,1000,'Смещение выреза Z');
+  }
   return p;
 }
 
@@ -87,8 +125,8 @@ export function layoutProject(p) {
   validateProject(p);
   let floorX = 0, wallX = 0;
   return p.modules.map(m => {
-    const wall = m.type === 'wall'; const x = wall ? wallX : floorX;
+    const wall = m.type === 'wall'; const baseX = wall ? wallX : floorX;
     if (wall) wallX += m.width; else floorX += m.width;
-    return { ...m, x, y: wall ? m.elevation : isApplianceType(m.type) ? 0 : m.feet };
+    return { ...m, x:baseX+m.offsetX, z:m.offsetZ, y: wall ? m.elevation : isApplianceType(m.type) ? 0 : m.feet };
   });
 }
