@@ -1,0 +1,41 @@
+import { createProject, createModule, ensureProjectDefaults, newId } from '../../src/core/project.js';
+import { buildProject } from '../../src/core/parts.js';
+
+export type Selection = { kind:'module'; id:string } | { kind:'countertop'; id:'CT-01' } | null;
+export type DimensionDetail = 'none'|'selected'|'all';
+const clone = <T,>(value:T):T => structuredClone(value);
+
+export function createEditorProject(){
+  const p:any=createProject();
+  p.countertop.lengthMode='manual';
+  p.countertop.length=p.modules.filter((m:any)=>m.type!=='wall').reduce((s:number,m:any)=>s+m.width,0);
+  p.countertop.offsetX=0;p.countertop.offsetZ=0;p.countertop.elevation=860;
+  p.ui={...(p.ui||{}),theme:'dark',explode:0,dimensionMode:'main'};
+  return p;
+}
+export function normalizeEditorProject(raw:any){
+  const p:any=ensureProjectDefaults(clone(raw));
+  p.countertop??={};
+  if(!Number.isFinite(p.countertop.offsetZ))p.countertop.offsetZ=0;
+  if(!Number.isFinite(p.countertop.elevation))p.countertop.elevation=860;
+  if(!Number.isFinite(p.countertop.length))p.countertop.length=p.modules.filter((m:any)=>m.type!=='wall').reduce((s:number,m:any)=>s+m.width,0)||1700;
+  if(p.countertop.lengthMode==='auto')p.countertop.lengthMode='manual';
+  return p;
+}
+export function deriveModel(project:any){
+  const p=normalizeEditorProject(project),model:any=buildProject(p),top=p.countertop,ct=model.objects.find((o:any)=>o.id==='CT-01');
+  if(ct){ct.size=[top.length,top.thickness,top.depth];ct.center=[top.offsetX+top.length/2,top.elevation+top.thickness/2,top.offsetZ+top.depth/2];model.countertop={...(model.countertop||{}),id:'CT-01',length:top.length,depth:top.depth,thickness:top.thickness,x:top.offsetX,z:top.offsetZ,elevation:top.elevation}}
+  model.issues=(model.issues||[]).filter((i:any)=>!String(i.type).startsWith('countertop-'));
+  model.warnings=(model.warnings||[]).filter((w:string)=>!w.startsWith('Столешница выходит')&&!w.startsWith('Столешница не перекрывает'));
+  if(ct){const out=top.offsetX<0||top.offsetX+top.length>p.room.width||top.offsetZ<0||top.offsetZ+top.depth>p.room.depth||top.elevation+top.thickness>p.room.height;const bases=model.modules.filter((m:any)=>m.type!=='wall'&&!['washer','dishwasher','oven','fridge'].includes(m.type));const uncovered=bases.some((m:any)=>m.x<top.offsetX||m.x+m.width>top.offsetX+top.length||m.z<top.offsetZ||m.z+m.depth>top.offsetZ+top.depth);if(out){model.issues.push({type:'countertop-out'});model.warnings.unshift('Столешница выходит за пределы комнаты.');ct.invalid=true}if(uncovered){model.issues.push({type:'countertop-cover'});model.warnings.unshift('Столешница не перекрывает все нижние шкафы.');ct.invalid=true}}
+  return model;
+}
+export function updateModule(project:any,id:string,patch:Record<string,unknown>){const p=clone(project),m=p.modules.find((x:any)=>x.id===id);if(m)Object.assign(m,patch);return p}
+export function updateCountertop(project:any,patch:Record<string,unknown>){const p=clone(project);Object.assign(p.countertop,patch);p.countertop.lengthMode='manual';return p}
+export function deleteModule(project:any,id:string){const p=clone(project);p.modules=p.modules.filter((m:any)=>m.id!==id);p.fixtures=(p.fixtures||[]).filter((f:any)=>f.targetModuleId!==id);return p}
+export function duplicateModule(project:any,id:string){const p=clone(project),m=p.modules.find((x:any)=>x.id===id);if(!m)return p;const c=clone(m);c.id=newId();c.offsetX=(c.offsetX||0)+40;p.modules.push(c);return p}
+export function addModule(project:any,type:string){const p=clone(project),m=createModule(type);p.modules.push(m);return {project:p,id:m.id}}
+const snap=(v:number,c:number[],d=60)=>{let best=v,bd=d+1;for(const x of c){const q=Math.abs(v-x);if(q<bd){best=x;bd=q}}return bd<=d?best:Math.round(v/50)*50};
+export function snapModuleAbsolute(project:any,id:string,xAbs:number,zAbs:number){const p=clone(project),model=deriveModel(p),m=model.modules.find((x:any)=>x.id===id),src=p.modules.find((x:any)=>x.id===id);if(!m||!src)return p;const xs=[0,p.room.width-m.width],zs=[0,p.room.depth-m.depth];for(const n of model.modules){if(n.id===id||n.type==='wall')continue;if(zAbs<n.z+n.depth+80&&zAbs+m.depth>n.z-80)xs.push(n.x+n.width,n.x-m.width,n.x);if(xAbs<n.x+n.width+80&&xAbs+m.width>n.x-80)zs.push(n.z+n.depth,n.z-m.depth,n.z)}const x=snap(xAbs,xs),z=snap(zAbs,zs),nominal=m.x-(src.offsetX||0);src.offsetX=Math.round(x-nominal);src.offsetZ=Math.round(z);return p}
+export function loadEditorProject(){try{const next=localStorage.getItem('kitchen-cad-three-v1'),old=localStorage.getItem('kitchen-cad-project-v4')||localStorage.getItem('kitchen-cad-project-v3');return normalizeEditorProject(next?JSON.parse(next):old?JSON.parse(old):createEditorProject())}catch{return createEditorProject()}}
+export function saveEditorProject(project:any){try{localStorage.setItem('kitchen-cad-three-v1',JSON.stringify(project))}catch{}}
