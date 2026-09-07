@@ -88,7 +88,7 @@ export function validateProject(raw) {
   const p = ensureProjectDefaults(raw);
   if (!p || typeof p !== 'object' || Array.isArray(p) || p.schemaVersion !== SCHEMA_VERSION) throw new Error('Неподдерживаемая версия проекта');
   if (typeof p.name !== 'string' || p.name.length > 120) throw new Error('Некорректное название проекта');
-  if (!Array.isArray(p.modules) || p.modules.length < 1 || p.modules.length > MAX_MODULES) throw new Error(`Нужно 1–${MAX_MODULES} модулей`);
+  if (!Array.isArray(p.modules) || p.modules.length > MAX_MODULES) throw new Error(`Допустимо 0–${MAX_MODULES} модулей`);
   number(p.room.width, 800, 20000, 'Ширина комнаты'); number(p.room.depth, 800, 20000, 'Длина комнаты'); number(p.room.height, 1800, 6000, 'Высота комнаты');
   color(p.room.wallColor); color(p.room.floorColor);
   const ids = new Set();
