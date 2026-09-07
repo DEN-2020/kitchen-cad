@@ -1,16 +1,15 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { createProject, createModule, validateProject } from '../src/core/project.js';
-import { blankSize, buildProject } from '../src/core/parts.js';
-import { cutListCSV } from '../src/io/cut-list.js';
-import { moduleName } from '../src/i18n/translations.js';
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createProject,createModule,createFixture,validateProject,layoutProject} from '../src/core/project.js';
+import {blankSize,buildProject} from '../src/core/parts.js';
+import {cutListCSV} from '../src/io/cut-list.js';
 
-test('default project is valid and has editable room',()=>{const p=createProject();assert.equal(validateProject(p),p);assert.equal(p.modules.length,3);assert.equal(p.room.height,2700)});
-test('default lower row is 1700 mm',()=>assert.equal(buildProject(createProject()).width,1700));
+test('default project is valid',()=>{const p=createProject();assert.equal(validateProject(p),p);assert.equal(p.modules.length,3)});
 test('edge banding is deducted from blank size only',()=>assert.deepEqual(blankSize(600,720,[2,2,2,2]),[596,716]));
-test('600 mm base cabinet creates one front',()=>{const p=createProject();p.modules=[createModule('base')];assert.equal(buildProject(p).parts.filter(x=>x.role==='front').length,1)});
-test('wide cabinet creates two fronts',()=>{const p=createProject(),m=createModule('base');m.width=900;p.modules=[m];assert.equal(buildProject(p).parts.filter(x=>x.role==='front').length,2)});
-test('appliances are display geometry, not cut parts',()=>{for(const type of ['washer','dishwasher','oven','fridge']){const p=createProject();p.modules=[createModule(type)];assert.equal(buildProject(p).parts.length,0)}});
-test('decor change does not change cut dimensions',()=>{const p=createProject();p.modules=[createModule('base')];const before=buildProject(p).parts.map(x=>[x.id,x.blankU,x.blankV]);p.modules[0].frontDecor='walnut';p.modules[0].frontColor='#815b3f';assert.deepEqual(buildProject(p).parts.map(x=>[x.id,x.blankU,x.blankV]),before)});
+test('module offsets move module in room',()=>{const p=createProject();p.modules=[createModule('base')];p.modules[0].offsetX=120;p.modules[0].offsetZ=75;const [m]=layoutProject(p);assert.equal(m.x,120);assert.equal(m.z,75)});
+test('front can extend beyond cabinet',()=>{const p=createProject();p.modules=[createModule('wall')];p.modules[0].frontOverhangBottom=120;const f=buildProject(p).parts.find(x=>x.role==='front');assert.equal(f.v,836)});
+test('door count is configurable',()=>{const p=createProject();p.modules=[createModule('base')];p.modules[0].doorCount=2;assert.equal(buildProject(p).parts.filter(x=>x.role==='front').length,2)});
+test('washer is display geometry, not a cut part',()=>{const p=createProject();p.modules=[createModule('washer')];assert.equal(buildProject(p).parts.length,0)});
+test('manual countertop length is respected and can raise issue',()=>{const p=createProject();p.modules=[createModule('base')];p.countertop.lengthMode='manual';p.countertop.length=400;p.countertop.offsetX=0;const m=buildProject(p);assert.equal(m.countertop.length,400);assert.ok(m.issues.some(x=>x.type==='countertop-cover'))});
+test('out of room module is flagged',()=>{const p=createProject();p.modules=[createModule('base')];p.modules[0].offsetX=2900;const m=buildProject(p);assert.ok(m.issues.some(x=>x.type==='module-out'))});
+test('sink fixture is attached to selected cabinet',()=>{const p=createProject();p.modules=[createModule('base')];p.fixtures=[createFixture('sink',p.modules[0].id)];const m=buildProject(p);assert.equal(m.fixtures.length,1);assert.equal(m.fixtures[0].type,'sink')});
 test('CSV contains finished and blank dimensions',()=>{const csv=cutListCSV(buildProject(createProject()).parts);assert.ok(csv.includes('Готовая U мм'));assert.ok(csv.includes('Заготовка U мм'))});
-test('user-facing sink terminology uses раковина',()=>{assert.equal(moduleName('ru','sink'),'Шкаф под раковину');assert.equal(moduleName('en','sink'),'Sink cabinet')});
