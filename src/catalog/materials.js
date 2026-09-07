@@ -28,6 +28,10 @@ export const MODULE_TYPES = Object.freeze({
 
 export const APPLIANCE_TYPES = Object.freeze(['washer', 'dishwasher', 'oven', 'fridge']);
 export const isApplianceType = type => APPLIANCE_TYPES.includes(type);
+export const FRONT_STYLES = Object.freeze({flat:'Плоский', frame:'Рамочный', glass:'Стекло', slatted:'Рейки'});
+export const HANDLE_STYLES = Object.freeze({bar:'Ручка-скоба', knob:'Кнопка', integrated:'Интегрированная', none:'Без ручки'});
+export const LEG_STYLES = Object.freeze({round:'Круглые', square:'Квадратные', hidden:'Скрытые/цоколь'});
+export const FIXTURE_TYPES = Object.freeze({sink:'Раковина', hob:'Варочная поверхность'});
 
 export function appearance(decor, color, gloss = false, grain = 'v') {
   const d = DECORS[decor];
