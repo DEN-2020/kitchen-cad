@@ -97,7 +97,7 @@ app=required(app,
   "function drawPartDimensions(model,w,h){if(!project.ui.showDimensions)return;",
   "function wireSelection(model,w,h){const m=model.modules.find(x=>x.id===selected);if(!m)return;const [x,y,z]=[m.x+m.width/2,m.y+m.height/2,m.z+m.depth/2],[sx,sy,sz]=[m.width,m.height,m.depth],pts=[[x-sx/2,y-sy/2,z-sz/2],[x+sx/2,y-sy/2,z-sz/2],[x+sx/2,y+sy/2,z-sz/2],[x-sx/2,y+sy/2,z-sz/2],[x-sx/2,y-sy/2,z+sz/2],[x+sx/2,y-sy/2,z+sz/2],[x+sx/2,y+sy/2,z+sz/2],[x-sx/2,y+sy/2,z+sz/2]].map(p=>proj(...p,w,h,model)),edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];ctx.save();ctx.strokeStyle='#20c9dc';ctx.lineWidth=2;for(const [a,b] of edges){ctx.beginPath();ctx.moveTo(...pts[a]);ctx.lineTo(...pts[b]);ctx.stroke()}ctx.restore()}\nfunction drawPartDimensions(model,w,h){if(!project.ui.showDimensions)return;",
   'selection wireframe function');
-const dimRe=/function drawPartDimensions\(model,w,h\)\{[\s\S]*?\}\nfunction draw\(model\)\{/;
+const dimRe=/function drawPartDimensions\(model,w,h\)\{[\s\S]*?\}\r?\nfunction draw\(model\)\{/;
 app=required(app,dimRe,`function drawPartDimensions(model,w,h){
  if(!project.ui.showDimensions)return;
  const m=model.modules.find(x=>x.id===selected),mode=project.ui.dimensionMode;
@@ -112,7 +112,7 @@ app=required(app,
   'selection wireframe call');
 app=app.replace("if(project.ui.showDimensions&&project.ui.dimensionMode!=='selected')","if(project.ui.showDimensions)");
 
-const moveRe=/function moveSelectedBy\(dx,dy,model\)\{[\s\S]*?\}\nfunction reportCanvas/;
+const moveRe=/function moveSelectedBy\(dx,dy,model\)\{[\s\S]*?\}\r?\nfunction reportCanvas/;
 app=required(app,moveRe,`function deltaWorld(dx,dy,model){if(view==='front'){const s=Math.max(.01,Math.min(canvas.clientWidth/project.room.width,canvas.clientHeight/project.room.height)*zoom);return[dx/s,0]}if(view==='top'){const s=Math.min((canvas.clientWidth-60)/Math.max(project.room.width,model.width+300),(canvas.clientHeight-85)/Math.max(project.room.depth,model.depth+500))*zoom;return[dx/s,dy/s]}const s=sceneScale(canvas.clientWidth,canvas.clientHeight,model),sp=Math.max(.08,Math.sin(pitch)),Xp=dx/s,Zp=dy/(sp*s),c=Math.cos(yaw),sn=Math.sin(yaw);return[Xp*c+Zp*sn,-Xp*sn+Zp*c]}
 function moveTargetBy(dx,dy,model){const [wx,wz]=deltaWorld(dx,dy,model);if(dragTarget==='countertop'){project.countertop.offsetX+=wx;project.countertop.offsetZ+=wz;return}const m=currentModule();if(!m)return;m.offsetX+=wx;m.offsetZ+=wz}
 function reportCanvas`, 'move target');
