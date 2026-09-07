@@ -1,32 +1,68 @@
-import { SUBSTRATES, DECORS, MODULE_TYPES } from '../catalog/materials.js';
+import { DECORS, MODULE_TYPES, isApplianceType } from '../catalog/materials.js';
+
 export const SCHEMA_VERSION = 1;
-export const MAX_MODULES = 24;
+export const MAX_MODULES = 32;
 export const round = n => Math.round((n + Number.EPSILON) * 1000) / 1000;
 let sequence = 0;
 export function newId() { return globalThis.crypto?.randomUUID?.() || `m-${Date.now().toString(36)}-${++sequence}`; }
+
+const applianceDefaults = {
+  washer: { width: 600, height: 850, depth: 600 },
+  dishwasher: { width: 600, height: 815, depth: 570 },
+  oven: { width: 600, height: 600, depth: 560 },
+  fridge: { width: 600, height: 1850, depth: 650 },
+};
+
 export function createModule(type = 'base') {
   if (!(type in MODULE_TYPES)) throw new Error('Неизвестный модуль');
-  return { id: newId(), type, width: 600, height: type === 'washer' ? 850 : 720,
-    depth: type === 'wall' ? 320 : type === 'washer' ? 600 : 560,
+  const appliance = applianceDefaults[type];
+  const wall = type === 'wall';
+  return {
+    id: newId(), type,
+    width: appliance?.width ?? 600,
+    height: appliance?.height ?? 720,
+    depth: appliance?.depth ?? (wall ? 320 : 560),
     board: 18, frontThickness: 18, back: 3, gap: 2, bodyEdge: 0.8, frontEdge: 2,
-    feet: type === 'wall' || type === 'washer' ? 0 : 140, elevation: type === 'wall' ? 1500 : 0,
+    feet: wall || isApplianceType(type) ? 0 : 140,
+    elevation: wall ? 1500 : 0,
     bodySubstrate: 'ldsp', frontSubstrate: 'mdf', bodyDecor: 'white', frontDecor: 'olive',
-    bodyColor: DECORS.white.color, frontColor: DECORS.olive.color, gloss: false, grain: 'v' };
+    bodyColor: DECORS.white.color, frontColor: DECORS.olive.color, gloss: false, grain: 'v',
+  };
 }
+
 export function createProject() {
   const sink = createModule('sink'); sink.width = 500;
-  return { schemaVersion: 1, name: 'Моя кухня', modules: [createModule(), sink, createModule('washer')],
-    countertop: { enabled: true, depth: 620, thickness: 20, overhang: 0, decor: 'marble', color: DECORS.marble.color, gloss: false } };
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    name: 'Моя кухня',
+    room: { width: 3000, depth: 2500, height: 2700, wallColor: '#f3f1ec', floorColor: '#d8d4cc' },
+    ui: { language: 'ru', showDimensions: true },
+    modules: [createModule(), sink, createModule('washer')],
+    countertop: { enabled: true, depth: 620, thickness: 20, overhang: 0, decor: 'marble', color: DECORS.marble.color, gloss: false },
+  };
 }
+
 function number(value, min, max, label) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new Error(`${label}: допустимо ${min}–${max} мм`);
 }
 function member(value, choices, label) { if (!choices.includes(value)) throw new Error(`Некорректное поле: ${label}`); }
 function color(value) { if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) throw new Error('Цвет должен быть #RRGGBB'); }
-export function validateProject(p) {
-  if (!p || typeof p !== 'object' || Array.isArray(p) || p.schemaVersion !== 1) throw new Error('Неподдерживаемая версия проекта');
+
+export function ensureProjectDefaults(p) {
+  if (!p.room) p.room = { width: 3000, depth: 2500, height: 2700, wallColor: '#f3f1ec', floorColor: '#d8d4cc' };
+  if (!p.ui) p.ui = { language: 'ru', showDimensions: true };
+  p.ui.language = p.ui.language === 'en' ? 'en' : 'ru';
+  if (typeof p.ui.showDimensions !== 'boolean') p.ui.showDimensions = true;
+  return p;
+}
+
+export function validateProject(raw) {
+  const p = ensureProjectDefaults(raw);
+  if (!p || typeof p !== 'object' || Array.isArray(p) || p.schemaVersion !== SCHEMA_VERSION) throw new Error('Неподдерживаемая версия проекта');
   if (typeof p.name !== 'string' || p.name.length > 120) throw new Error('Некорректное название проекта');
   if (!Array.isArray(p.modules) || p.modules.length < 1 || p.modules.length > MAX_MODULES) throw new Error(`Нужно 1–${MAX_MODULES} модулей`);
+  number(p.room.width, 800, 20000, 'Ширина комнаты'); number(p.room.depth, 800, 20000, 'Длина комнаты'); number(p.room.height, 1800, 6000, 'Высота комнаты');
+  color(p.room.wallColor); color(p.room.floorColor);
   const ids = new Set();
   for (const m of p.modules) {
     if (!m || typeof m !== 'object' || typeof m.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(m.id) || ids.has(m.id)) throw new Error('Повторяющийся или некорректный ID модуля');
@@ -46,12 +82,13 @@ export function validateProject(p) {
   member(t.decor, Object.keys(DECORS), 'декор столешницы'); color(t.color);
   return p;
 }
+
 export function layoutProject(p) {
   validateProject(p);
   let floorX = 0, wallX = 0;
   return p.modules.map(m => {
     const wall = m.type === 'wall'; const x = wall ? wallX : floorX;
     if (wall) wallX += m.width; else floorX += m.width;
-    return { ...m, x, y: wall ? m.elevation : m.type === 'washer' ? 0 : m.feet };
+    return { ...m, x, y: wall ? m.elevation : isApplianceType(m.type) ? 0 : m.feet };
   });
 }
