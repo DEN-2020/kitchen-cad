@@ -1,0 +1,22 @@
+import { createProject, createModule, newId, ensureProjectDefaults } from '../core/project.js';
+import { buildProject } from '../core/parts.js';
+import { DECORS, SUBSTRATES, isApplianceType } from '../catalog/materials.js';
+import { cutListCSV } from '../io/cut-list.js';
+import { translate, moduleName, partName, warningText } from '../i18n/translations.js';
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], KEY='kitchen-cad-project-v2';
+let project;try{project=ensureProjectDefaults(JSON.parse(localStorage.getItem(KEY))||JSON.parse(localStorage.getItem('kitchen-cad-project-v1'))||createProject())}catch{project=createProject()}
+let selected=project.modules[0]?.id, activePanel='modules', view='iso', yaw=.72, zoom=1, pointers=new Map(), lastDistance=0;
+const canvas=$('#canvas'),ctx=canvas.getContext('2d'),drawer=$('#drawer'),body=$('#drawerBody');
+const lang=()=>project.ui.language, t=k=>translate(lang(),k), esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(project))}catch{}}
+function download(text,name,type){const u=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1200)}
+function currentModule(){return project.modules.find(m=>m.id===selected)||project.modules[0]}
+function openPanel(name){activePanel=name;drawer.classList.add('open');$('#backdrop').classList.add('show');renderPanel();$$('[data-panel]').forEach(b=>b.classList.toggle('active',b.dataset.panel===name))}
+function closePanel(){if(innerWidth>=900)return;drawer.classList.remove('open');$('#backdrop').classList.remove('show')}
+function input(name,label,value,min,max,step=1,full=false){return `<label class="field ${full?'full':''}">${esc(label)}<input name="${name}" type="number" min="${min}" max="${max}" step="${step}" value="${value}"></label>`}
+function colorInput(name,label,value){return `<label class="field">${esc(label)}<input name="${name}" type="color" value="${value}"></label>`}
+function select(name,label,value,items){return `<label class="field">${esc(label)}<select name="${name}">${Object.entries(items).map(([k,v])=>`<option value="${k}" ${k===value?'selected':''}>${esc(v.name||v)}</option>`).join('')}</select></label>`}
+function stats(model){return `<div class="stats"><div class="stat"><b>${model.width} ${t('mm')}</b><span>${t('kitchenWidth')}</span></div><div class="stat"><b>${project.modules.length}</b><span>${t('moduleCount')}</span></div><div class="stat"><b>${model.parts.length}</b><span>${t('partCount')}</span></div></div>`}
+function panelModules(model){const m=currentModule();return `${stats(model)}<div class="section-title">${t('selected')}</div>${project.modules.map((x,i)=>`<button class="button-card ${x.id===selected?'active':''}" data-select="${x.id}"><b>${moduleName(lang(),x.type)}</b><small>M${String(i+1).padStart(2,'0')} · ${x.width} × ${x.height} × ${x.depth} ${t('mm')}</small></button>`).join('')}<div class="section-title">${t('moduleSize')}</div><div class="field-grid">${input('module.width',t('width')+', '+t('mm'),m.width,200,1400)}${input('module.height',t('height')+', '+t('mm'),m.height,200,2400)}${input('module.depth',t('depth')+', '+t('mm'),m.depth,200,900)}${!isApplianceType(m.type)?input('module.board',t('board')+', '+t('mm'),m.board,12,30,.1):''}</div><div class="row" style="margin-top:12px"><button class="button" data-action="copy">${t('copy')}</button><button class="button danger" data-action="remove">${t('remove')}</button></div><button class="button primary" style="width:100%;margin-top:9px" data-action="add">＋ ${t('addModule')}</button>${isApplianceType(m.type)?`<div class="note">${t('applianceNote')}</div>`:''}`}
+function panelRoom(){const r=project.room;return `<div class="section-title">${t('roomSize')}</div><div class="field-grid">${input('room.width',t('width')+', '+t('mm'),r.width,800,20000)}${input('room.depth',t('depth')+', '+t('mm'),r.depth,800,20000)}${input('room.height',t('height')+', '+t('mm'),r.height,1800,6000)}${colorInput('room.wallColor',t('wallColor'),r.wallColor)}${colorInput('room.floorColor',t('floorColor'),r.floorColor)}</div><div class="switch-row"><span>${t('showDimensions')}</span><button class="switch ${project.ui.showDimensions?'on':''}" data-action="dimensions"></button></div><div class="note">${t('sceneHint')}</div>`}
