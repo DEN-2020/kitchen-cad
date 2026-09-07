@@ -5,6 +5,7 @@ export const SUBSTRATES = Object.freeze({
   plywood: { name: 'Фанера', group: 'panel' },
   stone: { name: 'Камень (уточнить у поставщика)', group: 'countertop' },
 });
+
 export const DECORS = Object.freeze({
   white: { name: 'Тёплый белый', color: '#eeeae0', pattern: 'solid' },
   olive: { name: 'Шалфей', color: '#899782', pattern: 'solid' },
@@ -14,7 +15,20 @@ export const DECORS = Object.freeze({
   marble: { name: 'Светлый камень · имитация', color: '#e7e5dd', pattern: 'stone' },
   concrete: { name: 'Бетон · имитация', color: '#a7aaa6', pattern: 'speckle' },
 });
-export const MODULE_TYPES = Object.freeze({base:'Нижний шкаф',sink:'Шкаф под мойку',wall:'Навесной шкаф',washer:'Стиральная машина'});
+
+export const MODULE_TYPES = Object.freeze({
+  base: 'Нижний шкаф',
+  sink: 'Шкаф под раковину',
+  wall: 'Навесной шкаф',
+  washer: 'Стиральная машина',
+  dishwasher: 'Посудомоечная машина',
+  oven: 'Духовой шкаф',
+  fridge: 'Холодильник',
+});
+
+export const APPLIANCE_TYPES = Object.freeze(['washer', 'dishwasher', 'oven', 'fridge']);
+export const isApplianceType = type => APPLIANCE_TYPES.includes(type);
+
 export function appearance(decor, color, gloss = false, grain = 'v') {
   const d = DECORS[decor];
   if (!d) throw new Error('Неизвестный декор');
