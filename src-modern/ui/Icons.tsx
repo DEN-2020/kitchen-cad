@@ -13,4 +13,20 @@ export const BackIcon=(p:IconProps)=><Svg {...p}><path d="m15 5-7 7 7 7"/></Svg>
 export const PrintIcon=(p:IconProps)=><Svg {...p}><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7"/></Svg>;
 export const DownloadIcon=(p:IconProps)=><Svg {...p}><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></Svg>;
 export const PartsIcon=(p:IconProps)=><Svg {...p}><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="13" y="4" width="8" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></Svg>;
-export function CatalogGlyph({type}:{type:string}){const c={width:44,height:44,viewBox:'0 0 48 48',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};if(type==='washer')return <svg {...c}><rect x="8" y="5" width="32" height="38" rx="3"/><circle cx="24" cy="27" r="10"/><circle cx="24" cy="27" r="6"/><path d="M12 11h16M34 11h2"/></svg>;if(type==='dishwasher')return <svg {...c}><rect x="9" y="5" width="30" height="38" rx="2"/><path d="M12 12h24M15 9h3M31 9h2M14 17h20v21H14z"/></svg>;if(type==='oven')return <svg {...c}><rect x="8" y="6" width="32" height="36" rx="2"/><path d="M12 13h24M13 18h22v18H13zM16 10h2M23 10h2M30 10h2"/></svg>;if(type==='fridge')return <svg {...c}><rect x="11" y="4" width="26" height="40" rx="3"/><path d="M11 27h26M31 11v10M31 31v7"/></svg>;if(type==='sink')return <svg {...c}><rect x="7" y="13" width="34" height="29" rx="2"/><path d="M10 13V8h28v5M14 17h20v10c0 4-4 7-10 7s-10-3-10-7zM24 17v-5"/></svg>;if(type==='wall')return <svg {...c}><rect x="7" y="7" width="34" height="28" rx="2"/><path d="M24 7v28M10 40h28"/></svg>;return <svg {...c}><rect x="7" y="11" width="34" height="31" rx="2"/><path d="M24 11v31M10 7h28M12 42v3M36 42v3"/></svg>}
+
+export function CatalogGlyph({type}:{type:string}){
+ const c={width:44,height:44,viewBox:'0 0 48 48',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};
+ if(type==='washer')return <svg {...c}><rect x="8" y="5" width="32" height="38" rx="3"/><circle cx="24" cy="27" r="10"/><circle cx="24" cy="27" r="6"/><path d="M12 11h16M34 11h2"/></svg>;
+ if(type==='dishwasher')return <svg {...c}><rect x="9" y="5" width="30" height="38" rx="2"/><path d="M12 12h24M15 9h3M31 9h2M14 17h20v21H14z"/></svg>;
+ if(type==='oven'||type==='microwave')return <svg {...c}><rect x="8" y="6" width="32" height="36" rx="2"/><path d="M12 13h24M13 18h22v18H13zM16 10h2M23 10h2M30 10h2"/></svg>;
+ if(type==='fridge'||type==='freezer')return <svg {...c}><rect x="11" y="4" width="26" height="40" rx="3"/><path d="M11 27h26M31 11v10M31 31v7"/></svg>;
+ if(type==='sink')return <svg {...c}><rect x="7" y="13" width="34" height="29" rx="2"/><path d="M10 13V8h28v5M14 17h20v10c0 4-4 7-10 7s-10-3-10-7zM24 17v-5"/></svg>;
+ if(type==='drawer')return <svg {...c}><rect x="8" y="8" width="32" height="34" rx="2"/><path d="M8 19h32M8 30h32M18 14h12M18 25h12M18 36h12"/></svg>;
+ if(type==='wall')return <svg {...c}><rect x="7" y="7" width="34" height="28" rx="2"/><path d="M24 7v28M10 40h28"/></svg>;
+ if(type==='cornerBase'||type==='cornerWall')return <svg {...c}><path d="M8 8h22v12h10v22H8z"/><path d="M30 8v12H18v22"/></svg>;
+ if(type==='tall'||type==='tallOven')return <svg {...c}><rect x="13" y="3" width="22" height="42" rx="2"/><path d="M13 18h22M13 31h22"/>{type==='tallOven'&&<rect x="17" y="19" width="14" height="11" rx="1"/>}</svg>;
+ if(type==='hood')return <svg {...c}><path d="M10 28h28l-4 9H14zM19 8h10v20H19z"/></svg>;
+ if(type==='window')return <svg {...c}><rect x="6" y="7" width="36" height="32" rx="1"/><path d="M24 7v32M6 23h36"/></svg>;
+ if(type==='door')return <svg {...c}><path d="M11 4h25v40H11zM14 7l17 3v31l-17 3z"/><circle cx="27" cy="25" r="1"/></svg>;
+ return <svg {...c}><rect x="7" y="11" width="34" height="31" rx="2"/><path d="M24 11v31M10 7h28M12 42v3M36 42v3"/></svg>;
+}
