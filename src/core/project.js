@@ -21,7 +21,10 @@ export function createModule(type = 'base') {
     width: appliance?.width ?? 600,
     height: appliance?.height ?? 720,
     depth: appliance?.depth ?? (wall ? 320 : 560),
-    board: 18, frontThickness: 18, back: 3, gap: 2, bodyEdge: 0.8, frontEdge: 2,
+    board: 18, frontThickness: 18, back: 3, gap: 2,
+    bodyEdge: 0.8, frontEdge: 2, bodyEdgeType: 'ABS', frontEdgeType: 'ABS',
+    bottomMode: 'between', topMode: 'between', backMode: 'overlay',
+    shelfCount: type === 'sink' || appliance ? 0 : 1,
     feet: wall || isApplianceType(type) ? 0 : 140,
     elevation: wall ? 1500 : 0,
     offsetX: 0, offsetZ: 0,
@@ -29,6 +32,7 @@ export function createModule(type = 'base') {
     bodyColor: DECORS.white.color, frontColor: DECORS.olive.color, gloss: false, grain: 'v',
     doorCount: 0, frontStyle: 'flat', handleStyle: 'bar', legStyle: 'round',
     frontOverhangTop: 0, frontOverhangBottom: 0, frontOverhangLeft: 0, frontOverhangRight: 0,
+    frontOverrides: [],
   };
 }
 
@@ -80,6 +84,14 @@ export function ensureProjectDefaults(p) {
     if (!HANDLE_STYLES[m.handleStyle]) m.handleStyle='bar';
     if (!LEG_STYLES[m.legStyle]) m.legStyle='round';
     for(const k of ['frontOverhangTop','frontOverhangBottom','frontOverhangLeft','frontOverhangRight']) if(!Number.isFinite(m[k]))m[k]=0;
+    if(!['between','under'].includes(m.bottomMode))m.bottomMode='between';
+    if(!['between','overlay'].includes(m.topMode))m.topMode='between';
+    if(!['overlay','inset'].includes(m.backMode))m.backMode='overlay';
+    if(!['ABS','PVC'].includes(m.bodyEdgeType))m.bodyEdgeType='ABS';
+    if(!['ABS','PVC'].includes(m.frontEdgeType))m.frontEdgeType='ABS';
+    if(!Number.isFinite(m.shelfCount))m.shelfCount=m.type==='sink'||isApplianceType(m.type)?0:1;
+    m.shelfCount=Math.max(0,Math.min(8,Math.round(m.shelfCount)));
+    if(!Array.isArray(m.frontOverrides))m.frontOverrides=[];
   }
   return p;
 }
@@ -96,13 +108,15 @@ export function validateProject(raw) {
     if (!m || typeof m !== 'object' || typeof m.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(m.id) || ids.has(m.id)) throw new Error('Повторяющийся или некорректный ID модуля');
     ids.add(m.id); member(m.type, Object.keys(MODULE_TYPES), 'тип модуля');
     number(m.width, 200, 1400, 'Ширина'); number(m.height, 200, 2400, 'Высота корпуса'); number(m.depth, 200, 900, 'Глубина корпуса');
-    number(m.board, 12, 30, 'Толщина корпуса'); number(m.frontThickness, 12, 30, 'Толщина фасада'); number(m.back, 2, 8, 'Задняя стенка');
+    number(m.board, 12, 30, 'Толщина корпуса'); number(m.frontThickness, 12, 30, 'Толщина фасада'); number(m.back, 2, 12, 'Задняя стенка');
     number(m.feet, 0, 300, 'Ножки'); number(m.elevation, 0, 2500, 'Отметка низа'); number(m.gap, 1, 8, 'Зазор');
     number(m.bodyEdge, 0, 3, 'Кромка корпуса'); number(m.frontEdge, 0, 3, 'Кромка фасада');
     number(m.offsetX,-10000,10000,'Смещение X'); number(m.offsetZ,-10000,10000,'Смещение Z');
-    number(m.doorCount,0,4,'Количество фасадов');
+    number(m.doorCount,0,4,'Количество фасадов'); number(m.shelfCount,0,8,'Количество полок');
     for(const k of ['frontOverhangTop','frontOverhangBottom','frontOverhangLeft','frontOverhangRight']) number(m[k],0,400,k);
     member(m.frontStyle,Object.keys(FRONT_STYLES),'тип фасада'); member(m.handleStyle,Object.keys(HANDLE_STYLES),'тип ручки'); member(m.legStyle,Object.keys(LEG_STYLES),'тип ножек');
+    member(m.bottomMode,['between','under'],'тип дна'); member(m.topMode,['between','overlay'],'тип верха'); member(m.backMode,['overlay','inset'],'тип задней стенки');
+    member(m.bodyEdgeType,['ABS','PVC'],'тип кромки корпуса'); member(m.frontEdgeType,['ABS','PVC'],'тип кромки фасада');
     member(m.bodySubstrate, ['ldsp','mdf','plywood'], 'материал корпуса'); member(m.frontSubstrate, ['ldsp','mdf','plywood'], 'материал фасада');
     member(m.bodyDecor, Object.keys(DECORS), 'декор корпуса'); member(m.frontDecor, Object.keys(DECORS), 'декор фасада');
     member(m.grain, ['u','v'], 'волокна'); color(m.bodyColor); color(m.frontColor);
