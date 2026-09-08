@@ -1,150 +1,48 @@
-import { appearance, isApplianceType } from '../catalog/materials.js';
+import { appearance, isApplianceType, isDisplayOnlyType, isRoomElementType, isDrawerType, isCornerType, isWallMountedType } from '../catalog/materials.js';
 import { layoutProject, round } from './project.js';
 
-/** u-/u+ shorten finished U; v-/v+ shorten finished V. Kerf is NOT a part deduction. */
-export function blankSize(u, v, edges) {
-  const values = [u, v, ...edges];
-  if (edges.length !== 4 || values.some(n => !Number.isFinite(n)) || edges.some(n => n < 0)) throw new Error('Некорректная кромка');
-  const a = round(u - edges[0] - edges[1]), b = round(v - edges[2] - edges[3]);
-  if (a <= 0 || b <= 0) throw new Error('Кромка больше размера детали');
-  return [a, b];
+export function blankSize(u,v,edges){const values=[u,v,...edges];if(edges.length!==4||values.some(n=>!Number.isFinite(n))||edges.some(n=>n<0))throw new Error('Некорректная кромка');const a=round(u-edges[0]-edges[1]),b=round(v-edges[2]-edges[3]);if(a<=0||b<=0)throw new Error('Кромка больше размера детали');return[a,b]}
+
+function pushBox(objects,m,id,suffix,size,center,app,kind='accessory',shape='box'){objects.push({id:`${id}-${suffix}`,moduleId:m.id,kind,role:kind,shape,size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app})}
+function displayGeometry(m,id,objects){const w=m.width,h=m.height,d=m.depth,white=appearance('white','#d8ddde'),dark=appearance('graphite','#1f2b31'),gray=appearance('graphite','#8c989c'),metal=appearance('graphite','#aab2b4');
+ pushBox(objects,m,id,'BODY',[w,h,d],[w/2,h/2,d/2],white,isRoomElementType(m.type)?'room-element':'appliance');
+ if(m.type==='washer'){pushBox(objects,m,id,'PANEL',[w-18,82,10],[w/2,h-58,d+5],gray,'appliance-detail');pushBox(objects,m,id,'SCREEN',[126,34,12],[w*.67,h-55,d+12],dark,'appliance-detail');pushBox(objects,m,id,'PORT',[w*.54,w*.54,22],[w/2,h*.46,d+15],metal,'appliance-port','disc');pushBox(objects,m,id,'GLASS',[w*.42,w*.42,28],[w/2,h*.46,d+25],dark,'appliance-glass','disc')}
+ else if(m.type==='dishwasher'){pushBox(objects,m,id,'DOOR',[w-16,h-55,16],[w/2,(h-55)/2+10,d+10],metal,'appliance-detail');pushBox(objects,m,id,'CONTROL',[w-36,48,12],[w/2,h-38,d+13],dark,'appliance-detail');pushBox(objects,m,id,'HANDLE',[w*.52,16,20],[w/2,h-92,d+24],gray,'handle')}
+ else if(m.type==='oven'){pushBox(objects,m,id,'FRAME',[w-28,h-60,18],[w/2,h/2-5,d+12],dark,'appliance-detail');pushBox(objects,m,id,'GLASS',[w-82,h*.54,22],[w/2,h*.40,d+24],dark,'appliance-detail');pushBox(objects,m,id,'CONTROL',[w-72,80,18],[w/2,h-62,d+23],gray,'appliance-detail');pushBox(objects,m,id,'HANDLE',[w*.68,18,22],[w/2,h*.66,d+32],metal,'handle')}
+ else if(m.type==='fridge'||m.type==='freezer'){pushBox(objects,m,id,'DOOR1',[w-22,h*.58,18],[w/2,h*.69,d+12],metal,'appliance-detail');pushBox(objects,m,id,'DOOR2',[w-22,h*.38,18],[w/2,h*.20,d+12],metal,'appliance-detail');pushBox(objects,m,id,'HANDLE1',[18,h*.22,24],[w-46,h*.69,d+28],dark,'handle');pushBox(objects,m,id,'HANDLE2',[18,h*.16,24],[w-46,h*.22,d+28],dark,'handle')}
+ else if(m.type==='microwave'){pushBox(objects,m,id,'GLASS',[w-70,h-85,18],[w*.43,h*.48,d+14],dark,'appliance-detail');pushBox(objects,m,id,'CONTROL',[95,h-70,18],[w-65,h*.5,d+14],gray,'appliance-detail');pushBox(objects,m,id,'HANDLE',[15,h*.45,22],[w*.73,h*.5,d+25],metal,'handle')}
+ else if(m.type==='hood'){pushBox(objects,m,id,'CANOPY',[w,90,d],[w/2,45,d/2],metal,'appliance-detail');pushBox(objects,m,id,'CHIMNEY',[Math.min(240,w*.45),h-75,Math.min(180,d*.7)],[w/2,(h+75)/2,d*.35],gray,'appliance-detail')}
+ else if(m.type==='window'){pushBox(objects,m,id,'GLASS',[Math.max(80,w-70),Math.max(80,h-70),12],[w/2,h/2,d+4],appearance('graphite','#9cc9d8'),'window-glass');pushBox(objects,m,id,'MULLION',[28,h-70,24],[w/2,h/2,d+12],white,'room-detail');pushBox(objects,m,id,'SILL',[w+80,35,160],[w/2,-18,80],white,'room-detail')}
+ else if(m.type==='door'){pushBox(objects,m,id,'PANEL',[w-80,h-80,35],[w/2,h/2,d+12],appearance('oak','#b98555'),'door-panel');pushBox(objects,m,id,'HANDLE',[32,32,55],[w*.78,h*.48,d+45],metal,'handle')}
 }
 
-function applianceGeometry(m, id, objects) {
-  const w=m.width,h=m.height,d=m.depth;
-  const white=appearance('white','#d8ddde'), dark=appearance('graphite','#1f2b31'), gray=appearance('graphite','#7d898d'), metal=appearance('graphite','#aab2b4');
-  const extra=(suffix,size,center,app,kind='accessory',shape='box')=>objects.push({id:`${id}-${suffix}`,moduleId:m.id,kind,role:kind,shape,size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app});
-  extra('AP',[w,h,d],[w/2,h/2,d/2],white,'appliance');
-  if (m.type === 'washer') {
-    extra('PANEL',[w-18,82,10],[w/2,h-58,d+5],gray,'appliance-detail');
-    extra('SCREEN',[126,34,12],[w*.67,h-55,d+12],dark,'appliance-detail');
-    extra('PORT',[w*.54,w*.54,22],[w/2,h*.46,d+15],metal,'appliance-port','disc');
-    extra('GLASS',[w*.42,w*.42,28],[w/2,h*.46,d+25],dark,'appliance-glass','disc');
-  } else if (m.type === 'dishwasher') {
-    extra('DOOR',[w-16,h-55,16],[w/2,(h-55)/2+10,d+10],metal,'appliance-detail');
-    extra('CONTROL',[w-36,48,12],[w/2,h-38,d+13],dark,'appliance-detail');
-    extra('HANDLE',[w*.52,16,20],[w/2,h-92,d+24],gray,'handle');
-  } else if (m.type === 'oven') {
-    extra('FRAME',[w-28,h-60,18],[w/2,h/2-5,d+12],dark,'appliance-detail');
-    extra('GLASS',[w-82,h*.54,22],[w/2,h*.40,d+24],appearance('graphite','#11191d'),'appliance-detail');
-    extra('CONTROL',[w-72,80,18],[w/2,h-62,d+23],gray,'appliance-detail');
-    extra('HANDLE',[w*.68,18,22],[w/2,h*.66,d+32],metal,'handle');
-  } else if (m.type === 'fridge') {
-    extra('DOOR1',[w-22,h*.58,18],[w/2,h*.69,d+12],metal,'appliance-detail');
-    extra('DOOR2',[w-22,h*.38,18],[w/2,h*.20,d+12],metal,'appliance-detail');
-    extra('HANDLE1',[18,h*.22,24],[w-46,h*.69,d+28],dark,'handle');
-    extra('HANDLE2',[18,h*.16,24],[w-46,h*.22,d+28],dark,'handle');
-  }
+function frontExtras(m,id,objects,x,y,z,w,h){const dark=appearance('graphite','#384349'),glass=appearance('graphite','#26343b');
+ if(m.frontStyle==='glass')pushBox(objects,m,id,`GLASS-${x}`,[Math.max(40,w-90),Math.max(40,h-90),5],[x,y,z+10],glass,'front-insert');
+ if(['frame','shaker'].includes(m.frontStyle)){const rail=m.frontStyle==='shaker'?55:42;pushBox(objects,m,id,`FL-${x}`,[rail,h-30,7],[x-w/2+rail/2+12,y,z+9],dark,'front-decoration');pushBox(objects,m,id,`FR-${x}`,[rail,h-30,7],[x+w/2-rail/2-12,y,z+9],dark,'front-decoration');pushBox(objects,m,id,`FT-${x}`,[w-30,rail,7],[x,y+h/2-rail/2-12,z+9],dark,'front-decoration');pushBox(objects,m,id,`FB-${x}`,[w-30,rail,7],[x,y-h/2+rail/2+12,z+9],dark,'front-decoration')}
+ if(['slatted','louvered'].includes(m.frontStyle))for(let k=-Math.floor(w/2)+28;k<w/2-18;k+=(m.frontStyle==='louvered'?28:36))pushBox(objects,m,id,`SL-${x}-${k}`,[10,h-24,6],[x+k,y,z+9],dark,'front-decoration');
+ if(m.handleStyle==='bar')pushBox(objects,m,id,`HANDLE-${x}`,[Math.min(180,w*.42),12,18],[x,y+h/2-64,z+19],dark,'handle');else if(m.handleStyle==='knob')pushBox(objects,m,id,`KNOB-${x}`,[24,24,22],[x+w*.24,y,z+20],dark,'handle');else if(m.handleStyle==='integrated'||m.frontStyle==='handleless')pushBox(objects,m,id,`GRIP-${x}`,[Math.max(60,w-70),14,12],[x,y+h/2-20,z+15],dark,'handle')
 }
+function rectsOverlap(a,b){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.z<b.z+b.depth&&a.z+a.depth>b.z}
 
-function frontExtras(m,id,objects,x,y,z,w,h){
-  const dark=appearance('graphite','#384349'),glass=appearance('graphite','#26343b');
-  const extra=(suffix,size,center,app,kind='accessory')=>objects.push({id:`${id}-${suffix}`,moduleId:m.id,kind,role:kind,size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app});
-  if(m.frontStyle==='glass') extra(`GLASS-${x}`,[Math.max(40,w-90),Math.max(40,h-90),5],[x,y,z+10],glass,'front-insert');
-  if(m.frontStyle==='frame'){
-    const rail=42;extra(`FRAME-L-${x}`,[rail,h-30,7],[x-w/2+rail/2+12,y,z+9],dark,'front-decoration');extra(`FRAME-R-${x}`,[rail,h-30,7],[x+w/2-rail/2-12,y,z+9],dark,'front-decoration');
-    extra(`FRAME-T-${x}`,[w-30,rail,7],[x,y+h/2-rail/2-12,z+9],dark,'front-decoration');extra(`FRAME-B-${x}`,[w-30,rail,7],[x,y-h/2+rail/2+12,z+9],dark,'front-decoration');
-  }
-  if(m.frontStyle==='slatted') for(let k=-Math.floor(w/2)+28;k<w/2-18;k+=36) extra(`SLAT-${x}-${k}`,[10,h-24,6],[x+k,y,z+9],dark,'front-decoration');
-  if(m.handleStyle==='bar') extra(`HANDLE-${x}`,[Math.min(180,w*.42),12,18],[x,y+h/2-64,z+19],dark,'handle');
-  else if(m.handleStyle==='knob') extra(`KNOB-${x}`,[24,24,22],[x+w*.24,y,z+20],dark,'handle');
-  else if(m.handleStyle==='integrated') extra(`GRIP-${x}`,[Math.max(60,w-70),14,12],[x,y+h/2-20,z+15],dark,'handle');
-}
-
-function rectsOverlap(a,b){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.z<b.z+b.depth&&a.z+a.depth>b.z;}
-
-export function buildProject(project) {
-  const modules = layoutProject(project), parts = [], objects = [], warnings = [], issues=[];
-  modules.forEach((m, index) => {
-    const w=m.width,h=m.height,d=m.depth,t=m.board,b=m.back,id=`M${String(index+1).padStart(2,'0')}`;
-    const backOverlay=m.backMode==='overlay', bodyDepth=backOverlay?d-b:d, backZ=backOverlay?b/2:b/2;
-    const bottomUnder=m.bottomMode==='under', topOverlay=m.type==='wall'&&m.topMode==='overlay';
-    const lower=bottomUnder?t:0, upper=topOverlay?t:0, sideH=h-lower-upper, inner=w-2*t;
-    const baseAppearance=appearance(m.bodyDecor,m.bodyColor,false), defaultFaceAppearance=appearance(m.frontDecor,m.frontColor,m.gloss,m.grain);
-    const add=(suffix,name,u,v,thick,edges,size,center,role='body',opts={})=>{
-      const front=role==='front', raw=blankSize(u,v,edges), partId=`${id}-${suffix}`;
-      const decor=opts.decor || (front?m.frontDecor:m.bodyDecor), substrate=role==='back'?'mdf':front?m.frontSubstrate:m.bodySubstrate;
-      const app=opts.appearance || (front?defaultFaceAppearance:baseAppearance);
-      const part={id:partId,moduleId:m.id,moduleCode:id,name,role,u:round(u),v:round(v),thickness:thick,blankU:raw[0],blankV:raw[1],edges,
-        edgeType:front?m.frontEdgeType:m.bodyEdgeType,substrate,decor,grain:front?m.grain:'v',size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app};
-      parts.push(part);objects.push({...part,kind:'part'});return part;
-    };
-    const extra=(suffix,size,center,app,kind='accessory')=>objects.push({id:`${id}-${suffix}`,moduleId:m.id,kind,role:kind,size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app});
-
-    const out=m.x<0||m.z<0||m.x+w>project.room.width||m.z+d>project.room.depth||m.y+h>project.room.height;
-    if(out){issues.push({type:'module-out',moduleId:m.id,message:`${id}: модуль выходит за пределы комнаты.`});warnings.push(`${id}: модуль выходит за пределы комнаты.`)}
-    if (isApplianceType(m.type)) { applianceGeometry(m,id,objects); return; }
-
-    add('SL','Боковина левая',bodyDepth,sideH,t,[0,m.bodyEdge,0,0],[t,sideH,bodyDepth],[t/2,lower+sideH/2,(backOverlay?b:0)+bodyDepth/2]);
-    add('SR','Боковина правая',bodyDepth,sideH,t,[0,m.bodyEdge,0,0],[t,sideH,bodyDepth],[w-t/2,lower+sideH/2,(backOverlay?b:0)+bodyDepth/2]);
-    if(bottomUnder) add('BT','Дно под боковинами',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);
-    else add('BT','Дно между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);
-    if(backOverlay) add('BK','Задняя стенка накладная',w,h,b,[0,0,0,0],[w,h,b],[w/2,h/2,backZ],'back');
-    else add('BK','Задняя стенка вкладная',inner,Math.max(40,h-lower-upper-2*t),b,[0,0,0,0],[inner,Math.max(40,h-lower-upper-2*t),b],[w/2,lower+(h-lower-upper)/2,b/2],'back');
-    if(m.type==='wall') {
-      if(topOverlay) add('TP','Крышка сверху боковин',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2]);
-      else add('TP','Верх между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2]);
-    } else {
-      add('RF','Передняя верхняя планка (плашмя)',inner,100,t,[0,0,0,m.bodyEdge],[inner,t,100],[w/2,h-t/2,d-50]);
-      add('RR','Задняя верхняя планка (ребром)',inner,100,t,[0,0,0,0],[inner,100,t],[w/2,h-50,(backOverlay?b:0)+t/2]);
-      if (m.feet>20) add('PL','Цоколь (индивидуальный)',w,m.feet-10,t,[0,0,0,m.bodyEdge],[w,m.feet-10,t],[w/2,-(m.feet-10)/2,d-65]);
-      if(m.legStyle!=='hidden') for(const [j,x] of [[0,50],[1,w-50]]) for(const [k,z] of [[0,70],[1,d-70]])
-        extra(`LEG${j}${k}`,[m.legStyle==='square'?38:34,m.feet,m.legStyle==='square'?38:34],[x,-m.feet/2,z],appearance('graphite','#434b50'),m.legStyle==='round'?'leg-round':'leg-square');
-    }
-    if(m.type!=='sink' && m.shelfCount>0) {
-      const shelfWidth=inner-2,shelfDepth=Math.max(80,bodyDepth-20);
-      for(let s=0;s<m.shelfCount;s++){
-        const sy=lower+(s+1)*(sideH/(m.shelfCount+1));
-        add(`SH${s+1}`,`Полка ${s+1} (боковой зазор 1 мм)`,shelfWidth,shelfDepth,t,[0,0,0,m.bodyEdge],[shelfWidth,t,shelfDepth],[w/2,sy,(backOverlay?b:0)+shelfDepth/2]);
-      }
-    }
-    const n=m.doorCount>0?m.doorCount:(w>650?2:1), totalW=w+m.frontOverhangLeft+m.frontOverhangRight,fw=(totalW-2*m.gap-(n-1)*m.gap)/n,
-      fh=h+m.frontOverhangTop+m.frontOverhangBottom-2*m.gap, start=-m.frontOverhangLeft+m.gap;
-    for(let j=0;j<n;j++){
-      const x=start+fw/2+j*(fw+m.gap), y=h/2+(m.frontOverhangTop-m.frontOverhangBottom)/2,ov=(m.frontOverrides||[])[j]||{};
-      const decor=ov.decor&&appearance?ov.decor:m.frontDecor, color=ov.color||undefined, faceApp=appearance(decor,color||undefined,m.gloss,m.grain);
-      add(`F${j+1}`,'Фасад '+(j+1),fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[x,y,d+2+m.frontThickness/2],'front',{decor,appearance:faceApp});
-      frontExtras(m,id,objects,x,y,d+m.frontThickness+4,fw,fh);
-    }
-    warnings.push(`${id}: конструктив — дно ${m.bottomMode==='under'?'под боковинами':'между боковинами'}, ${m.type==='wall'?(m.topMode==='overlay'?'крышка сверху':'верх между боковинами'):'верхние планки'}, задняя стенка ${m.backMode==='overlay'?'накладная':'вкладная'}.`);
-    warnings.push(`${id}: кромка корпуса ${m.bodyEdgeType} ${m.bodyEdge} мм, фасадов ${m.frontEdgeType} ${m.frontEdge} мм; вычет из размера заготовки зависит от принятой схемы цеха.`);
-    if(m.width>900) warnings.push(`${id}: широкий пролёт; проверить прогиб полки, планок и опору столешницы.`);
-    if(m.type==='sink') warnings.push(`${id}: вырез раковины, трубы и влагозащита требуют проверки по выбранной раковине.`);
-    if(m.frontStyle!=='flat') warnings.push(`${id}: фасад «${m.frontStyle}» показан визуально; фрезеровка/стекло не включены в производственную деталировку.`);
-  });
-
-  const floor=modules.filter(m=>m.type!=='wall'),bases=floor.filter(m=>!isApplianceType(m.type)),top=project.countertop;
-  for(let i=0;i<floor.length;i++)for(let j=i+1;j<floor.length;j++)if(rectsOverlap(floor[i],floor[j])){
-    issues.push({type:'overlap',moduleId:floor[i].id,otherId:floor[j].id});warnings.push('Есть пересечение напольных модулей. Переместите шкафы или технику.');
-  }
-  const autoStart=floor.length?Math.min(...floor.map(m=>m.x)):0,autoEnd=floor.length?Math.max(...floor.map(m=>m.x+m.width)):0,autoLength=Math.max(0,autoEnd-autoStart);
-  const topLength=top.lengthMode==='manual'?top.length:autoLength+2*top.overhang, topX=top.lengthMode==='manual'?top.offsetX:autoStart-top.overhang,
-    topY=bases.length?Math.max(...bases.map(m=>m.y+m.height)):860;
-  let countertop=null;
-  if(top.enabled && floor.length){
-    countertop={id:'CT-01',length:topLength,depth:top.depth,thickness:top.thickness,elevation:topY,x:topX};
-    const ctOut=topX<0||topX+topLength>project.room.width||top.depth>project.room.depth||topY+top.thickness>project.room.height;
-    if(ctOut){issues.push({type:'countertop-out'});warnings.push('Столешница выходит за пределы комнаты — проверьте длину, глубину и смещение.');}
-    const uncovered=bases.some(m=>m.x<topX||m.x+m.width>topX+topLength||m.z+m.depth>top.depth);
-    if(uncovered){issues.push({type:'countertop-cover'});warnings.push('Столешница не перекрывает все корпуса. Проверьте её длину, глубину или положение шкафов.');}
-    objects.push({id:'CT-01',kind:'countertop',role:'countertop',moduleId:null,size:[topLength,top.thickness,top.depth],center:[topX+topLength/2,topY+top.thickness/2,top.depth/2],appearance:appearance(top.decor,top.color,top.gloss),invalid:ctOut||uncovered});
-    if(floor.some(m=>isApplianceType(m.type))) warnings.push('Столешница над техникой: независимые опоры и монтажные зазоры не рассчитаны. Техника не считается опорой.');
-    if(bases.some(m=>Math.abs(m.y+m.height-topY)>.1)) warnings.push('Верхние отметки шкафов разные: столешница не опирается на все корпуса.');
-    if(floor.some(m=>isApplianceType(m.type)&&m.height>=topY)) warnings.push('Техника касается или пересекает столешницу по высоте. Нужен монтажный зазор по инструкции модели.');
-  }
-
-  const fixtures=[];
-  for(const f of project.fixtures||[]){
-    const m=modules.find(x=>x.id===f.targetModuleId);if(!m)continue;
-    const x=m.x+m.width/2+f.offsetX,z=m.z+m.depth/2+f.offsetZ,y=(countertop?.elevation??(m.y+m.height))+(countertop?.thickness??top.thickness)+3;
-    const fits=f.width<=m.width-20&&f.depth<=top.depth-20&&x-f.width/2>=m.x&&x+f.width/2<=m.x+m.width;
-    if(!fits){issues.push({type:'fixture',fixtureId:f.id,moduleId:m.id});warnings.push(`${f.type==='sink'?'Раковина':'Варочная поверхность'} не помещается в выбранный модуль/столешницу.`)}
-    const item={...f,x,y,z,fits};fixtures.push(item);
-    objects.push({id:f.id,moduleId:m.id,kind:f.type==='sink'?'fixture-sink':'fixture-hob',role:'fixture',size:[f.width,12,f.depth],center:[x,y,z],appearance:appearance('graphite',f.type==='sink'?'#aeb7b9':'#161d20'),invalid:!fits});
-    warnings.push(`${f.type==='sink'?'Раковина':'Варочная поверхность'}: показан габарит/контур выреза. Точный шаблон выреза берите из инструкции производителя.`);
-  }
-  if (floor.some(m=>isApplianceType(m.type))) warnings.push('Модули стыкуются без автоматических монтажных промежутков. Нишу техники и зазоры нужно сверять с инструкцией модели.');
-  warnings.push('Предварительная деталировка: крепёж, сверление, петли, нагрузки и припуски цеха требуют проверки.');
-  const minX=Math.min(0,...modules.map(m=>m.x)),maxX=Math.max(project.room.width,...modules.map(m=>m.x+m.width));
-  return {modules,parts,objects,warnings:[...new Set(warnings)],issues,fixtures,countertop,width:Math.max(0,maxX-minX),height:Math.max(900,...modules.map(m=>m.y+m.height)),depth:Math.max(620,...modules.map(m=>m.z+m.depth+m.frontThickness+2))};
-}
+export function buildProject(project){const modules=layoutProject(project),parts=[],objects=[],warnings=[],issues=[];
+ modules.forEach((m,index)=>{const w=m.width,h=m.height,d=m.depth,t=m.board,b=m.back,id=`M${String(index+1).padStart(2,'0')}`;
+  const out=m.x<0||m.z<0||m.x+w>project.room.width||m.z+d>project.room.depth||m.y+h>project.room.height;if(out&&!isRoomElementType(m.type)){issues.push({type:'module-out',moduleId:m.id,message:`${id}: модуль выходит за пределы комнаты.`});warnings.push(`${id}: модуль выходит за пределы комнаты.`)}
+  if(isDisplayOnlyType(m.type)){displayGeometry(m,id,objects);return}
+  const backOverlay=m.backMode==='overlay',bodyDepth=backOverlay?d-b:d,bottomUnder=m.bottomMode==='under',topOverlay=['wall','cornerWall'].includes(m.type)&&m.topMode==='overlay',lower=bottomUnder?t:0,upper=topOverlay?t:0,sideH=h-lower-upper,inner=w-2*t,baseApp=appearance(m.bodyDecor,m.bodyColor,false),faceApp=appearance(m.frontDecor,m.frontColor,m.gloss,m.grain);
+  const add=(suffix,name,u,v,thick,edges,size,center,role='body',opts={})=>{const front=role==='front',raw=blankSize(u,v,edges),partId=`${id}-${suffix}`,decor=opts.decor||(front?m.frontDecor:m.bodyDecor),app=opts.appearance||(front?faceApp:baseApp),substrate=role==='back'?'mdf':front?m.frontSubstrate:m.bodySubstrate,part={id:partId,moduleId:m.id,moduleCode:id,name,role,u:round(u),v:round(v),thickness:thick,blankU:raw[0],blankV:raw[1],edges,edgeType:front?m.frontEdgeType:m.bodyEdgeType,substrate,decor,grain:front?m.grain:'v',size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app};parts.push(part);objects.push({...part,kind:'part'});return part};
+  add('SL','Боковина левая',bodyDepth,sideH,t,[0,m.bodyEdge,0,0],[t,sideH,bodyDepth],[t/2,lower+sideH/2,(backOverlay?b:0)+bodyDepth/2]);add('SR','Боковина правая',bodyDepth,sideH,t,[0,m.bodyEdge,0,0],[t,sideH,bodyDepth],[w-t/2,lower+sideH/2,(backOverlay?b:0)+bodyDepth/2]);
+  if(bottomUnder)add('BT','Дно под боковинами',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);else add('BT','Дно между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);
+  if(backOverlay)add('BK','Задняя стенка накладная',w,h,b,[0,0,0,0],[w,h,b],[w/2,h/2,b/2],'back');else add('BK','Задняя стенка вкладная',inner,Math.max(40,h-lower-upper-2*t),b,[0,0,0,0],[inner,Math.max(40,h-lower-upper-2*t),b],[w/2,lower+(h-lower-upper)/2,b/2],'back');
+  if(['wall','cornerWall'].includes(m.type)){if(topOverlay)add('TP','Крышка сверху боковин',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2]);else add('TP','Верх между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2])}
+  else{add('RF','Передняя верхняя планка',inner,100,t,[0,0,0,m.bodyEdge],[inner,t,100],[w/2,h-t/2,d-50]);add('RR','Задняя верхняя планка',inner,100,t,[0,0,0,0],[inner,100,t],[w/2,h-50,(backOverlay?b:0)+t/2]);if(m.feet>20)add('PL','Цоколь',w,m.feet-10,t,[0,0,0,m.bodyEdge],[w,m.feet-10,t],[w/2,-(m.feet-10)/2,d-65])}
+  if(!['sink','drawer'].includes(m.type)&&m.shelfCount>0){const sw=inner-2,sd=Math.max(80,bodyDepth-20);for(let s=0;s<m.shelfCount;s++){const sy=lower+(s+1)*(sideH/(m.shelfCount+1));add(`SH${s+1}`,`Полка ${s+1}`,sw,sd,t,[0,0,0,m.bodyEdge],[sw,t,sd],[w/2,sy,(backOverlay?b:0)+sd/2])}}
+  if(isDrawerType(m.type)){const n=Math.max(1,Math.min(6,m.drawerCount||3)),fh=(h-(n+1)*m.gap)/n;for(let j=0;j<n;j++){const y=m.gap+fh/2+j*(fh+m.gap),ov=(m.frontOverrides||[])[j]||{},decor=ov.decor||m.frontDecor,fa=appearance(decor,ov.color||undefined,m.gloss,m.grain);add(`F${j+1}`,`Фасад ящика ${j+1}`,w-2*m.gap,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[w-2*m.gap,fh,m.frontThickness],[w/2,y,d+2+m.frontThickness/2],'front',{decor,appearance:fa});frontExtras(m,id,objects,w/2,y,d+m.frontThickness+4,w-2*m.gap,fh)}warnings.push(`${id}: показаны фасады ящиков; направляющие и короба ящиков пока не входят в напил.`)}
+  else{const n=m.doorCount>0?m.doorCount:(w>650?2:1),totalW=w+m.frontOverhangLeft+m.frontOverhangRight,fw=(totalW-2*m.gap-(n-1)*m.gap)/n,fh=h+m.frontOverhangTop+m.frontOverhangBottom-2*m.gap,start=-m.frontOverhangLeft+m.gap;for(let j=0;j<n;j++){const x=start+fw/2+j*(fw+m.gap),y=h/2+(m.frontOverhangTop-m.frontOverhangBottom)/2,ov=(m.frontOverrides||[])[j]||{},decor=ov.decor||m.frontDecor,fa=appearance(decor,ov.color||undefined,m.gloss,m.grain);add(`F${j+1}`,`Фасад ${j+1}`,fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[x,y,d+2+m.frontThickness/2],'front',{decor,appearance:fa});frontExtras(m,id,objects,x,y,d+m.frontThickness+4,fw,fh)}}
+  if(isCornerType(m.type))warnings.push(`${id}: угловой модуль пока показан как параметрический габаритный корпус. Перед производством нужен отдельный профиль углового стыка/фасада.`);if(m.type==='tallOven')warnings.push(`${id}: ниша под духовку пока не вырезает корпус автоматически — высоту ниши нужно сверить по конкретной технике.`);if(m.width>900)warnings.push(`${id}: широкий пролёт; проверить прогиб и опоры.`)
+ });
+ const roomTypes=new Set(['window','door']),floor=modules.filter(m=>!isWallMountedType(m.type)&&!roomTypes.has(m.type)),baseTypes=new Set(['base','drawer','sink','cornerBase']),bases=floor.filter(m=>baseTypes.has(m.type)),top=project.countertop;
+ for(let i=0;i<floor.length;i++)for(let j=i+1;j<floor.length;j++)if(rectsOverlap(floor[i],floor[j])){issues.push({type:'overlap',moduleId:floor[i].id,otherId:floor[j].id});warnings.push('Есть пересечение напольных модулей.')}
+ const autoStart=bases.length?Math.min(...bases.map(m=>m.x)):0,autoEnd=bases.length?Math.max(...bases.map(m=>m.x+m.width)):0,autoLength=Math.max(0,autoEnd-autoStart),topLength=top.lengthMode==='manual'?top.length:autoLength+2*top.overhang,topX=top.lengthMode==='manual'?top.offsetX:autoStart-top.overhang,topZ=Number.isFinite(top.offsetZ)?top.offsetZ:0,topY=Number.isFinite(top.elevation)?top.elevation:(bases.length?Math.max(...bases.map(m=>m.y+m.height)):860);let countertop=null;
+ if(top.enabled&&bases.length){countertop={id:'CT-01',length:topLength,depth:top.depth,thickness:top.thickness,elevation:topY,x:topX,z:topZ};const ctOut=topX<0||topX+topLength>project.room.width||topZ<0||topZ+top.depth>project.room.depth||topY+top.thickness>project.room.height,uncovered=bases.some(m=>m.x<topX||m.x+m.width>topX+topLength||m.z<topZ||m.z+m.depth>topZ+top.depth);if(ctOut){issues.push({type:'countertop-out'});warnings.push('Столешница выходит за пределы комнаты.')}if(uncovered){issues.push({type:'countertop-cover'});warnings.push('Столешница не перекрывает все нижние шкафы.')}objects.push({id:'CT-01',kind:'countertop',role:'countertop',moduleId:null,size:[topLength,top.thickness,top.depth],center:[topX+topLength/2,topY+top.thickness/2,topZ+top.depth/2],appearance:appearance(top.decor,top.color,top.gloss),invalid:ctOut||uncovered})}
+ const fixtures=[];for(const f of project.fixtures||[]){const m=modules.find(x=>x.id===f.targetModuleId);if(!m)continue;const x=m.x+m.width/2+f.offsetX,z=m.z+m.depth/2+f.offsetZ,y=(countertop?.elevation??(m.y+m.height))+(countertop?.thickness??top.thickness)+3,fits=f.width<=Math.max(100,m.width-20)&&f.depth<=top.depth-20;fixtures.push({...f,x,y,z,fits});objects.push({id:f.id,moduleId:m.id,kind:f.type==='sink'?'fixture-sink':'fixture-hob',role:'fixture',size:[f.width,12,f.depth],center:[x,y,z],appearance:appearance('graphite',f.type==='sink'?'#aeb7b9':'#161d20'),invalid:!fits});if(!fits){issues.push({type:'fixture',fixtureId:f.id,moduleId:m.id});warnings.push(`${f.type==='sink'?'Раковина':'Варочная поверхность'} не помещается.`)}}
+ warnings.push('Предварительная деталировка: крепёж, сверление, петли, направляющие, нагрузки и припуски цеха требуют проверки.');const minX=Math.min(0,...modules.map(m=>m.x)),maxX=Math.max(project.room.width,...modules.map(m=>m.x+m.width));return{modules,parts,objects,warnings:[...new Set(warnings)],issues,fixtures,countertop,width:Math.max(0,maxX-minX),height:Math.max(900,...modules.map(m=>m.y+m.height)),depth:Math.max(620,...modules.map(m=>m.z+m.depth+(m.frontThickness||0)+2))}
