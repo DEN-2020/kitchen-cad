@@ -56,45 +56,58 @@ function rectsOverlap(a,b){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.z<b.z+b.de
 export function buildProject(project) {
   const modules = layoutProject(project), parts = [], objects = [], warnings = [], issues=[];
   modules.forEach((m, index) => {
-    const w=m.width,h=m.height,d=m.depth,t=m.board,b=m.back, sd=d-b, inner=w-2*t, id=`M${String(index+1).padStart(2,'0')}`;
-    const baseAppearance=appearance(m.bodyDecor,m.bodyColor,false), faceAppearance=appearance(m.frontDecor,m.frontColor,m.gloss,m.grain);
-    const add=(suffix,name,u,v,thick,edges,size,center,role='body')=>{
+    const w=m.width,h=m.height,d=m.depth,t=m.board,b=m.back,id=`M${String(index+1).padStart(2,'0')}`;
+    const backOverlay=m.backMode==='overlay', bodyDepth=backOverlay?d-b:d, backZ=backOverlay?b/2:b/2;
+    const bottomUnder=m.bottomMode==='under', topOverlay=m.type==='wall'&&m.topMode==='overlay';
+    const lower=bottomUnder?t:0, upper=topOverlay?t:0, sideH=h-lower-upper, inner=w-2*t;
+    const baseAppearance=appearance(m.bodyDecor,m.bodyColor,false), defaultFaceAppearance=appearance(m.frontDecor,m.frontColor,m.gloss,m.grain);
+    const add=(suffix,name,u,v,thick,edges,size,center,role='body',opts={})=>{
       const front=role==='front', raw=blankSize(u,v,edges), partId=`${id}-${suffix}`;
+      const decor=opts.decor || (front?m.frontDecor:m.bodyDecor), substrate=role==='back'?'mdf':front?m.frontSubstrate:m.bodySubstrate;
+      const app=opts.appearance || (front?defaultFaceAppearance:baseAppearance);
       const part={id:partId,moduleId:m.id,moduleCode:id,name,role,u:round(u),v:round(v),thickness:thick,blankU:raw[0],blankV:raw[1],edges,
-        substrate:role==='back'?'mdf':front?m.frontSubstrate:m.bodySubstrate,decor:front?m.frontDecor:m.bodyDecor,
-        grain:front?m.grain:'v',size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:front?faceAppearance:baseAppearance};
+        edgeType:front?m.frontEdgeType:m.bodyEdgeType,substrate,decor,grain:front?m.grain:'v',size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app};
       parts.push(part);objects.push({...part,kind:'part'});return part;
     };
     const extra=(suffix,size,center,app,kind='accessory')=>objects.push({id:`${id}-${suffix}`,moduleId:m.id,kind,role:kind,size,center:[center[0]+m.x,center[1]+m.y,center[2]+m.z],appearance:app});
 
     const out=m.x<0||m.z<0||m.x+w>project.room.width||m.z+d>project.room.depth||m.y+h>project.room.height;
     if(out){issues.push({type:'module-out',moduleId:m.id,message:`${id}: модуль выходит за пределы комнаты.`});warnings.push(`${id}: модуль выходит за пределы комнаты.`)}
-
     if (isApplianceType(m.type)) { applianceGeometry(m,id,objects); return; }
 
-    add('SL','Боковина левая',sd,h,t,[0,m.bodyEdge,0,0],[t,h,sd],[t/2,h/2,b+sd/2]);
-    add('SR','Боковина правая',sd,h,t,[0,m.bodyEdge,0,0],[t,h,sd],[w-t/2,h/2,b+sd/2]);
-    add('BT','Дно',inner,sd,t,[0,0,0,m.bodyEdge],[inner,t,sd],[w/2,t/2,b+sd/2]);
-    add('BK','Задняя стенка накладная',w,h,b,[0,0,0,0],[w,h,b],[w/2,h/2,b/2],'back');
-    if(m.type==='wall') add('TP','Верх',inner,sd,t,[0,0,0,m.bodyEdge],[inner,t,sd],[w/2,h-t/2,b+sd/2]);
-    else {
+    add('SL','Боковина левая',bodyDepth,sideH,t,[0,m.bodyEdge,0,0],[t,sideH,bodyDepth],[t/2,lower+sideH/2,(backOverlay?b:0)+bodyDepth/2]);
+    add('SR','Боковина правая',bodyDepth,sideH,t,[0,m.bodyEdge,0,0],[t,sideH,bodyDepth],[w-t/2,lower+sideH/2,(backOverlay?b:0)+bodyDepth/2]);
+    if(bottomUnder) add('BT','Дно под боковинами',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);
+    else add('BT','Дно между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);
+    if(backOverlay) add('BK','Задняя стенка накладная',w,h,b,[0,0,0,0],[w,h,b],[w/2,h/2,backZ],'back');
+    else add('BK','Задняя стенка вкладная',inner,Math.max(40,h-lower-upper-2*t),b,[0,0,0,0],[inner,Math.max(40,h-lower-upper-2*t),b],[w/2,lower+(h-lower-upper)/2,b/2],'back');
+    if(m.type==='wall') {
+      if(topOverlay) add('TP','Крышка сверху боковин',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2]);
+      else add('TP','Верх между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2]);
+    } else {
       add('RF','Передняя верхняя планка (плашмя)',inner,100,t,[0,0,0,m.bodyEdge],[inner,t,100],[w/2,h-t/2,d-50]);
-      add('RR','Задняя верхняя планка (ребром)',inner,100,t,[0,0,0,0],[inner,100,t],[w/2,h-50,b+t/2]);
+      add('RR','Задняя верхняя планка (ребром)',inner,100,t,[0,0,0,0],[inner,100,t],[w/2,h-50,(backOverlay?b:0)+t/2]);
       if (m.feet>20) add('PL','Цоколь (индивидуальный)',w,m.feet-10,t,[0,0,0,m.bodyEdge],[w,m.feet-10,t],[w/2,-(m.feet-10)/2,d-65]);
       if(m.legStyle!=='hidden') for(const [j,x] of [[0,50],[1,w-50]]) for(const [k,z] of [[0,70],[1,d-70]])
         extra(`LEG${j}${k}`,[m.legStyle==='square'?38:34,m.feet,m.legStyle==='square'?38:34],[x,-m.feet/2,z],appearance('graphite','#434b50'),m.legStyle==='round'?'leg-round':'leg-square');
     }
-    if(m.type!=='sink') {
-      const shelfWidth=inner-2,shelfDepth=sd-20;
-      add('SH','Полка (боковой зазор 1 мм)',shelfWidth,shelfDepth,t,[0,0,0,m.bodyEdge],[shelfWidth,t,shelfDepth],[w/2,h/2,b+shelfDepth/2]);
+    if(m.type!=='sink' && m.shelfCount>0) {
+      const shelfWidth=inner-2,shelfDepth=Math.max(80,bodyDepth-20);
+      for(let s=0;s<m.shelfCount;s++){
+        const sy=lower+(s+1)*(sideH/(m.shelfCount+1));
+        add(`SH${s+1}`,`Полка ${s+1} (боковой зазор 1 мм)`,shelfWidth,shelfDepth,t,[0,0,0,m.bodyEdge],[shelfWidth,t,shelfDepth],[w/2,sy,(backOverlay?b:0)+shelfDepth/2]);
+      }
     }
     const n=m.doorCount>0?m.doorCount:(w>650?2:1), totalW=w+m.frontOverhangLeft+m.frontOverhangRight,fw=(totalW-2*m.gap-(n-1)*m.gap)/n,
       fh=h+m.frontOverhangTop+m.frontOverhangBottom-2*m.gap, start=-m.frontOverhangLeft+m.gap;
     for(let j=0;j<n;j++){
-      const x=start+fw/2+j*(fw+m.gap), y=h/2+(m.frontOverhangTop-m.frontOverhangBottom)/2;
-      add(`F${j+1}`,'Фасад '+(j+1),fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[x,y,d+2+m.frontThickness/2],'front');
+      const x=start+fw/2+j*(fw+m.gap), y=h/2+(m.frontOverhangTop-m.frontOverhangBottom)/2,ov=(m.frontOverrides||[])[j]||{};
+      const decor=ov.decor&&appearance?ov.decor:m.frontDecor, color=ov.color||undefined, faceApp=appearance(decor,color||undefined,m.gloss,m.grain);
+      add(`F${j+1}`,'Фасад '+(j+1),fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[x,y,d+2+m.frontThickness/2],'front',{decor,appearance:faceApp});
       frontExtras(m,id,objects,x,y,d+m.frontThickness+4,fw,fh);
     }
+    warnings.push(`${id}: конструктив — дно ${m.bottomMode==='under'?'под боковинами':'между боковинами'}, ${m.type==='wall'?(m.topMode==='overlay'?'крышка сверху':'верх между боковинами'):'верхние планки'}, задняя стенка ${m.backMode==='overlay'?'накладная':'вкладная'}.`);
+    warnings.push(`${id}: кромка корпуса ${m.bodyEdgeType} ${m.bodyEdge} мм, фасадов ${m.frontEdgeType} ${m.frontEdge} мм; вычет из размера заготовки зависит от принятой схемы цеха.`);
     if(m.width>900) warnings.push(`${id}: широкий пролёт; проверить прогиб полки, планок и опору столешницы.`);
     if(m.type==='sink') warnings.push(`${id}: вырез раковины, трубы и влагозащита требуют проверки по выбранной раковине.`);
     if(m.frontStyle!=='flat') warnings.push(`${id}: фасад «${m.frontStyle}» показан визуально; фрезеровка/стекло не включены в производственную деталировку.`);
