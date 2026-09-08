@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {explodedCentre} from '../src-modern/domain/view-math.js';
+test('exploded view keeps zero distance unchanged',()=>{const m={x:0,y:0,z:0,width:600,height:720,depth:560,type:'base'},o={center:[9,360,280],kind:'part',role:'body'};assert.deepEqual(explodedCentre(o,m,0),o.center)});
+test('exploded view moves a furniture part away from module centre',()=>{const m={x:0,y:0,z:0,width:600,height:720,depth:560,type:'base'},o={center:[9,360,280],kind:'part',role:'body'};const c=explodedCentre(o,m,100);assert.ok(c[0]<o.center[0]);assert.equal(Math.round(Math.hypot(c[0]-o.center[0],c[1]-o.center[1],c[2]-o.center[2])),100)});
+test('appliance geometry is not exploded into fake cut parts',()=>{const m={x:0,y:0,z:0,width:600,height:850,depth:600,type:'washer'},o={center:[300,425,300],kind:'part',role:'body'};assert.deepEqual(explodedCentre(o,m,200),o.center)});
