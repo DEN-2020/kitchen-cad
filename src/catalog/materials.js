@@ -20,9 +20,14 @@ export const MODULE_TYPES = Object.freeze({
   base: 'Нижний шкаф',
   drawer: 'Шкаф с ящиками',
   sink: 'Шкаф под раковину',
-  cornerBase: 'Угловой нижний шкаф',
+  cornerBase: 'Угловой нижний шкаф (legacy)',
+  cornerBaseBlind: 'Угловой нижний — глухой',
+  cornerBaseDiagonal: 'Угловой нижний — диагональный 45°',
+  cornerBaseL: 'Угловой нижний — L-образный',
   wall: 'Навесной шкаф',
-  cornerWall: 'Угловой навесной шкаф',
+  cornerWall: 'Угловой навесной шкаф (legacy)',
+  cornerWallDiagonal: 'Угловой навесной — диагональный 45°',
+  cornerWallL: 'Угловой навесной — L-образный',
   tall: 'Пенал',
   tallOven: 'Пенал под духовку',
   washer: 'Стиральная машина',
@@ -37,11 +42,13 @@ export const MODULE_TYPES = Object.freeze({
 });
 
 export const CATALOG_GROUPS = Object.freeze([
-  { id:'base', ru:'Нижние шкафы', en:'Base cabinets', types:['base','drawer','sink','cornerBase'] },
-  { id:'wall', ru:'Навесные шкафы', en:'Wall cabinets', types:['wall','cornerWall'] },
-  { id:'tall', ru:'Пеналы', en:'Tall units', types:['tall','tallOven'] },
-  { id:'appliances', ru:'Техника', en:'Appliances', types:['washer','dishwasher','oven','fridge','freezer','microwave','hood'] },
-  { id:'room', ru:'Комната', en:'Room elements', types:['window','door'] },
+  { id:'base', ru:'Нижние шкафы', en:'Base cabinets', ar:'خزائن سفلية', types:['base','drawer','sink'] },
+  { id:'base-corner', ru:'Угловые нижние', en:'Base corner cabinets', ar:'خزائن زاوية سفلية', types:['cornerBaseBlind','cornerBaseDiagonal','cornerBaseL'] },
+  { id:'wall', ru:'Навесные шкафы', en:'Wall cabinets', ar:'خزائن علوية', types:['wall'] },
+  { id:'wall-corner', ru:'Угловые навесные', en:'Wall corner cabinets', ar:'خزائن زاوية علوية', types:['cornerWallDiagonal','cornerWallL'] },
+  { id:'tall', ru:'Пеналы', en:'Tall units', ar:'خزائن طويلة', types:['tall','tallOven'] },
+  { id:'appliances', ru:'Техника', en:'Appliances', ar:'أجهزة', types:['washer','dishwasher','oven','fridge','freezer','microwave','hood'] },
+  { id:'room', ru:'Комната', en:'Room elements', ar:'عناصر الغرفة', types:['window','door'] },
 ]);
 
 export const APPLIANCE_TYPES = Object.freeze(['washer','dishwasher','oven','fridge','freezer','microwave','hood']);
@@ -50,8 +57,9 @@ export const DISPLAY_ONLY_TYPES = Object.freeze([...APPLIANCE_TYPES,...ROOM_ELEM
 export const isApplianceType = type => APPLIANCE_TYPES.includes(type);
 export const isRoomElementType = type => ROOM_ELEMENT_TYPES.includes(type);
 export const isDisplayOnlyType = type => DISPLAY_ONLY_TYPES.includes(type);
-export const isWallMountedType = type => ['wall','cornerWall','microwave','hood','window'].includes(type);
-export const isCornerType = type => ['cornerBase','cornerWall'].includes(type);
+export const isWallMountedType = type => ['wall','cornerWall','cornerWallDiagonal','cornerWallL','microwave','hood','window'].includes(type);
+export const CORNER_TYPES = Object.freeze(['cornerBase','cornerBaseBlind','cornerBaseDiagonal','cornerBaseL','cornerWall','cornerWallDiagonal','cornerWallL']);
+export const isCornerType = type => CORNER_TYPES.includes(type);
 export const isDrawerType = type => type === 'drawer';
 
 export const FRONT_STYLES = Object.freeze({
