@@ -1,0 +1,59 @@
+export function v19Plugin(){
+ return {
+  name:'v19-legs-corners-cutcards',
+  enforce:'pre' as const,
+  transform(code:string,id:string){
+   if(id.endsWith('/src-modern/App.tsx')){
+    let next=code;
+    next=next.replace(/Kitchen CAD <span>v[^<]+<\/span>/,'Kitchen CAD <span>v1.9</span>');
+    next=next.replace("const dark=project.ui?.theme!=='light',lang=(project.ui?.language==='en'?'en':'ru') as Lang,t=(key:any)=>tr(lang,key),view=", "const dark=project.ui?.theme!=='light',lang=(['ru','en','ar'].includes(project.ui?.language)?project.ui.language:'ru') as Lang,t=(key:any)=>tr(lang,key),view=");
+    next=next.replace('return <div className={`${dark?', "return <div dir={lang==='ar'?'rtl':'ltr'} className={`${dark?");
+    next=next.replace("{lang==='en'?g.en:g.ru}", "{lang==='ar'?(g.ar||g.en):lang==='en'?g.en:g.ru}");
+    next=next.replace("<button className={lang==='en'?'active':''} onClick={()=>patchUi({language:'en'})}>English</button>", "<button className={lang==='en'?'active':''} onClick={()=>patchUi({language:'en'})}>English</button><button className={lang==='ar'?'active':''} onClick={()=>patchUi({language:'ar'})}>العربية</button>");
+    next=next.replace("<NumberField compact label={lang==='ru'?'Задняя':'Back'} value={selectedModule.back} min={2} max={12} onCommit={n=>patchModule({back:n})}/></div>", "<NumberField compact label={lang==='ru'?'Задняя':lang==='ar'?'ظهر':'Back'} value={selectedModule.back} min={2} max={12} onCommit={n=>patchModule({back:n})}/>{!isWallMountedType(selectedModule.type)&&<NumberField compact label={lang==='ru'?'Высота ножек':lang==='ar'?'ارتفاع الأرجل':'Leg height'} value={selectedModule.feet||0} min={0} max={300} onCommit={n=>patchModule({feet:n})}/>} {String(selectedModule.type).startsWith('corner')&&<NumberField compact label={lang==='ru'?'Проём угла':lang==='ar'?'فتحة الزاوية':'Corner opening'} value={selectedModule.cornerOpening||0} min={150} max={1000} onCommit={n=>patchModule({cornerOpening:n})}/>}</div>");
+    next=next.replace("<NumberField compact label={t('thickness')} value={project.countertop.thickness} min={8} max={100} onCommit={n=>setProject((p:any)=>updateCountertop(p,{thickness:n}))}/></div>", "<NumberField compact label={t('thickness')} value={project.countertop.thickness} min={8} max={100} onCommit={n=>setProject((p:any)=>updateCountertop(p,{thickness:n}))}/><NumberField compact label={lang==='ru'?'Низ столешницы':lang==='ar'?'أسفل سطح العمل':'Countertop underside'} value={project.countertop.elevation||860} min={500} max={1300} onCommit={n=>setProject((p:any)=>updateCountertop(p,{elevation:n}))}/></div>");
+    next=next.replace("<section><h3>{t('language')}</h3>", "<section><h3>{lang==='ru'?'Монтаж техники':lang==='ar'?'تركيب الأجهزة':'Appliance installation'}</h3><div className=\"twoGrid\"><NumberField compact label={lang==='ru'?'Зазор над стиралкой':lang==='ar'?'خلوص فوق الغسالة':'Washer top clearance'} value={project.defaults?.washerClearance||15} min={5} max={60} onCommit={n=>setProject((p:any)=>updateProjectDefaults(p,{washerClearance:n}))}/></div></section><section><h3>{t('language')}</h3>");
+    next=next.replace("{p.u} × {p.v} × {p.thickness} мм · {p.substrate} · {p.edgeType||''} · {p.id}", "{p.u} × {p.v} × {p.thickness} мм · {p.substrate} · {p.edgeType||''} · L/R/T/B {p.edges?.join('/')||'0/0/0/0'} · {p.id}");
+    if(!next.includes("language:'ar'")&&!next.includes("patchUi({language:'ar'})"))throw new Error('v19 App Arabic transform did not apply');
+    return next;
+   }
+   if(id.endsWith('/src/core/parts.js')){
+    let next=code;
+    next=next.replace("if(isDrawerType(m.type)){", `if(m.type==='cornerBaseBlind'){
+   const opening=Math.max(250,Math.min(m.cornerOpening||450,w-260)),fh=h-2*m.gap,blindW=Math.max(120,w-opening-3*m.gap),blindX=m.gap+blindW/2,doorX=w-m.gap-opening/2;
+   add('BF','Глухая фронтальная панель',blindW,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[blindW,fh,m.frontThickness],[blindX,h/2,d+2+m.frontThickness/2],'front');
+   add('F1','Фасад 1',opening,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[opening,fh,m.frontThickness],[doorX,h/2,d+2+m.frontThickness/2],'front');frontExtras(m,id,objects,doorX,h/2,d+m.frontThickness+4,opening,fh);
+   warnings.push(\`${'${id}'}: blind-corner — проём фасада ${'${opening}'} мм; проверить петли и доступ в глухую зону.\`);
+  } else if(isDrawerType(m.type)){`);
+    next=next.replace(" const fixtures=[];", ` if(countertop){const required=Math.max(5,Math.min(60,Number(project.defaults?.washerClearance)||15));for(const wm of modules.filter(m=>m.type==='washer')){const overlapX=wm.x<countertop.x+countertop.length&&wm.x+wm.width>countertop.x,overlapZ=wm.z<countertop.z+countertop.depth&&wm.z+wm.depth>countertop.z;if(overlapX&&overlapZ){const clearance=round(countertop.elevation-(wm.y+wm.height));if(clearance<required){issues.push({type:'washer-clearance',moduleId:wm.id,clearance,required});warnings.push(\`Стиральная машина: зазор до низа столешницы ${'${clearance}'} мм, требуется минимум ${'${required}'} мм.\`)}}}for(const bm of bases){const delta=round(countertop.elevation-(bm.y+bm.height));if(Math.abs(delta)>2)warnings.push(\`${'${bm.type}'}: верх корпуса отличается от низа столешницы на ${'${delta}'} мм (корпус + ножки = ${'${bm.y+bm.height}'} мм).\`)}}
+ const fixtures=[];`);
+    if(!next.includes('washer-clearance')||!next.includes("m.type==='cornerBaseBlind'"))throw new Error('v19 parts transform did not apply');
+    return next;
+   }
+   if(id.endsWith('/src-modern/scene/KitchenScene.tsx')){
+    let next=code;
+    next=next.replace("const mm=(v:number)=>v/1000,skinTypes=new Set(['washer','dishwasher','oven','fridge']);", "const mm=(v:number)=>v/1000,skinTypes=new Set(['washer','dishwasher','oven','fridge']),cornerVisualTypes=new Set(['cornerBaseDiagonal','cornerBaseL','cornerWallDiagonal','cornerWallL']);");
+    next=next.replace('function ModuleVisual(', `function CornerVisual({module}:{module:any}){const w=mm(module.width),h=mm(module.height),d=mm(module.depth),wall=String(module.type).includes('Wall'),arm=Math.min(w,d,wall?.32:.56),body='#e7e3d8',front='#9aa889';if(String(module.type).endsWith('L'))return <group><mesh position={[w/2,h/2,arm/2]}><boxGeometry args={[w,h,arm]}/><meshStandardMaterial color={body} roughness={.7}/></mesh><mesh position={[arm/2,h/2,d/2]}><boxGeometry args={[arm,h,d]}/><meshStandardMaterial color={body} roughness={.7}/></mesh><Edges color="#5b6b70" lineWidth={1}/></group>;const dx=w-arm,dz=d-arm,len=Math.max(.18,Math.hypot(dx,dz)),theta=Math.atan2(dz,dx);return <group><mesh position={[w/2,h/2,arm/2]}><boxGeometry args={[w,h,arm]}/><meshStandardMaterial color={body} roughness={.72}/></mesh><mesh position={[arm/2,h/2,d/2]}><boxGeometry args={[arm,h,d]}/><meshStandardMaterial color={body} roughness={.72}/></mesh><mesh position={[(w+arm)/2,h/2,(d+arm)/2]} rotation={[0,-theta,0]}><boxGeometry args={[len,h,.025]}/><meshStandardMaterial color={front} roughness={.55}/></mesh></group>}
+function ModuleVisual(`);
+    next=next.replace("{skinTypes.has(module.type)?<><ApplianceVisual", "{cornerVisualTypes.has(module.type)&&!detailMode?<CornerVisual module={module}/>:skinTypes.has(module.type)?<><ApplianceVisual");
+    if(!next.includes('function CornerVisual'))throw new Error('v19 corner visual transform did not apply');
+    return next;
+   }
+   if(id.endsWith('/src-modern/export/report.ts')){
+    let next=code;
+    next=next.replace("const isEn=(p:any)=>p.ui?.language==='en';", "const isAr=(p:any)=>p.ui?.language==='ar';const isEn=(p:any)=>p.ui?.language!=='ru';const langCode=(p:any)=>isAr(p)?'ar':p.ui?.language==='en'?'en':'ru';const L=(p:any,ru:string,en:string,ar:string)=>isAr(p)?ar:p.ui?.language==='en'?en:ru;");
+    next=next.replace("const page=(title:string,meta:string,body:string,cls='')=>", `function substrateLabel(project:any,key:string){const map:any={ldsp:{ru:'ЛДСП',en:'Laminated chipboard',ar:'لوح خشب مضغوط مغلف'},mdf:{ru:'МДФ',en:'MDF',ar:'MDF'},plywood:{ru:'Фанера',en:'Plywood',ar:'أبلكاش'}};const lang=langCode(project);return map[key]?.[lang]||key}
+function edgeLabel(project:any,value:number,type:string){return value>0?\`${'${type||"ABS"} ${value} mm'}\`:L(project,'без кромки','no edge','بدون حافة')}
+function cutCard(project:any,p:any){const e=p.edges||[0,0,0,0],dir=isAr(project)?'rtl':'ltr';return \`<article class="cutCard" dir="${'${dir}'}"><div class="cutHead"><b>${'${esc(p.id)}'} · ${'${esc(p.name)}'}</b><span>${'${p.u}'} × ${'${p.v}'} × ${'${p.thickness}'} mm</span></div><div class="partDiagram"><span class="edge top">${'${esc(edgeLabel(project,e[2],p.edgeType))}'}</span><span class="edge right">${'${esc(edgeLabel(project,e[1],p.edgeType))}'}</span><span class="edge bottom">${'${esc(edgeLabel(project,e[3],p.edgeType))}'}</span><span class="edge left">${'${esc(edgeLabel(project,e[0],p.edgeType))}'}</span><div class="panelRect"><strong>${'${p.u}'} × ${'${p.v}'}</strong><small>${'${p.thickness}'} mm</small></div></div><div class="cutMeta"><span>${'${L(project,"Материал","Material","الخامة")}'}: <b>${'${esc(substrateLabel(project,p.substrate))}'}</b></span><span>${'${L(project,"Декор","Decor","اللون/الديكور")}'}: <b>${'${esc(p.decor)}'}</b></span><span>${'${L(project,"Заготовка","Blank","مقاس قبل الحافة")}'}: <b>${'${p.blankU}'} × ${'${p.blankV}'} × ${'${p.thickness}'} mm</b></span><span>${'${L(project,"Количество","Qty","الكمية")}'}: <b>1</b></span></div></article>\`}
+function cutCardsSheets(project:any,module:any,parts:any[]){const pages=[];for(let i=0;i<parts.length;i+=4){const chunk=parts.slice(i,i+4),title=\`${'${moduleName(module.type,isEn(project))}'} — ${'${L(project,"Карты деталей для напила","Cut cards","بطاقات القص")}'}\`;pages.push(page(title,\`${'${L(project,"Габарит модуля","Module size","مقاس الوحدة")}'}: <b>${'${module.width}'} × ${'${module.height}'} × ${'${module.depth}'} mm</b>\`,\`<div class="cutCards">${'${chunk.map((p:any)=>cutCard(project,p)).join("")}'} </div>\`,'cutCardsPage'))}return pages.join('')}
+const page=(title:string,meta:string,body:string,cls='')=>`);
+    next=next.replace("orthoSheet(project,model,m)+assemblySheet(project,model,m,moduleId&&i===0?scenePng:null)", "orthoSheet(project,model,m)+assemblySheet(project,model,m,moduleId&&i===0?scenePng:null)+cutCardsSheets(project,m,model.parts.filter((p:any)=>p.moduleId===m.id))");
+    next=next.replace(".warning{border-left:3px solid #d79743;padding:4px 6px;background:#fff8ec;font-size:8px;margin-top:2mm}", ".warning{border-left:3px solid #d79743;padding:4px 6px;background:#fff8ec;font-size:8px;margin-top:2mm}.cutCards{display:grid;grid-template-columns:1fr 1fr;gap:5mm;height:158mm}.cutCard{border:1px solid #aebbc0;border-radius:2mm;padding:3mm;display:flex;flex-direction:column;min-height:73mm}.cutHead{display:flex;justify-content:space-between;gap:4mm;font-size:10px}.cutHead span{font-weight:700}.partDiagram{position:relative;flex:1;min-height:42mm;margin:3mm 13mm}.panelRect{position:absolute;inset:8mm 15mm;border:2px solid #42545b;background:#f1eee5;display:flex;align-items:center;justify-content:center;flex-direction:column}.panelRect strong{font-size:16px}.panelRect small{font-size:9px}.edge{position:absolute;font-size:7px;font-weight:700;color:#5a3fc0;background:#fff;padding:1px 3px}.edge.top{top:0;left:50%;transform:translateX(-50%)}.edge.bottom{bottom:0;left:50%;transform:translateX(-50%)}.edge.left{left:0;top:50%;transform:translateY(-50%) rotate(-90deg)}.edge.right{right:0;top:50%;transform:translateY(-50%) rotate(90deg)}.cutMeta{display:grid;grid-template-columns:1fr 1fr;gap:1mm 4mm;font-size:7px}");
+    next=next.replace("<html lang=\"${en?'en':'ru'}\">", "<html lang=\"${langCode(project)}\" dir=\"${isAr(project)?'rtl':'ltr'}\">");
+    if(!next.includes('function cutCardsSheets'))throw new Error('v19 cut cards transform did not apply');
+    return next;
+   }
+   return null;
+  }
+ };
+}
