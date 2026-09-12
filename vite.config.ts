@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { v19Plugin } from './src-modern/v19-vite-plugin';
 
 function v18ExplodeFix(){
   return {
@@ -35,5 +36,5 @@ function Dimensions`,
 
 export default defineConfig({
   base: '/kitchen-cad/',
-  plugins: [v18ExplodeFix(),react()],
+  plugins: [v18ExplodeFix(),v19Plugin(),react()],
 });
