@@ -12,6 +12,13 @@ export function rotateModule(project:any,id:string,rotationY:number){const p=clo
     if(!next.includes('export function rotateModule'))throw new Error('v21 core rotation transform did not apply');
     return next;
    }
+   if(id.endsWith('/src/core/parts.js')){
+    let next=code;
+    next=next.replace("function rectsOverlap(a,b){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.z<b.z+b.depth&&a.z+a.depth>b.z}", `function moduleBounds(m){const r=((Math.round((Number(m.rotationY)||0)/90)*90)%360+360)%360,fw=(r===90||r===270)?m.depth:m.width,fd=(r===90||r===270)?m.width:m.depth,cx=m.x+m.width/2,cz=m.z+m.depth/2;return{x:cx-fw/2,z:cz-fd/2,width:fw,depth:fd}}\nfunction rectsOverlap(a,b){const A=moduleBounds(a),B=moduleBounds(b);return A.x<B.x+B.width&&A.x+A.width>B.x&&A.z<B.z+B.depth&&A.z+A.depth>B.z}`);
+    next=next.replace("const out=m.x<0||m.z<0||m.x+w>project.room.width||m.z+d>project.room.depth||m.y+h>project.room.height;", "const mb=moduleBounds(m),out=mb.x<0||mb.z<0||mb.x+mb.width>project.room.width||mb.z+mb.depth>project.room.depth||m.y+h>project.room.height;");
+    if(!next.includes('function moduleBounds'))throw new Error('v21 rotated bounds transform did not apply');
+    return next;
+   }
    if(id.endsWith('/src-modern/App.tsx')){
     let next=code;
     next=next.replace('snapModuleAbsolute,updateCountertop', 'snapModuleAbsolute,rotateModule,updateCountertop');
