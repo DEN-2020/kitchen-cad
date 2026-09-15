@@ -10,9 +10,13 @@ export function wallSnapPose({roomWidth,roomDepth,moduleWidth,moduleDepth,center
   {wall:'right',rotationY:270,distance:Math.abs(centerX-(roomWidth-moduleDepth/2)),centerX:roomWidth-moduleDepth/2,centerZ:clamp(round(centerZ),moduleWidth/2,roomDepth-moduleWidth/2)},
  ];
  const best=candidates.sort((a,b)=>a.distance-b.distance)[0];
- return best&&best.distance<=threshold?best:null;
+ if(!best||best.distance>threshold)return null;
+ const safe=clampPoseToRoom({roomWidth,roomDepth,moduleWidth,moduleDepth,rotationY:best.rotationY,centerX:best.centerX,centerZ:best.centerZ,grid:1});
+ return {...best,centerX:safe.centerX,centerZ:safe.centerZ,rotationY:safe.rotationY};
 }
 export function clampPoseToRoom({roomWidth,roomDepth,moduleWidth,moduleDepth,rotationY=0,centerX,centerZ,grid=50}){
  const fp=rotatedFootprint(moduleWidth,moduleDepth,rotationY),round=v=>grid>0?Math.round(v/grid)*grid:v;
- return {rotationY:normalizeRotation(rotationY),centerX:clamp(round(centerX),fp.width/2,roomWidth-fp.width/2),centerZ:clamp(round(centerZ),fp.depth/2,roomDepth-fp.depth/2)};
+ const halfW=fp.width/2,halfD=fp.depth/2;
+ const safeMinX=Math.min(halfW,roomWidth/2),safeMaxX=Math.max(roomWidth-halfW,roomWidth/2),safeMinZ=Math.min(halfD,roomDepth/2),safeMaxZ=Math.max(roomDepth-halfD,roomDepth/2);
+ return {rotationY:normalizeRotation(rotationY),centerX:clamp(round(centerX),safeMinX,safeMaxX),centerZ:clamp(round(centerZ),safeMinZ,safeMaxZ)};
 }
