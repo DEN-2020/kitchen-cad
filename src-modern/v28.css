@@ -48,3 +48,298 @@
  .costPanel .projectStats{grid-template-columns:1fr}
  .costPanel .projectStats>div:first-child{grid-column:auto}
 }
+
+/* v33 — calmer visual hierarchy: surfaces and spacing instead of outlined cards */
+.app{
+ --surface:color-mix(in srgb,var(--panel2) 58%,var(--panel));
+ --surface-raised:var(--panel2);
+ --divider:color-mix(in srgb,var(--line) 55%,transparent);
+ --field-bg:color-mix(in srgb,var(--panel2) 76%,var(--panel));
+ font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+}
+.app.dark{
+ --bg:#0d1519;
+ --panel:#131d22;
+ --panel2:#1d2a30;
+ --line:#34464d;
+ --surface:#19252b;
+ --surface-raised:#202e34;
+ --divider:#2a3940;
+ --field-bg:#1a272d;
+ --float:#152126f2;
+}
+.topbar{
+ background:color-mix(in srgb,var(--panel) 94%,transparent);
+ border-bottom:0;
+ box-shadow:0 1px 0 var(--divider),0 5px 18px #0000000e;
+ backdrop-filter:blur(14px);
+}
+.brand{font-weight:720;letter-spacing:-.025em}.brand span{font-weight:650;letter-spacing:0}
+.historyControls button,.inspectorHead button,.hudActions button{
+ border:0;
+ background:var(--surface);
+ box-shadow:none;
+}
+.historyControls button:not(:disabled):active,.inspectorHead button:active,.hudActions button:active{background:var(--surface-raised)}
+.viewSwitch{
+ gap:2px;
+ padding:3px;
+ border:0;
+ border-radius:9px;
+ background:var(--float);
+ box-shadow:0 8px 24px #00000024;
+}
+.viewSwitch button{border-radius:6px;font-weight:620}
+.viewSwitch button.active{background:var(--surface-raised);color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
+.backScene{
+ border:0;
+ border-radius:8px;
+ background:var(--float);
+ box-shadow:0 8px 24px #00000024;
+}
+.selectionHud{
+ border:0;
+ border-left:3px solid var(--accent);
+ border-radius:9px;
+ background:var(--float);
+ box-shadow:0 12px 34px #00000032;
+}
+.selectionInfo b{font-weight:680;letter-spacing:-.01em}
+.bottomNav{
+ gap:0;
+ background:color-mix(in srgb,var(--panel) 96%,transparent);
+ border-top:0;
+ box-shadow:0 -1px 0 var(--divider),0 -8px 28px #00000012;
+ backdrop-filter:blur(14px);
+}
+.bottomNav button{position:relative;border-radius:0;font-weight:520}
+.bottomNav button.active{background:transparent;color:var(--accent);font-weight:680}
+.bottomNav button.active:before{
+ content:"";
+ position:absolute;
+ top:0;
+ left:50%;
+ width:22px;
+ height:2px;
+ border-radius:0 0 2px 2px;
+ background:var(--accent);
+ transform:translateX(-50%);
+}
+.inspector{
+ border-top:0;
+ border-radius:12px 12px 0 0;
+ background:var(--panel);
+ box-shadow:0 -16px 42px #00000038;
+}
+.inspector:before{
+ content:"";
+ position:absolute;
+ top:5px;
+ left:50%;
+ width:34px;
+ height:3px;
+ border-radius:2px;
+ background:var(--divider);
+ transform:translateX(-50%);
+}
+.inspectorHead{min-height:45px;padding:9px 8px 4px;border-bottom:0}
+.inspectorHead b{font-size:13px;font-weight:680;letter-spacing:-.01em}
+.inspectorBody{padding:4px 12px 20px}
+.inspectorBody section,.costPanel section{
+ margin:0;
+ padding:11px 2px 14px;
+ border:0;
+ border-bottom:1px solid var(--divider);
+ border-radius:0;
+ background:transparent;
+}
+.inspectorBody section:last-child{border-bottom:0}
+.inspectorBody section>h3:first-child,.inspectorBody h3{
+ margin:0 0 9px;
+ padding:0;
+ border:0;
+ color:var(--muted);
+ font-size:9px;
+ font-weight:720;
+ letter-spacing:.075em;
+ text-transform:uppercase;
+}
+.numberField,.field{color:var(--muted);font-weight:500}
+.fieldCaption{color:var(--muted)}
+.fieldIcon{background:transparent;color:var(--accent)}
+.numberField input,.field input,.field select,.numberField.compact input,.catalogSearch input{
+ border:1px solid transparent;
+ border-radius:6px;
+ background:var(--field-bg);
+ box-shadow:inset 0 -1px var(--divider);
+}
+.numberField input:hover,.field input:hover,.field select:hover,.catalogSearch input:hover{background:var(--surface-raised)}
+.numberField input:focus,.field input:focus,.field select:focus,.catalogSearch input:focus{
+ border-color:color-mix(in srgb,var(--accent) 68%,transparent);
+ box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent);
+ outline:0;
+}
+.segmented{
+ gap:2px;
+ padding:3px;
+ border-radius:8px;
+ background:var(--surface);
+}
+.segmented button,.focusBtn,.actionRow button{
+ border:0;
+ border-radius:6px;
+ background:transparent;
+ font-weight:600;
+}
+.segmented .active{
+ background:var(--surface-raised);
+ color:var(--accent);
+ box-shadow:0 1px 5px #00000020,inset 0 -2px var(--accent);
+}
+.focusBtn,.applyKitchenFinish{
+ border:0;
+ border-radius:7px;
+ background:var(--accent);
+ color:#071519;
+ box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 20%,transparent);
+}
+.note,.empty{color:var(--muted)}
+.settingsList{
+ display:grid;
+ gap:0;
+ overflow:hidden;
+ border-radius:7px;
+ background:var(--surface);
+}
+.settingsList button{
+ min-height:42px;
+ margin:0;
+ padding:0 10px;
+ border:0;
+ border-bottom:1px solid var(--divider);
+ border-radius:0;
+ background:transparent;
+}
+.settingsList button:last-child{border-bottom:0}
+.settingsList button:active{background:var(--surface-raised)}
+.decorPicker{
+ margin:9px 0;
+ padding:10px;
+ border:0;
+ border-radius:8px;
+ background:var(--surface);
+}
+.decorPickerHead{margin-bottom:8px}.decorPickerHead strong{font-weight:650}
+.decorSwatches button{
+ border:1px solid transparent;
+ border-radius:6px;
+ background:transparent;
+}
+.decorSwatches button.active{
+ border-color:var(--accent);
+ background:var(--surface-raised);
+ box-shadow:0 0 0 1px var(--accent);
+}
+.decorSample{border:0;border-radius:4px}
+.decorTintControl input,.decorTintControl button{
+ border:0;
+ border-radius:5px;
+ background:var(--surface-raised);
+}
+.doorOverridesDisclosure,.costStockDetails{border-top:1px solid var(--divider)}
+.catalogSearch{
+ top:-4px;
+ margin:0 -4px 7px;
+ padding:7px 4px 9px;
+ background:color-mix(in srgb,var(--panel) 94%,transparent);
+ backdrop-filter:blur(12px);
+}
+.catalogSection{padding:8px 0 13px;border-bottom:1px solid var(--divider)}
+.catalogSection h3{font-size:9px;font-weight:720;letter-spacing:.075em}
+.catalogSection h3:after{background:var(--divider)}
+.catalogSection .catalogGrid{gap:6px}
+.catalogSection .catalogGrid button{
+ border:0;
+ border-radius:8px;
+ background:var(--surface);
+ box-shadow:none;
+}
+.catalogSection .catalogGrid button:active{background:var(--surface-raised)}
+.catalogSection .catalogGlyph{
+ border-radius:6px;
+ background:color-mix(in srgb,var(--accentSoft) 56%,transparent);
+}
+.projectStats,.moduleDimensions{
+ gap:0;
+ overflow:hidden;
+ border-radius:8px;
+ background:var(--surface);
+}
+.projectStats div,.moduleDimensions div{
+ border:0;
+ border-right:1px solid var(--divider);
+ border-radius:0;
+ background:transparent;
+}
+.projectStats div:last-child,.moduleDimensions div:last-child{border-right:0}
+.projectStats b,.moduleDimensions b{font-weight:680;letter-spacing:-.02em}
+.exportGrid{gap:6px}
+.exportGrid button,.fixtureActions button{
+ border:0;
+ border-radius:7px;
+ background:var(--surface);
+}
+.exportGrid button:active,.fixtureActions button:active{background:var(--surface-raised)}
+.exportGrid .primary{border:0;background:var(--accent);color:#071519}
+.fixtureCard,.doorOverride{
+ border:0;
+ border-radius:7px;
+ background:var(--surface);
+}
+.partList{gap:0}
+.partList button{
+ min-height:46px;
+ border:0;
+ border-bottom:1px solid var(--divider);
+ border-radius:0;
+ background:transparent;
+}
+.partList button:last-child{border-bottom:0}
+.partList button.active{background:var(--accentSoft);box-shadow:inset 3px 0 var(--accent)}
+.partNumber{background:var(--surface-raised);color:var(--accent)}
+.costBreakdown{gap:0}
+.costBreakdown small,.costPanel .costBreakdown small{
+ padding:7px 2px;
+ border:0;
+ border-bottom:1px solid var(--divider);
+ border-radius:0;
+ background:transparent;
+}
+.costBreakdown small:last-child{border-bottom:0}
+.costStockList{gap:0}
+.costStockRow{
+ padding:8px 2px;
+ border:0;
+ border-bottom:1px solid var(--divider);
+ border-radius:0;
+ background:transparent;
+}
+.costStockRow:last-child{border-bottom:0}
+.catalogApplianceNote,.cornerConstructionNote,.warning{
+ border:0;
+ border-left:3px solid #d79b4b;
+ border-radius:0 6px 6px 0;
+ background:color-mix(in srgb,#d79b4b 8%,transparent);
+}
+.importNotice{border:0;border-left:3px solid var(--line);border-radius:0 6px 6px 0;background:var(--surface)}
+.importNotice.success{border-color:#42a978}.importNotice.error{border-color:var(--danger)}
+@media(min-width:900px){
+ .inspector{border-left:0;box-shadow:-16px 0 42px #00000024}
+ .inspector:before{display:none}
+ .inspectorHead{padding-top:5px}
+}
+@media(max-width:430px){
+ .inspectorHead{min-height:44px;padding:9px 8px 4px}
+ .bottomNav:not(.focusNav) button{min-height:48px}
+ .costPanel .projectStats>div:first-child{border-bottom:1px solid var(--divider)}
+}
