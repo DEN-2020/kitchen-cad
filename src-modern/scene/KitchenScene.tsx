@@ -100,7 +100,11 @@ function Surface({
         }
       }}
     >
-      <boxGeometry args={size} />
+      {object.shape === "cylinder" ? (
+        <cylinderGeometry args={[size[0] / 2, size[0] / 2, size[1], 18]} />
+      ) : (
+        <boxGeometry args={size} />
+      )}
       <meshStandardMaterial
         map={texture || undefined}
         color={texture ? "#fff" : a.color || "#ccc"}
@@ -298,7 +302,9 @@ function ModuleVisual({
           <>
             <CornerVisual module={module} />
             {visibleObjects
-              .filter((o: any) => o.role === "front")
+              .filter(
+                (o: any) => o.role === "front" || o.role === "support",
+              )
               .map((o: any) => (
                 <Surface
                   key={o.id}

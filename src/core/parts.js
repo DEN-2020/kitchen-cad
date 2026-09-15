@@ -1,5 +1,6 @@
 import { appearance, isDisplayOnlyType, isRoomElementType, isDrawerType, isCornerType, isWallMountedType } from '../catalog/materials.js';
 import { layoutProject, round } from './project.js';
+import { buildCabinetSupportObjects } from './supports.js';
 
 export function blankSize(u,v,edges){const values=[u,v,...edges];if(edges.length!==4||values.some(n=>!Number.isFinite(n))||edges.some(n=>n<0))throw new Error('Некорректная кромка');const a=round(u-edges[0]-edges[1]),b=round(v-edges[2]-edges[3]);if(a<=0||b<=0)throw new Error('Кромка больше размера детали');return[a,b]}
 
@@ -39,11 +40,12 @@ export function buildProject(project){
   if(bottomUnder)add('BT','Дно под боковинами',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);else add('BT','Дно между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,t/2,(backOverlay?b:0)+bodyDepth/2]);
   if(m.backMode==='none'){}else if(backOverlay)add('BK','Задняя стенка накладная',w,h,b,[0,0,0,0],[w,h,b],[w/2,h/2,b/2],'back');else if(m.backMode==='inset')add('BK','Задняя стенка вкладная',inner,Math.max(40,h-lower-upper-2*t),b,[0,0,0,0],[inner,Math.max(40,h-lower-upper-2*t),b],[w/2,lower+(h-lower-upper)/2,b/2],'back');
   if(['wall','cornerWall','cornerWallBlind','cornerWallDiagonal','cornerWallL'].includes(m.type)){if(topOverlay)add('TP','Крышка сверху боковин',w,bodyDepth,t,[0,0,0,m.bodyEdge],[w,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2]);else add('TP','Верх между боковинами',inner,bodyDepth,t,[0,0,0,m.bodyEdge],[inner,t,bodyDepth],[w/2,h-t/2,(backOverlay?b:0)+bodyDepth/2])}
-  else{add('RF','Передняя верхняя планка',inner,100,t,[0,0,0,m.bodyEdge],[inner,t,100],[w/2,h-t/2,d-50]);add('RR','Задняя верхняя планка',inner,100,t,[0,0,0,0],[inner,100,t],[w/2,h-50,(backOverlay?b:0)+t/2]);if(m.feet>20)add('PL','Цоколь',w,m.feet-10,t,[0,0,0,m.bodyEdge],[w,m.feet-10,t],[w/2,-(m.feet-10)/2,d-65])}
+  else{add('RF','Передняя верхняя планка',inner,100,t,[0,0,0,m.bodyEdge],[inner,t,100],[w/2,h-t/2,d-50]);add('RR','Задняя верхняя планка',inner,100,t,[0,0,0,0],[inner,100,t],[w/2,h-50,(backOverlay?b:0)+t/2]);if(m.feet>20&&m.legStyle==='hidden')add('PL','Цоколь',w,m.feet-10,t,[0,0,0,m.bodyEdge],[w,m.feet-10,t],[w/2,-(m.feet-10)/2,d-65])}
+  objects.push(...buildCabinetSupportObjects(m,id));
   if(!['sink','drawer'].includes(m.type)&&m.shelfCount>0){const sw=inner-2,sd=Math.max(80,bodyDepth-20);for(let s=0;s<m.shelfCount;s++){const sy=lower+(s+1)*(sideH/(m.shelfCount+1));add(`SH${s+1}`,`Полка ${s+1}`,sw,sd,t,[0,0,0,m.bodyEdge],[sw,t,sd],[w/2,sy,(backOverlay?b:0)+sd/2])}}
   if(['cornerBaseBlind','cornerWallBlind'].includes(m.type)){
    const opening=Math.max(250,Math.min(m.cornerOpening||450,w-260)),fh=h-2*m.gap,blindW=Math.max(120,w-opening-3*m.gap),blindX=m.gap+blindW/2,n=1,fw=(opening-(n-1)*m.gap)/n,start=w-m.gap-opening;
-   add('BF','Глухая фронтальная панель',blindW,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[blindW,fh,m.frontThickness],[blindX,h/2,d+2+m.frontThickness/2],'front',{hingeSide:null});
+   add('BF','Глухая стенка корпуса',blindW,fh,t,[m.bodyEdge,m.bodyEdge,m.bodyEdge,m.bodyEdge],[blindW,fh,t],[blindX,h/2,d-t/2],'body');
    for(let j=0;j<n;j++){const x=start+fw/2+j*(fw+m.gap),ov=(m.frontOverrides||[])[j]||{},decor=ov.decor||m.frontDecor,fa=appearance(decor,ov.color||undefined,m.gloss,m.grain),hingeSide=ov.hingeSide||(n===1?'left':j===0?'left':'right');add(`F${j+1}`,`Фасад ${j+1}`,fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[x,h/2,d+2+m.frontThickness/2],'front',{decor,appearance:fa,hingeSide});frontExtras(m,id,objects,x,h/2,d+m.frontThickness+4,fw,fh)}
    warnings.push(`${id}: blind-corner — проём фасада ${opening} мм; проверить петли и доступ в глухую зону.`);
   } else if(['cornerBaseDiagonal','cornerWallDiagonal'].includes(m.type)){
