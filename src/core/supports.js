@@ -41,6 +41,16 @@ export function cabinetSupportPoints(module) {
       [Math.max(insetX, arm - insetX), d - frontInsetZ],
     ];
   }
+  if (module.type === 'cornerBaseBlind' && w >= 1000) {
+    return [
+      [insetX, insetZ],
+      [w / 2, insetZ],
+      [w - insetX, insetZ],
+      [insetX, d - frontInsetZ],
+      [w / 2, d - frontInsetZ],
+      [w - insetX, d - frontInsetZ],
+    ];
+  }
   return [
     [insetX, insetZ],
     [w - insetX, insetZ],

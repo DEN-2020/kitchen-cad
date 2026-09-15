@@ -2,6 +2,8 @@ import {
   createProject,
   createModule,
   createFixture,
+  applyDefaultFinishToModules,
+  DEFAULT_MODULE_STYLE,
   ensureProjectDefaults,
   newId,
   validateProject,
@@ -34,22 +36,7 @@ export type ViewMode = "3d" | "front" | "top";
 const clone = <T>(v: T): T => structuredClone(v);
 function defaultStyle() {
   return {
-    frontDecor: "olive",
-    bodyDecor: "white",
-    frontStyle: "flat",
-    handleStyle: "none",
-    legStyle: "hidden",
-    board: 18,
-    frontThickness: 18,
-    back: 3,
-    bodyEdge: 0.8,
-    frontEdge: 2,
-    bodyEdgeType: "ABS",
-    frontEdgeType: "ABS",
-    bottomMode: "between",
-    topMode: "between",
-    backMode: "none",
-    shelfCount: 1,
+    ...DEFAULT_MODULE_STYLE,
     washerClearance: 15,
   };
 }
@@ -308,6 +295,9 @@ export function updateProjectDefaults(
   p.defaults = { ...(p.defaults || defaultStyle()), ...patch };
   return p;
 }
+export function applyProjectFinish(project: any) {
+  return applyDefaultFinishToModules(project);
+}
 export function updateCountertop(project: any, patch: Record<string, unknown>) {
   const p = clone(project);
   Object.assign(p.countertop, patch);
@@ -341,9 +331,10 @@ export function addModule(project: any, type: string) {
     const d = p.defaults || defaultStyle();
     Object.assign(m, {
       frontDecor: d.frontDecor,
-      frontColor: DECORS[d.frontDecor]?.color || m.frontColor,
+      frontColor: d.frontColor || DECORS[d.frontDecor]?.color || m.frontColor,
       bodyDecor: d.bodyDecor,
-      bodyColor: DECORS[d.bodyDecor]?.color || m.bodyColor,
+      bodyColor: d.bodyColor || DECORS[d.bodyDecor]?.color || m.bodyColor,
+      gloss: !!d.gloss,
       frontStyle: d.frontStyle,
       handleStyle: d.handleStyle,
       legStyle: d.legStyle,

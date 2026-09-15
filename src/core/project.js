@@ -20,6 +20,12 @@ const typeDefaults = {
   microwave:{width:600,height:380,depth:420,elevation:1350}, hood:{width:600,height:350,depth:300,elevation:1350}, window:{width:1200,height:1200,depth:80,elevation:900}, door:{width:900,height:2100,depth:80,elevation:0},
 };
 
+export const DEFAULT_MODULE_STYLE=Object.freeze({
+  frontDecor:'olive',frontColor:DECORS.olive.color,bodyDecor:'white',bodyColor:DECORS.white.color,gloss:false,
+  frontStyle:'flat',handleStyle:'none',legStyle:'hidden',board:18,frontThickness:18,back:3,
+  bodyEdge:0.8,frontEdge:2,bodyEdgeType:'ABS',frontEdgeType:'ABS',bottomMode:'between',topMode:'between',backMode:'none',shelfCount:1,
+});
+
 export function createModule(type='base') {
   if (!(type in MODULE_TYPES)) throw new Error('Неизвестный модуль');
   const d=typeDefaults[type]||typeDefaults.base, display=isDisplayOnlyType(type), wall=isWallMountedType(type);
@@ -42,7 +48,7 @@ export function createFixture(type='sink',targetModuleId='') {
   const sink=type==='sink'; return {id:newId('f'),type,targetModuleId,width:sink?500:560,depth:sink?400:490,offsetX:0,offsetZ:0,radius:sink?18:8};
 }
 
-export function createProject(){const sink=createModule('sink');sink.width=500;return{schemaVersion:SCHEMA_VERSION,name:'Моя кухня',room:{width:3000,depth:2500,height:2700,wallColor:'#f3f1ec',floorColor:'#d8d4cc'},ui:{language:'ru',showDimensions:true,dimensionMode:'main',theme:'dark',explode:0,moveMode:false},defaults:{washerClearance:15},modules:[createModule(),sink,createModule('washer')],fixtures:[],countertop:{enabled:true,depth:620,thickness:20,overhang:0,decor:'marble',color:DECORS.marble.color,gloss:false,lengthMode:'auto',length:1700,offsetX:0}}}
+export function createProject(){const sink=createModule('sink');sink.width=500;return{schemaVersion:SCHEMA_VERSION,name:'Моя кухня',room:{width:3000,depth:2500,height:2700,wallColor:'#f3f1ec',floorColor:'#d8d4cc'},ui:{language:'ru',showDimensions:true,dimensionMode:'main',theme:'dark',explode:0,moveMode:false},defaults:{...DEFAULT_MODULE_STYLE,washerClearance:15},modules:[createModule(),sink,createModule('washer')],fixtures:[],countertop:{enabled:true,depth:620,thickness:20,overhang:0,decor:'marble',color:DECORS.marble.color,gloss:false,lengthMode:'auto',length:1700,offsetX:0}}}
 
 function number(value,min,max,label){if(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max)throw new Error(`${label}: допустимо ${min}–${max} мм`)}
 function member(value,choices,label){if(!choices.includes(value))throw new Error(`Некорректное поле: ${label}`)}
@@ -51,7 +57,7 @@ function color(value){if(typeof value!=='string'||!/^#[0-9a-f]{6}$/i.test(value)
 export function ensureProjectDefaults(p){
   if(!p.room)p.room={width:3000,depth:2500,height:2700,wallColor:'#f3f1ec',floorColor:'#d8d4cc'}; if(!p.ui)p.ui={};
   if(!['ru','en','ar'].includes(p.ui.language))p.ui.language='ru'; if(typeof p.ui.showDimensions!=='boolean')p.ui.showDimensions=true; if(!['main','selected','all'].includes(p.ui.dimensionMode))p.ui.dimensionMode='main'; if(!['light','dark'].includes(p.ui.theme))p.ui.theme='dark'; if(!Number.isFinite(p.ui.explode))p.ui.explode=0; p.ui.explode=Math.max(0,Math.min(600,p.ui.explode));
-  p.defaults={...(p.defaults||{})}; if(!Number.isFinite(p.defaults.washerClearance))p.defaults.washerClearance=15; p.defaults.washerClearance=Math.max(5,Math.min(60,p.defaults.washerClearance));
+  p.defaults={...DEFAULT_MODULE_STYLE,...(p.defaults||{})}; if(!Number.isFinite(p.defaults.washerClearance))p.defaults.washerClearance=15; p.defaults.washerClearance=Math.max(5,Math.min(60,p.defaults.washerClearance));
   if(!Array.isArray(p.fixtures))p.fixtures=[]; if(!p.countertop)p.countertop={enabled:true,depth:620,thickness:20,overhang:0,decor:'marble',color:DECORS.marble.color,gloss:false};
   if(!['auto','manual'].includes(p.countertop.lengthMode))p.countertop.lengthMode='auto'; if(!Number.isFinite(p.countertop.length))p.countertop.length=p.modules?.filter(m=>m.type!=='wall').reduce((s,m)=>s+(m.width||0),0)||1700; if(!Number.isFinite(p.countertop.offsetX))p.countertop.offsetX=0;
   for(const m of p.modules||[]){
@@ -62,6 +68,22 @@ export function ensureProjectDefaults(p){
     if(!['between','under'].includes(m.bottomMode))m.bottomMode='between';if(!['between','overlay'].includes(m.topMode))m.topMode='between';if(!['overlay','inset','none'].includes(m.backMode))m.backMode='none';
     if(!['ABS','PVC'].includes(m.bodyEdgeType))m.bodyEdgeType='ABS';if(!['ABS','PVC'].includes(m.frontEdgeType))m.frontEdgeType='ABS';if(!Number.isFinite(m.shelfCount))m.shelfCount=d.shelfCount??(isDisplayOnlyType(m.type)?0:1);m.shelfCount=Math.max(0,Math.min(8,Math.round(m.shelfCount)));if(!Array.isArray(m.frontOverrides))m.frontOverrides=[];
   } return p;
+}
+
+export function applyDefaultFinishToModules(project){
+ const p=structuredClone(project),defaults={...DEFAULT_MODULE_STYLE,...(p.defaults||{})};
+ p.defaults=defaults;
+ for(const module of p.modules||[]){
+  if(isDisplayOnlyType(module.type))continue;
+  module.frontDecor=defaults.frontDecor;
+  module.frontColor=defaults.frontColor||DECORS[defaults.frontDecor]?.color||module.frontColor;
+  module.bodyDecor=defaults.bodyDecor;
+  module.bodyColor=defaults.bodyColor||DECORS[defaults.bodyDecor]?.color||module.bodyColor;
+  module.gloss=!!defaults.gloss;
+  module.frontOverrides=(module.frontOverrides||[]).map(override=>{const {decor:_decor,color:_color,...rest}=override||{};return rest});
+  while(module.frontOverrides.length&&!Object.keys(module.frontOverrides.at(-1)).length)module.frontOverrides.pop();
+ }
+ return p;
 }
 
 export function validateProject(raw){

@@ -39,6 +39,7 @@ import {
 import {
   addFixture,
   addModule,
+  applyProjectFinish,
   deleteModule,
   decodeEditorProject,
   deriveModel,
@@ -216,7 +217,8 @@ export function App() {
     [detail, setDetail] = useState<DimensionDetail>("none"),
     [fixtureTargetId, setFixtureTargetId] = useState(""),
     [saveStatus, setSaveStatus] = useState<SaveStatus>("saving"),
-    [importNotice, setImportNotice] = useState<ImportNotice>(null);
+    [importNotice, setImportNotice] = useState<ImportNotice>(null),
+    [catalogQuery, setCatalogQuery] = useState("");
   const importInputRef = useRef<HTMLInputElement>(null),
     projectRef = useRef(project);
   projectRef.current = project;
@@ -225,6 +227,15 @@ export function App() {
     () => estimateProjectCost(project, model),
     [project, model],
   );
+  const activeCostPreset =
+      Object.entries(COST_PRESETS).find(([, preset]: [string, any]) =>
+        Object.entries(preset).every(
+          ([key, value]) => cost.settings[key] === value,
+        ),
+      )?.[0] || null,
+    furnitureModuleCount = model.modules.filter(
+      (module: any) => !isDisplayOnlyType(module.type),
+    ).length;
   const selectedModuleId =
     selection?.kind === "module"
       ? selection.id
@@ -251,7 +262,26 @@ export function App() {
         : "ru"
     ) as Lang,
     t = (key: any) => tr(lang, key),
-    view = (project.ui?.view || "3d") as ViewMode;
+    view = (project.ui?.view || "3d") as ViewMode,
+    normalizedCatalogQuery = catalogQuery.trim().toLocaleLowerCase(),
+    catalogGroups = CATALOG_GROUPS.map((group: any) => {
+      const groupName =
+        lang === "ar" ? group.ar || group.en : lang === "en" ? group.en : group.ru;
+      const groupMatches = groupName
+        .toLocaleLowerCase()
+        .includes(normalizedCatalogQuery);
+      return {
+        ...group,
+        types: group.types.filter(
+          (type: string) =>
+            !normalizedCatalogQuery ||
+            groupMatches ||
+            moduleLabel(lang, type)
+              .toLocaleLowerCase()
+              .includes(normalizedCatalogQuery),
+        ),
+      };
+    }).filter((group: any) => group.types.length);
   const saveText =
     saveStatus === "saving"
       ? lang === "ru"
@@ -705,14 +735,24 @@ export function App() {
             </div>
           )}
         </section>
-        <aside className="inspector">
+        {panel && (
+          <aside className="inspector">
           <div className="inspectorHead">
             <b>{panelTitle}</b>
             <button
+              type="button"
               aria-label={
                 lang === "ru" ? "Закрыть" : lang === "ar" ? "إغلاق" : "Close"
               }
-              onClick={() => setPanel(null)}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerUp={(event) => {
+                event.stopPropagation();
+                setPanel(null);
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                setPanel(null);
+              }}
             >
               <CloseIcon size={19} />
             </button>
@@ -851,7 +891,26 @@ export function App() {
             </div>
           ) : panel === "catalog" ? (
             <div className="inspectorBody catalogSections">
-              {CATALOG_GROUPS.map((g: any) => (
+              <label className="catalogSearch">
+                <span>
+                  {lang === "ru"
+                    ? "Поиск по каталогу"
+                    : lang === "ar"
+                      ? "بحث في الكتالوج"
+                      : "Search catalog"}
+                </span>
+                <input
+                  type="search"
+                  value={catalogQuery}
+                  placeholder={
+                    lang === "ru"
+                      ? "Например: угловой, мойка, стиралка"
+                      : "Corner, sink, washer…"
+                  }
+                  onChange={(event) => setCatalogQuery(event.target.value)}
+                />
+              </label>
+              {catalogGroups.map((g: any) => (
                 <section className="catalogSection" key={g.id}>
                   <h3>
                     {lang === "ar" ? g.ar || g.en : lang === "en" ? g.en : g.ru}
@@ -864,13 +923,32 @@ export function App() {
                         </span>
                         <b>{moduleLabel(lang, type)}</b>
                         <small>
-                          {lang === "ru" ? "Добавить в сцену" : "Add to scene"}
+                          {lang === "ru"
+                            ? isDisplayOnlyType(type) &&
+                              !roomElement(type)
+                              ? "Отдельный проём / техника"
+                              : "Добавить в сцену"
+                            : "Add to scene"}
                         </small>
                       </button>
                     ))}
                   </div>
+                  {g.id === "appliances" && (
+                    <p className="note catalogApplianceNote">
+                      {lang === "ru"
+                        ? "Стиральная и посудомоечная машины занимают отдельный проём между шкафами. Не размещай их внутри или поверх углового корпуса."
+                        : lang === "ar"
+                          ? "توضع الغسالة وغسالة الصحون في فتحة مستقلة بين الخزائن، وليس داخل خزانة الزاوية."
+                          : "Washers and dishwashers use a separate bay between cabinets, never the inside of a corner cabinet."}
+                    </p>
+                  )}
                 </section>
               ))}
+              {!catalogGroups.length && (
+                <div className="empty">
+                  {lang === "ru" ? "Подходящих модулей нет." : "No matching modules."}
+                </div>
+              )}
             </div>
           ) : panel === "cost" ? (
             <div className="inspectorBody costPanel">
@@ -913,36 +991,51 @@ export function App() {
                 </div>
                 <p className="note">
                   {lang === "ru"
-                    ? "Ориентировочная смета. Цены и отходы можно менять под конкретный цех."
+                    ? `Считается вся кухня: ${furnitureModuleCount} мебельных модулей. Детали разных декоров, цветов, основ и толщин округляются до отдельных листов.`
                     : lang === "ar"
-                      ? "تقدير تقريبي ويمكن تعديل الأسعار والهدر حسب الورشة."
-                      : "Approximate estimate; edit prices and waste for your shop."}
+                      ? "يتم حساب المطبخ كاملاً، وتُفصل الألواح حسب الخامة واللون والسماكة."
+                      : `Whole-kitchen estimate for ${furnitureModuleCount} furniture modules. Different materials, colors and thicknesses are rounded to separate sheets.`}
                 </p>
               </section>
               <section>
                 <h3>
                   {lang === "ru"
-                    ? "Материалы"
+                    ? "Ценовой сценарий"
                     : lang === "ar"
                       ? "الخامات"
-                      : "Materials"}
+                      : "Price scenario"}
                 </h3>
-                <div className="segmented">
-                  <button onClick={() => patchCost(COST_PRESETS.budget)}>
+                <div className="segmented costPresetSelector">
+                  <button
+                    type="button"
+                    className={activeCostPreset === "budget" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "budget"}
+                    onClick={() => patchCost(COST_PRESETS.budget)}
+                  >
                     {lang === "ru"
                       ? "Бюджет"
                       : lang === "ar"
                         ? "اقتصادي"
                         : "Budget"}
                   </button>
-                  <button onClick={() => patchCost(COST_PRESETS.gloss)}>
+                  <button
+                    type="button"
+                    className={activeCostPreset === "gloss" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "gloss"}
+                    onClick={() => patchCost(COST_PRESETS.gloss)}
+                  >
                     {lang === "ru"
                       ? "Глянец"
                       : lang === "ar"
                         ? "لامع"
                         : "Gloss"}
                   </button>
-                  <button onClick={() => patchCost(COST_PRESETS.premium)}>
+                  <button
+                    type="button"
+                    className={activeCostPreset === "premium" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "premium"}
+                    onClick={() => patchCost(COST_PRESETS.premium)}
+                  >
                     {lang === "ru"
                       ? "Лучше"
                       : lang === "ar"
@@ -950,6 +1043,15 @@ export function App() {
                         : "Premium"}
                   </button>
                 </div>
+                <p className="note costPresetNote">
+                  {lang === "ru"
+                    ? activeCostPreset
+                      ? "Активный сценарий подсвечен. Он задаёт цену листа корпуса и фасада для всей кухни."
+                      : "Используются свои цены. Визуальный декор разделяет листы, но цену автоматически не меняет."
+                    : activeCostPreset
+                      ? "The active scenario is highlighted and prices all body/front sheets."
+                      : "Custom prices are active. Visual decor separates sheets but does not set their price automatically."}
+                </p>
                 <div className="dimensionGrid">
                   <NumberField
                     compact
@@ -1252,6 +1354,62 @@ export function App() {
                     : <b>{Math.round(cost.extras).toLocaleString()} EGP</b>
                   </small>
                 </div>
+                <details className="costStockDetails">
+                  <summary>
+                    {lang === "ru"
+                      ? "Листы по фактическим материалам"
+                      : "Sheets by actual material"}
+                    <span>
+                      {(cost.body.batches?.length || 0) +
+                        (cost.front.batches?.length || 0) +
+                        (cost.back.batches?.length || 0)}
+                    </span>
+                  </summary>
+                  <div className="costStockList">
+                    {[
+                      [lang === "ru" ? "Корпус" : "Body", cost.body.batches],
+                      [lang === "ru" ? "Фасад" : "Front", cost.front.batches],
+                      [lang === "ru" ? "Задник" : "Back", cost.back.batches],
+                    ].flatMap(([role, batches]: any) =>
+                      (batches || []).map((batch: any, index: number) => (
+                        <div
+                          className="costStockRow"
+                          key={[
+                            role,
+                            batch.substrate,
+                            batch.decor,
+                            batch.color,
+                            batch.thickness,
+                            index,
+                          ].join("-")}
+                        >
+                          <span
+                            className="costStockColor"
+                            style={{ background: batch.color || "#87949a" }}
+                          />
+                          <span>
+                            <b>{role}</b>
+                            <small>
+                              {(SUBSTRATES as any)[batch.substrate]?.name ||
+                                batch.substrate}{" "}
+                              ·{" "}
+                              {(DECORS as any)[batch.decor]?.name || batch.decor}
+                              {batch.thickness
+                                ? " · " + batch.thickness + " мм"
+                                : ""}
+                            </small>
+                          </span>
+                          <strong>{batch.sheets} л.</strong>
+                        </div>
+                      )),
+                    )}
+                  </div>
+                  <p className="note">
+                    {lang === "ru"
+                      ? "Разные декоры, оттенки, основы и толщины нельзя объединять в один лист. Цена листа пока задаётся общая для категории выше."
+                      : "Different decors, tints, substrates and thicknesses cannot share one sheet. The per-sheet price is still set by category above."}
+                  </p>
+                </details>
               </section>
             </div>
           ) : panel === "project" ? (
@@ -1314,22 +1472,37 @@ export function App() {
                       ? `تقريباً ${Math.round(cost.rangeLow).toLocaleString()}–${Math.round(cost.rangeHigh).toLocaleString()} EGP`
                       : `Approx. ${Math.round(cost.rangeLow).toLocaleString()}–${Math.round(cost.rangeHigh).toLocaleString()} EGP.`}
                 </p>
-                <div className="segmented">
-                  <button onClick={() => patchCost(COST_PRESETS.budget)}>
+                <div className="segmented costPresetSelector">
+                  <button
+                    type="button"
+                    className={activeCostPreset === "budget" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "budget"}
+                    onClick={() => patchCost(COST_PRESETS.budget)}
+                  >
                     {lang === "ru"
                       ? "Бюджет 1500"
                       : lang === "ar"
                         ? "اقتصادي 1500"
                         : "Budget 1500"}
                   </button>
-                  <button onClick={() => patchCost(COST_PRESETS.gloss)}>
+                  <button
+                    type="button"
+                    className={activeCostPreset === "gloss" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "gloss"}
+                    onClick={() => patchCost(COST_PRESETS.gloss)}
+                  >
                     {lang === "ru"
                       ? "Глянец 2500"
                       : lang === "ar"
                         ? "لامع 2500"
                         : "Gloss 2500"}
                   </button>
-                  <button onClick={() => patchCost(COST_PRESETS.premium)}>
+                  <button
+                    type="button"
+                    className={activeCostPreset === "premium" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "premium"}
+                    onClick={() => patchCost(COST_PRESETS.premium)}
+                  >
                     {lang === "ru"
                       ? "Лучше 4000"
                       : lang === "ar"
@@ -1337,6 +1510,15 @@ export function App() {
                         : "Premium 4000"}
                   </button>
                 </div>
+                <p className="note costPresetNote">
+                  {lang === "ru"
+                    ? activeCostPreset
+                      ? `Сценарий применяется ко всей кухне (${furnitureModuleCount} мебельных модулей).`
+                      : "Активны свои цены для всей кухни."
+                    : activeCostPreset
+                      ? `Scenario applies to the whole kitchen (${furnitureModuleCount} furniture modules).`
+                      : "Custom whole-kitchen prices are active."}
+                </p>
                 <div className="dimensionGrid">
                   <NumberField
                     compact
@@ -1770,49 +1952,104 @@ export function App() {
               <section>
                 <h3>
                   {lang === "ru"
-                    ? "Новые мебельные модули"
-                    : "New furniture modules"}
+                    ? "Стиль кухни"
+                    : "Kitchen style"}
                 </h3>
-                <div className="twoGrid">
-                  <label className="field">
-                    {t("facade")}
-                    <select
-                      value={project.defaults?.frontDecor || "olive"}
-                      onChange={(e) =>
-                        setProject((p: any) =>
-                          updateProjectDefaults(p, {
-                            frontDecor: e.target.value,
-                          }),
-                        )
-                      }
-                    >
-                      {decorOptions.map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    {t("body")}
-                    <select
-                      value={project.defaults?.bodyDecor || "white"}
-                      onChange={(e) =>
-                        setProject((p: any) =>
-                          updateProjectDefaults(p, {
-                            bodyDecor: e.target.value,
-                          }),
-                        )
-                      }
-                    >
-                      {decorOptions.map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <p className="note materialHelp">
+                  {lang === "ru"
+                    ? "Эти значения используются для новых шкафов. Каждый модуль после этого можно настроить отдельно."
+                    : "These values are used for new cabinets. Every module can still be customized separately."}
+                </p>
+                <DecorPicker
+                  label={lang === "ru" ? "Фасады кухни" : "Kitchen fronts"}
+                  value={project.defaults?.frontDecor || "olive"}
+                  color={
+                    project.defaults?.frontColor ||
+                    (DECORS as any)[project.defaults?.frontDecor || "olive"].color
+                  }
+                  lang={lang}
+                  onChange={(frontDecor) =>
+                    setProject((p: any) =>
+                      updateProjectDefaults(p, {
+                        frontDecor,
+                        frontColor: (DECORS as any)[frontDecor].color,
+                      }),
+                    )
+                  }
+                  onColorChange={(frontColor) =>
+                    setProject((p: any) =>
+                      updateProjectDefaults(p, { frontColor }),
+                    )
+                  }
+                />
+                <DecorPicker
+                  label={lang === "ru" ? "Корпуса кухни" : "Kitchen bodies"}
+                  value={project.defaults?.bodyDecor || "white"}
+                  color={
+                    project.defaults?.bodyColor ||
+                    (DECORS as any)[project.defaults?.bodyDecor || "white"].color
+                  }
+                  lang={lang}
+                  onChange={(bodyDecor) =>
+                    setProject((p: any) =>
+                      updateProjectDefaults(p, {
+                        bodyDecor,
+                        bodyColor: (DECORS as any)[bodyDecor].color,
+                      }),
+                    )
+                  }
+                  onColorChange={(bodyColor) =>
+                    setProject((p: any) =>
+                      updateProjectDefaults(p, { bodyColor }),
+                    )
+                  }
+                />
+                <div
+                  className="segmented finishSelector"
+                  role="group"
+                  aria-label={lang === "ru" ? "Покрытие кухни" : "Kitchen finish"}
+                >
+                  <button
+                    type="button"
+                    className={!project.defaults?.gloss ? "active" : ""}
+                    aria-pressed={!project.defaults?.gloss}
+                    onClick={() =>
+                      setProject((p: any) =>
+                        updateProjectDefaults(p, { gloss: false }),
+                      )
+                    }
+                  >
+                    {lang === "ru" ? "Матовый" : "Matte"}
+                  </button>
+                  <button
+                    type="button"
+                    className={project.defaults?.gloss ? "active" : ""}
+                    aria-pressed={!!project.defaults?.gloss}
+                    onClick={() =>
+                      setProject((p: any) =>
+                        updateProjectDefaults(p, { gloss: true }),
+                      )
+                    }
+                  >
+                    {lang === "ru" ? "Глянцевый" : "Gloss"}
+                  </button>
                 </div>
+                <button
+                  type="button"
+                  className="applyKitchenFinish"
+                  onClick={() =>
+                    setProject((p: any) => applyProjectFinish(p))
+                  }
+                >
+                  {lang === "ru"
+                    ? `Применить ко всей мебели (${furnitureModuleCount})`
+                    : `Apply to all furniture (${furnitureModuleCount})`}
+                </button>
+                <p className="note">
+                  {lang === "ru"
+                    ? "Команда меняет только декор, оттенок и глянец. Размеры, ножки, ручки и петли сохраняются; действие можно отменить."
+                    : "Only decor, tint and gloss change. Sizes, legs, handles and hinges stay intact; the action can be undone."}
+                </p>
               </section>
             </div>
           ) : panel === "parts" ? (
@@ -1835,8 +2072,8 @@ export function App() {
                     </div>
                     <p className="note">
                       {lang === "ru"
-                        ? "Каждая подпись привязана к своей детали и перемещается вместе с ней."
-                        : "Each label is anchored to its part and moves with it."}
+                        ? "Подписи и разнесение относятся только к деталям раскроя. Ручки и опоры остаются видимыми, но не входят в список напила."
+                        : "Labels and exploded spacing apply only to cut parts. Handles and supports stay visible but are not part of the cut list."}
                     </p>
                   </section>
                   {selectedPart && (
@@ -2436,6 +2673,35 @@ export function App() {
                         </label>
                       )}
                     </div>
+                    {[
+                      "cornerBaseBlind",
+                      "cornerWallBlind",
+                    ].includes(selectedModule.type) && (
+                      <div className="cornerConstructionNote">
+                        <b>
+                          {lang === "ru"
+                            ? "Как устроен глухой угол"
+                            : "How the blind corner works"}
+                        </b>
+                        <span>
+                          {lang === "ru"
+                            ? `Доступ внутрь только через проём ${selectedModule.cornerOpening || 0} мм. Светлая глухая часть — стенка корпуса, не дверца.`
+                            : `Interior access is only through the ${selectedModule.cornerOpening || 0} mm opening. The blind section is a body panel, not a door.`}
+                        </span>
+                        <span>
+                          {lang === "ru"
+                            ? `Фасад накладной: между корпусом и дверцей ${selectedModule.gap || 0} мм, поэтому лицевая плоскость выступает примерно на ${(selectedModule.gap || 0) + (selectedModule.frontThickness || 0)} мм — это нормально.`
+                            : `The overlay door sits ${selectedModule.gap || 0} mm off the body, so its face projects about ${(selectedModule.gap || 0) + (selectedModule.frontThickness || 0)} mm.`}
+                        </span>
+                        {selectedModule.type === "cornerBaseBlind" && (
+                          <span className="warningText">
+                            {lang === "ru"
+                              ? "Технику внутрь этого корпуса не ставят: для неё нужен отдельный 600-мм проём рядом."
+                              : "Do not place an appliance inside this cabinet; use a separate 600 mm bay beside it."}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {selectedModule.type === "drawer" ? (
                       <div className="twoGrid">
                         <NumberField
@@ -2917,7 +3183,8 @@ export function App() {
           ) : (
             <div className="empty">{t("selectObject")}</div>
           )}
-        </aside>
+          </aside>
+        )}
       </main>
       {!focusId ? (
         <nav className="bottomNav">

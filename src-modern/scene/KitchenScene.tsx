@@ -282,9 +282,7 @@ function ModuleVisual({
         }),
       [objects, module, detailMode, explode],
     ),
-    visibleObjects = detailMode
-      ? localObjects.filter((o) => o.kind === "part")
-      : localObjects,
+    visibleObjects = localObjects,
     fixtureObjects = localObjects.filter(
       (o) => o.kind === "fixture-sink" || o.kind === "fixture-hob",
     );
@@ -349,7 +347,10 @@ function ModuleVisual({
             <CornerVisual module={module} />
             {visibleObjects
               .filter(
-                (o: any) => o.role === "front" || o.role === "support",
+                (o: any) =>
+                  o.role === "front" ||
+                  o.role === "support" ||
+                  o.kind !== "part",
               )
               .map((o: any) => (
                 <Surface
@@ -374,7 +375,11 @@ function ModuleVisual({
                 <Surface
                   object={o}
                   selected={selectedPartId === o.id}
-                  onSelect={detailMode ? () => onSelectPart(o.id) : undefined}
+                  onSelect={
+                    detailMode && o.kind === "part"
+                      ? () => onSelectPart(o.id)
+                      : undefined
+                  }
                 />
               </group>
             ))}
