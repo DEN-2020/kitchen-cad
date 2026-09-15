@@ -9,6 +9,7 @@ test('blind corner fixed section is a recessed body wall, not a door', () => {
   const corner = createModule('cornerBaseBlind');
   corner.bodyDecor = 'white';
   corner.frontDecor = 'olive';
+  corner.gloss = true;
   project.modules = [corner];
   const model = buildProject(project);
   const wall = model.parts.find((part) => part.id.endsWith('-BF'));
@@ -19,8 +20,10 @@ test('blind corner fixed section is a recessed body wall, not a door', () => {
   assert.equal(wall.substrate, corner.bodySubstrate);
   assert.equal(wall.thickness, corner.board);
   assert.equal(wall.center[2], corner.depth - corner.board / 2);
+  assert.equal(wall.appearance.gloss, false);
   assert.equal(door.role, 'front');
   assert.equal(door.decor, 'olive');
+  assert.equal(door.appearance.gloss, true);
   assert.ok(door.center[2] > corner.depth);
 });
 
@@ -44,14 +47,22 @@ test('round and square leg choices create visible support geometry', () => {
   assert.ok(supports.every((object) => object.shape === 'box'));
 });
 
-test('hidden supports use a plinth and L corners avoid the empty corner', () => {
+test('hidden supports remain behind a plinth and L corners avoid the empty corner', () => {
   const project = createProject();
   const cabinet = createModule('base');
   cabinet.legStyle = 'hidden';
   project.modules = [cabinet];
   const model = buildProject(project);
-  assert.equal(model.objects.some((object) => object.role === 'support'), false);
-  assert.equal(model.parts.some((part) => part.id.endsWith('-PL')), true);
+  const hiddenSupports = model.objects.filter((object) => object.role === 'support');
+  const plinth = model.objects.find((object) => object.id.endsWith('-PL'));
+  assert.equal(hiddenSupports.length, 4);
+  assert.ok(hiddenSupports.every((object) => object.shape === 'cylinder'));
+  assert.ok(plinth);
+  assert.ok(
+    hiddenSupports.every(
+      (support) => support.center[2] + support.size[2] / 2 <= plinth.center[2] - plinth.size[2] / 2,
+    ),
+  );
 
   const corner = createModule('cornerBaseL');
   corner.legStyle = 'round';

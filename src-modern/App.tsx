@@ -96,6 +96,42 @@ const fixtureTargetTypes = new Set([
 ]);
 const roomElement = (t: string) => t === "door" || t === "window";
 
+function DecorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (decor: string) => void;
+}) {
+  return (
+    <div className="decorPicker">
+      <span className="decorPickerLabel">{label}</span>
+      <div className="decorSwatches" role="listbox" aria-label={label}>
+        {Object.entries(DECORS).map(([key, decor]: any) => (
+          <button
+            key={key}
+            type="button"
+            role="option"
+            aria-selected={value === key}
+            className={value === key ? "active" : ""}
+            title={decor.name}
+            data-pattern={decor.pattern}
+            onClick={() => onChange(key)}
+          >
+            <span
+              className="decorSample"
+              style={{ backgroundColor: decor.color }}
+            />
+            <small>{decor.name}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   useViewport();
   const { project, setProject, undo, redo, canUndo, canRedo } =
@@ -2395,21 +2431,23 @@ export function App() {
                           ))}
                         </select>
                       </label>
-                      <label className="field">
-                        {t("legs")}
-                        <select
-                          value={selectedModule.legStyle}
-                          onChange={(e) =>
-                            patchModule({ legStyle: e.target.value })
-                          }
-                        >
-                          {Object.keys(LEG_STYLES).map((k) => (
-                            <option key={k} value={k}>
-                              {legLabel(lang, k)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      {!isWallMountedType(selectedModule.type) && (
+                        <label className="field">
+                          {t("legs")}
+                          <select
+                            value={selectedModule.legStyle}
+                            onChange={(e) =>
+                              patchModule({ legStyle: e.target.value })
+                            }
+                          >
+                            {Object.keys(LEG_STYLES).map((k) => (
+                              <option key={k} value={k}>
+                                {legLabel(lang, k)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
                       {selectedModule.type !== "drawer" &&
                         ![
                           "cornerBaseBlind",
@@ -2435,6 +2473,15 @@ export function App() {
                           </label>
                         )}
                     </div>
+                    {!isWallMountedType(selectedModule.type) && (
+                      <p className="note">
+                        {lang === "ru"
+                          ? "Скрытые — это регулируемые ножки за цоколем. При высоте 0 мм корпус стоит прямо на полу."
+                          : lang === "ar"
+                            ? "الأرجل المخفية قابلة للتعديل خلف القاعدة. عند ارتفاع 0 مم يستقر الهيكل مباشرة على الأرض."
+                            : "Hidden means adjustable feet behind a plinth. At 0 mm the carcass sits directly on the floor."}
+                      </p>
+                    )}
                     <h3>
                       {lang === "ru" ? "Выступ фасада" : "Front overhang"}
                     </h3>
@@ -2512,43 +2559,85 @@ export function App() {
                             ))}
                         </select>
                       </label>
-                      <label className="field">
-                        {t("facade")}
-                        <select
-                          value={selectedModule.frontDecor}
-                          onChange={(e) =>
-                            patchModule({
-                              frontDecor: e.target.value,
-                              frontColor: (DECORS as any)[e.target.value].color,
-                            })
-                          }
-                        >
-                          {decorOptions.map(([k, v]) => (
-                            <option key={k} value={k}>
-                              {v.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="field">
-                        {t("body")}
-                        <select
-                          value={selectedModule.bodyDecor}
-                          onChange={(e) =>
-                            patchModule({
-                              bodyDecor: e.target.value,
-                              bodyColor: (DECORS as any)[e.target.value].color,
-                            })
-                          }
-                        >
-                          {decorOptions.map(([k, v]) => (
-                            <option key={k} value={k}>
-                              {v.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
                     </div>
+                    <DecorPicker
+                      label={
+                        lang === "ru"
+                          ? "Декор фасадов"
+                          : lang === "ar"
+                            ? "ديكور الواجهات"
+                            : "Front decor"
+                      }
+                      value={selectedModule.frontDecor}
+                      onChange={(frontDecor) =>
+                        patchModule({
+                          frontDecor,
+                          frontColor: (DECORS as any)[frontDecor].color,
+                        })
+                      }
+                    />
+                    <DecorPicker
+                      label={
+                        lang === "ru"
+                          ? "Декор корпуса"
+                          : lang === "ar"
+                            ? "ديكور الهيكل"
+                            : "Body decor"
+                      }
+                      value={selectedModule.bodyDecor}
+                      onChange={(bodyDecor) =>
+                        patchModule({
+                          bodyDecor,
+                          bodyColor: (DECORS as any)[bodyDecor].color,
+                        })
+                      }
+                    />
+                    <h3>
+                      {lang === "ru"
+                        ? "Покрытие фасадов"
+                        : lang === "ar"
+                          ? "تشطيب الواجهات"
+                          : "Front finish"}
+                    </h3>
+                    <div
+                      className="segmented finishSelector"
+                      role="group"
+                      aria-label={
+                        lang === "ru" ? "Покрытие фасадов" : "Front finish"
+                      }
+                    >
+                      <button
+                        type="button"
+                        className={!selectedModule.gloss ? "active" : ""}
+                        aria-pressed={!selectedModule.gloss}
+                        onClick={() => patchModule({ gloss: false })}
+                      >
+                        {lang === "ru"
+                          ? "Матовый"
+                          : lang === "ar"
+                            ? "مطفي"
+                            : "Matte"}
+                      </button>
+                      <button
+                        type="button"
+                        className={selectedModule.gloss ? "active" : ""}
+                        aria-pressed={!!selectedModule.gloss}
+                        onClick={() => patchModule({ gloss: true })}
+                      >
+                        {lang === "ru"
+                          ? "Глянцевый"
+                          : lang === "ar"
+                            ? "لامع"
+                            : "Gloss"}
+                      </button>
+                    </div>
+                    <p className="note">
+                      {lang === "ru"
+                        ? "Глянец применяется только к дверкам и ящикам; корпус остаётся матовым."
+                        : lang === "ar"
+                          ? "يُطبّق اللمعان على الأبواب والأدراج فقط، بينما يبقى الهيكل مطفياً."
+                          : "Gloss applies to doors and drawers only; the carcass stays matte."}
+                    </p>
                     <div className="twoGrid">
                       <label className="field">
                         {lang === "ru"

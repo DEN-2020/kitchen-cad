@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Edges, Grid, Html, Line, OrbitControls } from "@react-three/drei";
+import {
+  Edges,
+  Environment,
+  Grid,
+  Html,
+  Lightformer,
+  Line,
+  OrbitControls,
+} from "@react-three/drei";
 import * as THREE from "three";
 import { proceduralTexture } from "./materials";
 import { ApplianceVisual } from "./ApplianceVisual";
 import { explodedCentre } from "../domain/view-math.js";
-import { isDisplayOnlyType } from "../../src/catalog/materials.js";
+import { DECORS, isDisplayOnlyType } from "../../src/catalog/materials.js";
 import { jointLinePoints } from "../../src/core/countertop-joints.js";
 import type { DimensionDetail, Selection, ViewMode } from "../domain/core";
 const mm = (v: number) => v / 1000,
@@ -83,16 +91,28 @@ function Surface({
     local = object.localCenter.map(mm) as [number, number, number],
     a = object.appearance || {},
     texture = useMemo(
-      () => proceduralTexture(a.pattern, a.color),
-      [a.pattern, a.color],
+      () => proceduralTexture(a.pattern, a.color, a.grain),
+      [a.pattern, a.color, a.grain],
     ),
     glass =
-      String(object.kind).includes("glass") || object.kind === "front-insert";
+      String(object.kind).includes("glass") || object.kind === "front-insert",
+    metallic = object.kind === "handle" || object.role === "support",
+    roughness = glass
+      ? 0.11
+      : a.gloss
+        ? 0.1
+        : a.pattern === "stone"
+          ? 0.34
+          : object.role === "front"
+            ? 0.4
+            : 0.58;
   if (object.shape === "disc") return null;
   return (
     <mesh
       position={local}
       rotation={[0, object.rotationY || 0, 0]}
+      castShadow
+      receiveShadow
       onPointerDown={(e) => {
         if (onSelect) {
           e.stopPropagation();
@@ -105,11 +125,16 @@ function Surface({
       ) : (
         <boxGeometry args={size} />
       )}
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         map={texture || undefined}
         color={texture ? "#fff" : a.color || "#ccc"}
-        roughness={glass ? 0.18 : a.gloss ? 0.25 : 0.58}
-        metalness={object.kind === "handle" ? 0.35 : 0.02}
+        roughness={roughness}
+        metalness={metallic ? 0.45 : 0.01}
+        clearcoat={a.gloss ? 0.92 : object.role === "front" ? 0.08 : 0}
+        clearcoatRoughness={a.gloss ? 0.07 : 0.3}
+        transmission={glass ? 0.22 : 0}
+        thickness={glass ? 0.012 : 0}
+        ior={1.46}
         transparent={glass}
         opacity={glass ? 0.55 : 1}
       />
@@ -162,17 +187,30 @@ function CornerVisual({ module }: { module: any }) {
           (wall ? 320 : 600),
       ),
     ),
-    body = module.bodyColor || "#e7e3d8";
+    body = module.bodyColor || "#e7e3d8",
+    bodyPattern = (DECORS as any)[module.bodyDecor]?.pattern,
+    bodyTexture = useMemo(
+      () => proceduralTexture(bodyPattern, body, module.grain),
+      [bodyPattern, body, module.grain],
+    );
   if (String(module.type).endsWith("L"))
     return (
       <group>
-        <mesh position={[w / 2, h / 2, arm / 2]}>
+        <mesh position={[w / 2, h / 2, arm / 2]} castShadow receiveShadow>
           <boxGeometry args={[w, h, arm]} />
-          <meshStandardMaterial color={body} roughness={0.7} />
+          <meshPhysicalMaterial
+            map={bodyTexture || undefined}
+            color={bodyTexture ? "#fff" : body}
+            roughness={0.58}
+          />
         </mesh>
-        <mesh position={[arm / 2, h / 2, d / 2]}>
+        <mesh position={[arm / 2, h / 2, d / 2]} castShadow receiveShadow>
           <boxGeometry args={[arm, h, d]} />
-          <meshStandardMaterial color={body} roughness={0.7} />
+          <meshPhysicalMaterial
+            map={bodyTexture || undefined}
+            color={bodyTexture ? "#fff" : body}
+            roughness={0.58}
+          />
         </mesh>
         <Edges color="#5b6b70" lineWidth={1} />
       </group>
@@ -183,13 +221,21 @@ function CornerVisual({ module }: { module: any }) {
     theta = Math.atan2(dz, dx);
   return (
     <group>
-      <mesh position={[w / 2, h / 2, arm / 2]}>
+      <mesh position={[w / 2, h / 2, arm / 2]} castShadow receiveShadow>
         <boxGeometry args={[w, h, arm]} />
-        <meshStandardMaterial color={body} roughness={0.72} />
+        <meshPhysicalMaterial
+          map={bodyTexture || undefined}
+          color={bodyTexture ? "#fff" : body}
+          roughness={0.58}
+        />
       </mesh>
-      <mesh position={[arm / 2, h / 2, d / 2]}>
+      <mesh position={[arm / 2, h / 2, d / 2]} castShadow receiveShadow>
         <boxGeometry args={[arm, h, d]} />
-        <meshStandardMaterial color={body} roughness={0.72} />
+        <meshPhysicalMaterial
+          map={bodyTexture || undefined}
+          color={bodyTexture ? "#fff" : body}
+          roughness={0.58}
+        />
       </mesh>
     </group>
   );
@@ -405,6 +451,8 @@ function CountertopSegment({
   return (
     <mesh
       position={pos}
+      castShadow
+      receiveShadow
       onPointerDown={(e) => {
         if (onSelect) {
           e.stopPropagation();
@@ -413,10 +461,12 @@ function CountertopSegment({
       }}
     >
       <boxGeometry args={size} />
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         map={texture || undefined}
         color={texture ? "#fff" : object.appearance?.color || "#dedbd2"}
-        roughness={0.3}
+        roughness={object.appearance?.gloss ? 0.09 : 0.32}
+        clearcoat={object.appearance?.gloss ? 0.88 : 0.12}
+        clearcoatRoughness={object.appearance?.gloss ? 0.07 : 0.28}
       />
       <Edges
         color={selected ? "#34d4e5" : "#7566a8"}
@@ -497,12 +547,14 @@ function Countertop({
       onPointerUp={up}
       onPointerCancel={up}
     >
-      <mesh scale={dragging ? 1.025 : 1}>
+      <mesh scale={dragging ? 1.025 : 1} castShadow receiveShadow>
         <boxGeometry args={size} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           map={texture || undefined}
           color={texture ? "#fff" : object.appearance?.color || "#dedbd2"}
-          roughness={0.3}
+          roughness={object.appearance?.gloss ? 0.09 : 0.32}
+          clearcoat={object.appearance?.gloss ? 0.88 : 0.12}
+          clearcoatRoughness={object.appearance?.gloss ? 0.07 : 0.28}
         />
         {selected && (
           <Edges
@@ -759,54 +811,81 @@ function CameraRig({
 }) {
   const { camera } = useThree(),
     controls = useRef<any>(null),
+    initialized = useRef(false),
+    previousView = useRef<ViewMode>(view),
+    previousFocusId = useRef<string | null>(focusId),
     fm = focusId ? model.modules.find((x: any) => x.id === focusId) : null,
-    target = useMemo(
-      () =>
-        fm
-          ? new THREE.Vector3(
-              mm(fm.x + fm.width / 2),
-              mm(fm.y + fm.height / 2),
-              mm(fm.z + fm.depth / 2),
-            )
-          : new THREE.Vector3(
-              mm(project.room.width / 2),
-              mm(project.room.height * 0.35),
-              mm(project.room.depth / 2),
-            ),
-      [fm, project.room.width, project.room.height, project.room.depth],
-    );
+    target = fm
+      ? new THREE.Vector3(
+          mm(fm.x + fm.width / 2),
+          mm(fm.y + fm.height / 2),
+          mm(fm.z + fm.depth / 2),
+        )
+      : new THREE.Vector3(
+          mm(project.room.width / 2),
+          mm(project.room.height * 0.35),
+          mm(project.room.depth / 2),
+        );
   useEffect(() => {
     camera.up.set(0, 1, 0);
-    if (fm) {
-      const s = Math.max(mm(fm.width), mm(fm.height), mm(fm.depth), 0.7);
-      if (view === "front")
-        camera.position.set(target.x, target.y, target.z + s * 2.3);
-      else if (view === "top") {
-        camera.position.set(target.x, target.y + s * 2.3, target.z + 0.001);
-        camera.up.set(0, 0, -1);
-      } else
-        camera.position.set(
-          target.x + s * 1.35,
-          target.y + s * 0.9,
-          target.z + s * 1.45,
-        );
-    } else {
-      const s = Math.max(
+    const roomScale = Math.max(
         mm(project.room.width),
         mm(project.room.height),
         mm(project.room.depth),
         1,
-      );
+      ),
+      focusScale = fm
+        ? Math.max(mm(fm.width), mm(fm.height), mm(fm.depth), 0.7)
+        : roomScale,
+      preserveOrbit =
+        initialized.current &&
+        view === "3d" &&
+        previousView.current === "3d" &&
+        previousFocusId.current === focusId;
+    if (preserveOrbit) {
+      const previousTarget = controls.current?.target?.clone() || target.clone(),
+        direction = camera.position.clone().sub(previousTarget);
+      if (direction.lengthSq() < 0.0001)
+        direction
+          .set(1, 0.75, 1)
+          .normalize()
+          .multiplyScalar(fm ? focusScale * 2.15 : roomScale * 1.35);
+      camera.position.copy(target).add(direction);
+    } else if (fm) {
       if (view === "front")
         camera.position.set(
           target.x,
           target.y,
-          mm(project.room.depth) + s * 1.35,
+          target.z + focusScale * 2.3,
         );
       else if (view === "top") {
         camera.position.set(
           target.x,
-          mm(project.room.height) + s * 1.65,
+          target.y + focusScale * 2.3,
+          target.z + 0.001,
+        );
+        camera.up.set(0, 0, -1);
+      } else {
+        const rotation = THREE.MathUtils.degToRad(fm.rotationY || 0),
+          side = new THREE.Vector3(Math.cos(rotation), 0, -Math.sin(rotation)),
+          front = new THREE.Vector3(Math.sin(rotation), 0, Math.cos(rotation));
+        camera.position
+          .copy(target)
+          .add(side.multiplyScalar(focusScale * 0.9))
+          .add(front.multiplyScalar(focusScale * 1.55))
+          .add(new THREE.Vector3(0, focusScale * 0.85, 0));
+      }
+    } else {
+      if (view === "front")
+        camera.position.set(
+          target.x,
+          target.y,
+          mm(project.room.depth) + roomScale * 1.35,
+        );
+      else if (view === "top") {
+        camera.position.set(
+          target.x,
+          mm(project.room.height) + roomScale * 1.65,
           target.z + 0.001,
         );
         camera.up.set(0, 0, -1);
@@ -822,11 +901,19 @@ function CameraRig({
       controls.current.target.copy(target);
       controls.current.update();
     }
+    initialized.current = true;
+    previousView.current = view;
+    previousFocusId.current = focusId;
   }, [
-    fm,
+    focusId,
     view,
-    target,
     camera,
+    fm?.x,
+    fm?.y,
+    fm?.z,
+    fm?.width,
+    fm?.height,
+    fm?.depth,
     project.room.width,
     project.room.height,
     project.room.depth,
@@ -914,8 +1001,37 @@ function SceneContent(props: any) {
         attach="background"
         args={[project.ui?.theme === "light" ? "#dfe6e8" : "#10171b"]}
       />
-      <hemisphereLight args={["#ffffff", "#485a63", 1.5]} />
-      <directionalLight position={[3.5, 5, 4]} intensity={1.55} />
+      <hemisphereLight args={["#ffffff", "#48565d", 0.88]} />
+      <ambientLight intensity={0.2} />
+      <directionalLight
+        position={[3.8, 5.5, 4.2]}
+        intensity={1.8}
+        color="#ffffff"
+        castShadow
+        shadow-mapSize-width={1536}
+        shadow-mapSize-height={1536}
+        shadow-bias={-0.00025}
+      />
+      <directionalLight
+        position={[-3, 2.4, -2.5]}
+        intensity={0.5}
+        color="#dcecff"
+      />
+      <Environment resolution={128} frames={1}>
+        <Lightformer
+          form="rect"
+          intensity={2.2}
+          position={[1.5, 4.5, 4]}
+          scale={[5, 3, 1]}
+        />
+        <Lightformer
+          form="rect"
+          intensity={1.1}
+          position={[-3, 2.5, -2]}
+          rotation={[0, Math.PI / 2, 0]}
+          scale={[3, 2, 1]}
+        />
+      </Environment>
       {!focusId && (
         <>
           <mesh
@@ -925,6 +1041,7 @@ function SceneContent(props: any) {
               0,
               mm(project.room.depth / 2),
             ]}
+            receiveShadow
             onPointerDown={(e) => {
               e.stopPropagation();
               setSelection(null);
@@ -995,6 +1112,20 @@ function SceneContent(props: any) {
             </mesh>
           )}
         </>
+      )}
+      {focusId && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[
+            focusModule ? mm(focusModule.x + focusModule.width / 2) : 0,
+            -0.002,
+            focusModule ? mm(focusModule.z + focusModule.depth / 2) : 0,
+          ]}
+          receiveShadow
+        >
+          <planeGeometry args={[8, 8]} />
+          <shadowMaterial transparent opacity={0.16} />
+        </mesh>
       )}
       {renderModules.map((m: any) => (
         <ModuleVisual
@@ -1067,6 +1198,7 @@ function SceneContent(props: any) {
 export function KitchenScene(props: any) {
   return (
     <Canvas
+      shadows="basic"
       frameloop="demand"
       dpr={[1, 1.25]}
       camera={{ position: [2.7, 2.1, 3.05], fov: 43 }}
