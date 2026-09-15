@@ -21,6 +21,16 @@
 .rangeRow{gap:6px;font-size:10px;margin:4px 0}
 .note,.empty{font-size:10px;line-height:1.35}
 .costBreakdown{display:grid;gap:4px}.costBreakdown small{display:flex;justify-content:space-between;gap:6px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);font-size:9px}
+/* v29 — keep the estimate visually even and readable on phones */
+.costPanel .projectStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.costPanel .projectStats>div:first-child{grid-column:1/-1}
+.costPanel .projectStats b{font-size:16px;white-space:nowrap}
+.costPanel .projectStats span{display:block;margin-top:2px}
+.costPanel .dimensionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.costPanel section{padding:7px}
+.costPanel .segmented{padding-bottom:4px}
+.costPanel .costBreakdown small{align-items:center;min-height:30px}
+.costPanel .costBreakdown small b{margin-left:auto;white-space:nowrap;text-align:right}
 @media(max-width:430px){
  .editor{--sheet-height:min(52%,410px)}
  .dimensionGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
@@ -28,8 +38,11 @@
  .inspectorHead{min-height:40px;padding:4px 8px}.inspectorHead b{font-size:13px}
  .bottomNav{min-height:58px;padding-left:3px;padding-right:3px}
  .bottomNav:not(.focusNav) button{min-height:47px;gap:2px}
+ .costPanel .dimensionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:350px){
  .bottomNav:not(.focusNav) button span{font-size:7.5px}
  .dimensionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .costPanel .projectStats{grid-template-columns:1fr}
+ .costPanel .projectStats>div:first-child{grid-column:auto}
 }
