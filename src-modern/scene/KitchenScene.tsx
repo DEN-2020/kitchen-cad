@@ -127,7 +127,7 @@ function Surface({
       )}
       <meshPhysicalMaterial
         map={texture || undefined}
-        color={texture ? "#fff" : a.color || "#ccc"}
+        color={a.color || "#ccc"}
         roughness={roughness}
         metalness={metallic ? 0.45 : 0.01}
         clearcoat={a.gloss ? 0.92 : object.role === "front" ? 0.08 : 0}
@@ -200,7 +200,7 @@ function CornerVisual({ module }: { module: any }) {
           <boxGeometry args={[w, h, arm]} />
           <meshPhysicalMaterial
             map={bodyTexture || undefined}
-            color={bodyTexture ? "#fff" : body}
+            color={body}
             roughness={0.58}
           />
         </mesh>
@@ -208,7 +208,7 @@ function CornerVisual({ module }: { module: any }) {
           <boxGeometry args={[arm, h, d]} />
           <meshPhysicalMaterial
             map={bodyTexture || undefined}
-            color={bodyTexture ? "#fff" : body}
+            color={body}
             roughness={0.58}
           />
         </mesh>
@@ -225,7 +225,7 @@ function CornerVisual({ module }: { module: any }) {
         <boxGeometry args={[w, h, arm]} />
         <meshPhysicalMaterial
           map={bodyTexture || undefined}
-          color={bodyTexture ? "#fff" : body}
+          color={body}
           roughness={0.58}
         />
       </mesh>
@@ -233,7 +233,7 @@ function CornerVisual({ module }: { module: any }) {
         <boxGeometry args={[arm, h, d]} />
         <meshPhysicalMaterial
           map={bodyTexture || undefined}
-          color={bodyTexture ? "#fff" : body}
+          color={body}
           roughness={0.58}
         />
       </mesh>
@@ -463,7 +463,7 @@ function CountertopSegment({
       <boxGeometry args={size} />
       <meshPhysicalMaterial
         map={texture || undefined}
-        color={texture ? "#fff" : object.appearance?.color || "#dedbd2"}
+        color={object.appearance?.color || "#dedbd2"}
         roughness={object.appearance?.gloss ? 0.09 : 0.32}
         clearcoat={object.appearance?.gloss ? 0.88 : 0.12}
         clearcoatRoughness={object.appearance?.gloss ? 0.07 : 0.28}
@@ -551,7 +551,7 @@ function Countertop({
         <boxGeometry args={size} />
         <meshPhysicalMaterial
           map={texture || undefined}
-          color={texture ? "#fff" : object.appearance?.color || "#dedbd2"}
+          color={object.appearance?.color || "#dedbd2"}
           roughness={object.appearance?.gloss ? 0.09 : 0.32}
           clearcoat={object.appearance?.gloss ? 0.88 : 0.12}
           clearcoatRoughness={object.appearance?.gloss ? 0.07 : 0.28}

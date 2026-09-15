@@ -121,22 +121,25 @@ function drawSpeckle(context: CanvasRenderingContext2D, color: string) {
 
 export function proceduralTexture(
   pattern?: string,
-  color = "#aaaaaa",
+  _color = "#aaaaaa",
   grain = "v",
 ) {
   if (!pattern || pattern === "solid") return null;
-  const key = `${pattern}:${color}:${grain}`;
+  const key = `${pattern}:${grain}`;
   if (cache.has(key)) return cache.get(key)!;
 
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const context = canvas.getContext("2d")!;
-  context.fillStyle = color;
+  // Keep the pattern neutral. The Three.js material owns the tint, so changing
+  // a color never has to regenerate or compete with the texture itself.
+  const neutral = "#d8d8d8";
+  context.fillStyle = "#f5f5f5";
   context.fillRect(0, 0, size, size);
-  addSurfaceVariation(context, color);
-  if (pattern === "wood") drawWood(context, color, grain);
-  else if (pattern === "stone") drawStone(context, color);
-  else drawSpeckle(context, color);
+  addSurfaceVariation(context, neutral);
+  if (pattern === "wood") drawWood(context, neutral, grain);
+  else if (pattern === "stone") drawStone(context, neutral);
+  else drawSpeckle(context, neutral);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -148,6 +151,7 @@ export function proceduralTexture(
   texture.anisotropy = 8;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
   cache.set(key, texture);
   return texture;
 }

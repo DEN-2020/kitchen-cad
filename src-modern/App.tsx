@@ -96,19 +96,65 @@ const fixtureTargetTypes = new Set([
 ]);
 const roomElement = (t: string) => t === "door" || t === "window";
 
+function withoutFrontMaterialOverrides(overrides: any[] = []) {
+  const inherited = overrides.map((override) => {
+    const { decor: _decor, color: _color, ...rest } = override || {};
+    return rest;
+  });
+  while (
+    inherited.length &&
+    Object.keys(inherited[inherited.length - 1]).length === 0
+  )
+    inherited.pop();
+  return inherited;
+}
+
+function decorPatternLabel(lang: Lang, pattern: string) {
+  const labels: Record<string, Record<Lang, string>> = {
+    solid: { ru: "однотонный", en: "solid", ar: "لون موحّد" },
+    wood: { ru: "текстура дерева", en: "wood grain", ar: "نسيج خشبي" },
+    stone: { ru: "текстура камня", en: "stone texture", ar: "نسيج حجري" },
+    speckle: { ru: "крапление", en: "speckled", ar: "منقّط" },
+  };
+  return labels[pattern]?.[lang] || pattern;
+}
+
 function DecorPicker({
   label,
   value,
+  color,
+  lang,
   onChange,
+  onColorChange,
 }: {
   label: string;
   value: string;
+  color: string;
+  lang: Lang;
   onChange: (decor: string) => void;
+  onColorChange: (color: string) => void;
 }) {
+  const railRef = useRef<HTMLDivElement>(null),
+    selectedDecor = (DECORS as any)[value] || Object.values(DECORS)[0];
+  useEffect(() => {
+    railRef.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [value]);
   return (
     <div className="decorPicker">
-      <span className="decorPickerLabel">{label}</span>
-      <div className="decorSwatches" role="listbox" aria-label={label}>
+      <div className="decorPickerHead">
+        <span>{label}</span>
+        <strong>
+          {selectedDecor.name} · {decorPatternLabel(lang, selectedDecor.pattern)}
+        </strong>
+      </div>
+      <div
+        ref={railRef}
+        className="decorSwatches"
+        role="listbox"
+        aria-label={label}
+      >
         {Object.entries(DECORS).map(([key, decor]: any) => (
           <button
             key={key}
@@ -116,7 +162,8 @@ function DecorPicker({
             role="option"
             aria-selected={value === key}
             className={value === key ? "active" : ""}
-            title={decor.name}
+            aria-label={`${decor.name}, ${decorPatternLabel(lang, decor.pattern)}`}
+            title={`${decor.name} · ${decorPatternLabel(lang, decor.pattern)}`}
             data-pattern={decor.pattern}
             onClick={() => onChange(key)}
           >
@@ -128,6 +175,33 @@ function DecorPicker({
           </button>
         ))}
       </div>
+      <label className="decorTint">
+        <span>
+          {lang === "ru" ? "Оттенок" : lang === "ar" ? "درجة اللون" : "Tint"}
+        </span>
+        <span className="decorTintControl">
+          <input
+            type="color"
+            value={color}
+            aria-label={`${label}: ${lang === "ru" ? "оттенок" : "tint"}`}
+            onChange={(event) => onColorChange(event.target.value)}
+          />
+          <code>{color.toUpperCase()}</code>
+          <button
+            type="button"
+            disabled={color.toLowerCase() === selectedDecor.color.toLowerCase()}
+            aria-label={
+              lang === "ru"
+                ? `Вернуть исходный цвет ${selectedDecor.name}`
+                : `Reset ${selectedDecor.name} color`
+            }
+            title={lang === "ru" ? "Вернуть цвет образца" : "Reset swatch color"}
+            onClick={() => onColorChange(selectedDecor.color)}
+          >
+            ↺
+          </button>
+        </span>
+      </label>
     </div>
   );
 }
@@ -2569,10 +2643,23 @@ export function App() {
                             : "Front decor"
                       }
                       value={selectedModule.frontDecor}
+                      color={selectedModule.frontColor}
+                      lang={lang}
                       onChange={(frontDecor) =>
                         patchModule({
                           frontDecor,
                           frontColor: (DECORS as any)[frontDecor].color,
+                          frontOverrides: withoutFrontMaterialOverrides(
+                            selectedModule.frontOverrides,
+                          ),
+                        })
+                      }
+                      onColorChange={(frontColor) =>
+                        patchModule({
+                          frontColor,
+                          frontOverrides: withoutFrontMaterialOverrides(
+                            selectedModule.frontOverrides,
+                          ),
                         })
                       }
                     />
@@ -2585,13 +2672,25 @@ export function App() {
                             : "Body decor"
                       }
                       value={selectedModule.bodyDecor}
+                      color={selectedModule.bodyColor}
+                      lang={lang}
                       onChange={(bodyDecor) =>
                         patchModule({
                           bodyDecor,
                           bodyColor: (DECORS as any)[bodyDecor].color,
                         })
                       }
+                      onColorChange={(bodyColor) =>
+                        patchModule({ bodyColor })
+                      }
                     />
+                    <p className="note materialHelp">
+                      {lang === "ru"
+                        ? "Образец задаёт рисунок и стартовый цвет. «Оттенок» перекрашивает этот же рисунок. Общая настройка применяется ко всем фасадам."
+                        : lang === "ar"
+                          ? "يحدد النموذج النقش واللون الأولي. يغيّر خيار درجة اللون لون النقش نفسه، ويُطبّق الإعداد العام على جميع الواجهات."
+                          : "A swatch sets the pattern and starting color. Tint recolors that pattern. The common setting applies to every front."}
+                    </p>
                     <h3>
                       {lang === "ru"
                         ? "Покрытие фасадов"
@@ -2638,43 +2737,38 @@ export function App() {
                           ? "يُطبّق اللمعان على الأبواب والأدراج فقط، بينما يبقى الهيكل مطفياً."
                           : "Gloss applies to doors and drawers only; the carcass stays matte."}
                     </p>
-                    <div className="twoGrid">
-                      <label className="field">
-                        {lang === "ru"
-                          ? "Цвет фасадов"
-                          : lang === "ar"
-                            ? "لون الواجهات"
-                            : "Front color"}
-                        <input
-                          type="color"
-                          value={selectedModule.frontColor}
-                          onChange={(e) =>
-                            patchModule({ frontColor: e.target.value })
-                          }
-                        />
-                      </label>
-                      <label className="field">
-                        {lang === "ru"
-                          ? "Цвет корпуса"
-                          : lang === "ar"
-                            ? "لون الهيكل"
-                            : "Body color"}
-                        <input
-                          type="color"
-                          value={selectedModule.bodyColor}
-                          onChange={(e) =>
-                            patchModule({ bodyColor: e.target.value })
-                          }
-                        />
-                      </label>
-                    </div>
                     {actualDoorCount > 0 && (
-                      <>
-                        <h3>
+                      <details className="doorOverridesDisclosure">
+                        <summary>
                           {lang === "ru"
-                            ? "Отдельные створки"
-                            : "Individual fronts"}
-                        </h3>
+                            ? "Отдельные фасады"
+                            : lang === "ar"
+                              ? "واجهات منفردة"
+                              : "Individual fronts"}
+                          <span>
+                            {selectedModule.frontOverrides?.some(
+                              (override: any) =>
+                                override?.decor || override?.color,
+                            )
+                              ? lang === "ru"
+                                ? "есть индивидуальные настройки"
+                                : lang === "ar"
+                                  ? "توجد إعدادات فردية"
+                                  : "contains individual settings"
+                              : lang === "ru"
+                                ? "только если должны отличаться"
+                                : lang === "ar"
+                                  ? "عند الحاجة فقط"
+                                  : "only when different"}
+                          </span>
+                        </summary>
+                        <p className="note doorOverridesHelp">
+                          {lang === "ru"
+                            ? "Здесь можно переопределить отдельную дверку или ящик. Новый общий декор или оттенок снова выровняет все фасады."
+                            : lang === "ar"
+                              ? "يمكنك هنا تخصيص باب أو درج منفرد. اختيار إعداد عام جديد يوحّد جميع الواجهات مرة أخرى."
+                              : "Override a single door or drawer here. A new common decor or tint makes all fronts match again."}
+                        </p>
                         <div className="doorOverrides">
                           {Array.from({ length: actualDoorCount }, (_, i) => {
                             const ov = selectedModule.frontOverrides?.[i] || {};
@@ -2724,10 +2818,9 @@ export function App() {
                                     type="color"
                                     value={
                                       ov.color ||
-                                      (DECORS as any)[
-                                        ov.decor || selectedModule.frontDecor
-                                      ]?.color ||
-                                      selectedModule.frontColor
+                                      (ov.decor
+                                        ? (DECORS as any)[ov.decor]?.color
+                                        : selectedModule.frontColor)
                                     }
                                     onChange={(e) =>
                                       setProject((p: any) =>
@@ -2810,7 +2903,7 @@ export function App() {
                             );
                           })}
                         </div>
-                      </>
+                      </details>
                     )}
                   </section>
                   {!focusId && (

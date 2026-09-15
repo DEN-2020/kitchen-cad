@@ -9,6 +9,7 @@ test('blind corner fixed section is a recessed body wall, not a door', () => {
   const corner = createModule('cornerBaseBlind');
   corner.bodyDecor = 'white';
   corner.frontDecor = 'olive';
+  corner.frontColor = '#761e91';
   corner.gloss = true;
   project.modules = [corner];
   const model = buildProject(project);
@@ -23,8 +24,35 @@ test('blind corner fixed section is a recessed body wall, not a door', () => {
   assert.equal(wall.appearance.gloss, false);
   assert.equal(door.role, 'front');
   assert.equal(door.decor, 'olive');
+  assert.equal(door.appearance.color, '#761e91');
   assert.equal(door.appearance.gloss, true);
   assert.ok(door.center[2] > corner.depth);
+});
+
+test('common front tint reaches every cabinet type and explicit overrides still win', () => {
+  for (const type of ['base', 'drawer', 'cornerBaseBlind', 'cornerBaseDiagonal', 'cornerBaseL']) {
+    const project = createProject();
+    const cabinet = createModule(type);
+    cabinet.frontColor = '#2864a8';
+    project.modules = [cabinet];
+    const fronts = buildProject(project).objects.filter((object) => object.role === 'front');
+    assert.ok(fronts.length > 0, `${type} should create at least one front`);
+    assert.ok(
+      fronts.every((front) => front.appearance.color === '#2864a8'),
+      `${type} should inherit the common front tint`,
+    );
+  }
+
+  const project = createProject();
+  const cabinet = createModule('base');
+  cabinet.frontColor = '#2864a8';
+  cabinet.frontOverrides = [{ decor: 'oak', color: '#b06b32' }];
+  project.modules = [cabinet];
+  const [overridden] = buildProject(project).objects.filter(
+    (object) => object.role === 'front',
+  );
+  assert.equal(overridden.decor, 'oak');
+  assert.equal(overridden.appearance.color, '#b06b32');
 });
 
 test('round and square leg choices create visible support geometry', () => {
