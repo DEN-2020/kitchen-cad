@@ -248,12 +248,51 @@
 }
 .doorOverridesDisclosure,.costStockDetails{border-top:1px solid var(--divider)}
 .catalogSearch{
+ display:flex;
+ align-items:center;
+ gap:5px;
+ width:max-content;
+ max-width:100%;
  top:-4px;
- margin:0 -4px 7px;
- padding:7px 4px 9px;
+ margin:0 -4px 6px;
+ padding:4px;
  background:color-mix(in srgb,var(--panel) 94%,transparent);
  backdrop-filter:blur(12px);
 }
+.catalogSearch.open{width:auto}
+.catalogSearch .catalogSearchToggle,.catalogSearch .catalogSearchClear{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:5px;
+ min-height:32px;
+ padding:0 9px;
+ border:0;
+ border-radius:6px;
+ background:var(--surface);
+ color:var(--text);
+ white-space:nowrap;
+}
+.catalogSearch .catalogSearchToggle{max-width:min(210px,62vw)}
+.catalogSearch .catalogSearchToggle b{overflow:hidden;text-overflow:ellipsis;font-size:10px}
+.catalogSearch .catalogSearchToggle span{display:inline;margin:0;color:var(--accent);font-size:17px;line-height:1}
+.catalogSearch input{flex:1;min-width:0;width:auto;height:32px;padding:0 9px;color:var(--text)}
+.catalogSearch .catalogSearchClear{width:32px;padding:0;font-size:17px}
+.catalogSearch button:active{background:var(--surface-raised)}
+.cornerConstructionNote .fieldCaption{min-height:0;margin:0;color:var(--muted)}
+.cornerSideSelector{margin-bottom:2px}
+.cornerSideSelector button{flex:1}
+.cornerSinkAction{
+ min-height:36px;
+ padding:0 10px;
+ border:0;
+ border-radius:6px;
+ background:var(--accent);
+ color:#071519;
+ font-size:10px;
+ font-weight:750;
+}
+.cornerSinkAction:disabled{background:var(--surface-raised);color:var(--muted);opacity:.72}
 .catalogSection{padding:8px 0 13px;border-bottom:1px solid var(--divider)}
 .catalogSection h3{font-size:9px;font-weight:720;letter-spacing:.075em}
 .catalogSection h3:after{background:var(--divider)}

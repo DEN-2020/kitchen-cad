@@ -110,6 +110,19 @@ function withoutFrontMaterialOverrides(overrides: any[] = []) {
   return inherited;
 }
 
+function withoutFrontHingeOverrides(overrides: any[] = []) {
+  const inherited = overrides.map((override) => {
+    const { hingeSide: _hingeSide, ...rest } = override || {};
+    return rest;
+  });
+  while (
+    inherited.length &&
+    Object.keys(inherited[inherited.length - 1]).length === 0
+  )
+    inherited.pop();
+  return inherited;
+}
+
 function decorPatternLabel(lang: Lang, pattern: string) {
   const labels: Record<string, Record<Lang, string>> = {
     solid: { ru: "однотонный", en: "solid", ar: "لون موحّد" },
@@ -218,7 +231,8 @@ export function App() {
     [fixtureTargetId, setFixtureTargetId] = useState(""),
     [saveStatus, setSaveStatus] = useState<SaveStatus>("saving"),
     [importNotice, setImportNotice] = useState<ImportNotice>(null),
-    [catalogQuery, setCatalogQuery] = useState("");
+    [catalogQuery, setCatalogQuery] = useState(""),
+    [catalogSearchOpen, setCatalogSearchOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null),
     projectRef = useRef(project);
   projectRef.current = project;
@@ -443,6 +457,34 @@ export function App() {
       if (!fixtureTargetId) return;
       const r = addFixture(project, type, fixtureTargetId);
       setProject(r.project);
+    },
+    addBlindCornerSink = () => {
+      if (
+        !selectedModule ||
+        selectedModule.type !== "cornerBaseBlind" ||
+        (project.fixtures || []).some(
+          (fixture: any) =>
+            fixture.type === "sink" && fixture.targetModuleId === selectedModule.id,
+        )
+      )
+        return;
+      const opening = Math.max(
+          250,
+          Math.min(
+            selectedModule.cornerOpening || 450,
+            selectedModule.width - 260,
+          ),
+        ),
+        result = addFixture(project, "sink", selectedModule.id),
+        fittedWidth = Math.max(100, Math.min(500, opening - 40));
+      let next = updateFixture(result.project, result.id, {
+        width: fittedWidth,
+        offsetX: 0,
+        offsetZ: 0,
+      });
+      next = updateModule(next, selectedModule.id, { shelfCount: 0 });
+      setFixtureTargetId(selectedModule.id);
+      setProject(next);
     },
     decorOptions = Object.entries(DECORS) as [string, any][];
   const wallToggle = (key: string, label: string, defaultOn: boolean) => {
@@ -891,25 +933,61 @@ export function App() {
             </div>
           ) : panel === "catalog" ? (
             <div className="inspectorBody catalogSections">
-              <label className="catalogSearch">
-                <span>
-                  {lang === "ru"
-                    ? "Поиск по каталогу"
-                    : lang === "ar"
-                      ? "بحث في الكتالوج"
-                      : "Search catalog"}
-                </span>
-                <input
-                  type="search"
-                  value={catalogQuery}
-                  placeholder={
-                    lang === "ru"
-                      ? "Например: угловой, мойка, стиралка"
-                      : "Corner, sink, washer…"
-                  }
-                  onChange={(event) => setCatalogQuery(event.target.value)}
-                />
-              </label>
+              <div
+                className={`catalogSearch${catalogSearchOpen ? " open" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="catalogSearchToggle"
+                  aria-expanded={catalogSearchOpen}
+                  onClick={() => setCatalogSearchOpen((open) => !open)}
+                >
+                  <span aria-hidden="true">⌕</span>
+                  <b>
+                    {catalogSearchOpen
+                      ? lang === "ru"
+                        ? "Скрыть"
+                        : "Close"
+                      : catalogQuery
+                        ? `${lang === "ru" ? "Поиск" : "Search"}: ${catalogQuery}`
+                        : lang === "ru"
+                          ? "Поиск"
+                          : lang === "ar"
+                            ? "بحث"
+                            : "Search"}
+                  </b>
+                </button>
+                {catalogSearchOpen && (
+                  <input
+                    autoFocus
+                    aria-label={
+                      lang === "ru"
+                        ? "Поиск по каталогу"
+                        : lang === "ar"
+                          ? "بحث في الكتالوج"
+                          : "Search catalog"
+                    }
+                    type="search"
+                    value={catalogQuery}
+                    placeholder={
+                      lang === "ru"
+                        ? "Угловой, мойка, стиралка…"
+                        : "Corner, sink, washer…"
+                    }
+                    onChange={(event) => setCatalogQuery(event.target.value)}
+                  />
+                )}
+                {!!catalogQuery && (
+                  <button
+                    type="button"
+                    className="catalogSearchClear"
+                    aria-label={lang === "ru" ? "Очистить поиск" : "Clear search"}
+                    onClick={() => setCatalogQuery("")}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               {catalogGroups.map((g: any) => (
                 <section className="catalogSection" key={g.id}>
                   <h3>
@@ -2678,6 +2756,47 @@ export function App() {
                       "cornerWallBlind",
                     ].includes(selectedModule.type) && (
                       <div className="cornerConstructionNote">
+                        <span className="fieldCaption">
+                          {lang === "ru"
+                            ? "Сторона дверцы и проёма"
+                            : "Door and opening side"}
+                        </span>
+                        <div
+                          className="segmented cornerSideSelector"
+                          role="group"
+                          aria-label={
+                            lang === "ru"
+                              ? "Сторона дверцы глухого углового модуля"
+                              : "Blind-corner door side"
+                          }
+                        >
+                          {(["left", "right"] as const).map((side) => (
+                            <button
+                              key={side}
+                              type="button"
+                              className={
+                                (selectedModule.cornerOpeningSide || "right") === side
+                                  ? "active"
+                                  : ""
+                              }
+                              aria-pressed={
+                                (selectedModule.cornerOpeningSide || "right") === side
+                              }
+                              onClick={() =>
+                                patchModule({
+                                  cornerOpeningSide: side,
+                                  frontOverrides: withoutFrontHingeOverrides(
+                                    selectedModule.frontOverrides,
+                                  ),
+                                })
+                              }
+                            >
+                              {lang === "ru"
+                                ? `Дверца ${side === "left" ? "слева" : "справа"}`
+                                : `Door ${side}`}
+                            </button>
+                          ))}
+                        </div>
                         <b>
                           {lang === "ru"
                             ? "Как устроен глухой угол"
@@ -2685,8 +2804,8 @@ export function App() {
                         </b>
                         <span>
                           {lang === "ru"
-                            ? `Доступ внутрь только через проём ${selectedModule.cornerOpening || 0} мм. Светлая глухая часть — стенка корпуса, не дверца.`
-                            : `Interior access is only through the ${selectedModule.cornerOpening || 0} mm opening. The blind section is a body panel, not a door.`}
+                            ? `Дверца и доступный проём ${selectedModule.cornerOpening || 0} мм сейчас ${selectedModule.cornerOpeningSide === "left" ? "слева" : "справа"}. Глухая часть с другой стороны — стенка корпуса, не дверца.`
+                            : `The ${selectedModule.cornerOpening || 0} mm door opening is on the ${selectedModule.cornerOpeningSide === "left" ? "left" : "right"}. The opposite blind section is a body panel.`}
                         </span>
                         <span>
                           {lang === "ru"
@@ -2694,11 +2813,41 @@ export function App() {
                             : `The overlay door sits ${selectedModule.gap || 0} mm off the body, so its face projects about ${(selectedModule.gap || 0) + (selectedModule.frontThickness || 0)} mm.`}
                         </span>
                         {selectedModule.type === "cornerBaseBlind" && (
-                          <span className="warningText">
-                            {lang === "ru"
-                              ? "Технику внутрь этого корпуса не ставят: для неё нужен отдельный 600-мм проём рядом."
-                              : "Do not place an appliance inside this cabinet; use a separate 600 mm bay beside it."}
-                          </span>
+                          <>
+                            <span>
+                              {lang === "ru"
+                                ? `Мойку можно встроить над доступной секцией. Для текущего проёма допустима чаша шириной до ${Math.max(100, Math.min(500, Math.max(250, Math.min(selectedModule.cornerOpening || 450, selectedModule.width - 260)) - 40))} мм; внутренняя полка будет убрана.`
+                                : "A sink can be centered over the accessible bay; its width is limited by the opening and the inner shelf is removed."}
+                            </span>
+                            <button
+                              type="button"
+                              className="cornerSinkAction"
+                              disabled={(project.fixtures || []).some(
+                                (fixture: any) =>
+                                  fixture.type === "sink" &&
+                                  fixture.targetModuleId === selectedModule.id,
+                              )}
+                              onClick={addBlindCornerSink}
+                            >
+                              ◒{" "}
+                              {(project.fixtures || []).some(
+                                (fixture: any) =>
+                                  fixture.type === "sink" &&
+                                  fixture.targetModuleId === selectedModule.id,
+                              )
+                                ? lang === "ru"
+                                  ? "Мойка уже добавлена"
+                                  : "Sink added"
+                                : lang === "ru"
+                                  ? "Добавить мойку в эту секцию"
+                                  : "Add sink to this bay"}
+                            </button>
+                            <span className="warningText">
+                              {lang === "ru"
+                                ? "Посудомоечную или стиральную машину внутрь корпуса не ставят: для неё нужен отдельный проём рядом."
+                                : "Dishwashers and washers need a separate bay beside this cabinet."}
+                            </span>
+                          </>
                         )}
                       </div>
                     )}
