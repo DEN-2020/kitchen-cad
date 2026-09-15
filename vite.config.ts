@@ -10,6 +10,7 @@ import { v23FixPlugin } from './src-modern/v23-fix-plugin';
 import { v24Plugin } from './src-modern/v24-vite-plugin';
 import { v25Plugin } from './src-modern/v25-vite-plugin';
 import { v26Plugin } from './src-modern/v26-vite-plugin';
+import { v27Plugin } from './src-modern/v27-vite-plugin';
 
 function v18ExplodeFix(){
   return {
@@ -45,5 +46,5 @@ function Dimensions`,
 
 export default defineConfig({
   base: '/kitchen-cad/',
-  plugins: [v18ExplodeFix(),v19Plugin(),v20Plugin(),v21Plugin(),v22Plugin(),v22FixPlugin(),v23Plugin(),v23FixPlugin(),v24Plugin(),v25Plugin(),v26Plugin(),react()],
+  plugins: [v18ExplodeFix(),v19Plugin(),v20Plugin(),v21Plugin(),v22Plugin(),v22FixPlugin(),v23Plugin(),v23FixPlugin(),v24Plugin(),v25Plugin(),v26Plugin(),v27Plugin(),react()],
 });
