@@ -12,6 +12,9 @@ export const CloseIcon=(p:IconProps)=><Svg {...p}><path d="m6 6 12 12M18 6 6 18"
 export const BackIcon=(p:IconProps)=><Svg {...p}><path d="m15 5-7 7 7 7"/></Svg>;
 export const PrintIcon=(p:IconProps)=><Svg {...p}><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7"/></Svg>;
 export const DownloadIcon=(p:IconProps)=><Svg {...p}><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></Svg>;
+export const UploadIcon=(p:IconProps)=><Svg {...p}><path d="M12 21V9M7 14l5-5 5 5M4 4h16"/></Svg>;
+export const UndoIcon=(p:IconProps)=><Svg {...p}><path d="M9 7 4 12l5 5"/><path d="M5 12h8a6 6 0 0 1 6 6"/></Svg>;
+export const RedoIcon=(p:IconProps)=><Svg {...p}><path d="m15 7 5 5-5 5"/><path d="M19 12h-8a6 6 0 0 0-6 6"/></Svg>;
 export const PartsIcon=(p:IconProps)=><Svg {...p}><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="13" y="4" width="8" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></Svg>;
 
 export function CatalogGlyph({type}:{type:string}){

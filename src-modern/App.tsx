@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { KitchenScene } from "./scene/KitchenScene";
 import { NumberField } from "./ui/NumberField";
 import { useViewport } from "./ui/useViewport";
@@ -16,6 +16,9 @@ import {
   ProjectIcon,
   SettingsIcon,
   TrashIcon,
+  RedoIcon,
+  UndoIcon,
+  UploadIcon,
 } from "./ui/Icons";
 import {
   downloadCsv,
@@ -37,6 +40,7 @@ import {
   addFixture,
   addModule,
   deleteModule,
+  decodeEditorProject,
   deriveModel,
   duplicateModule,
   loadEditorProject,
@@ -64,6 +68,7 @@ import {
   type Lang,
 } from "./i18n";
 import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
+import { useProjectHistory } from "./state/useProjectHistory";
 
 type Panel =
   | "selection"
@@ -75,6 +80,8 @@ type Panel =
   | "parts"
   | "print"
   | null;
+type SaveStatus = "saving" | "saved" | "error";
+type ImportNotice = { kind: "success" | "error"; message: string } | null;
 const sizeText = (m: any) => `${m.width} × ${m.height} × ${m.depth} мм`;
 const fixtureTargetTypes = new Set([
   "base",
@@ -91,12 +98,18 @@ const roomElement = (t: string) => t === "door" || t === "window";
 
 export function App() {
   useViewport();
-  const [project, setProject] = useState<any>(() => loadEditorProject());
+  const { project, setProject, undo, redo, canUndo, canRedo } =
+    useProjectHistory<any>(() => loadEditorProject());
   const [selection, setSelection] = useState<Selection>(null),
     [panel, setPanel] = useState<Panel>(null),
     [focusId, setFocusId] = useState<string | null>(null),
     [detail, setDetail] = useState<DimensionDetail>("none"),
-    [fixtureTargetId, setFixtureTargetId] = useState("");
+    [fixtureTargetId, setFixtureTargetId] = useState(""),
+    [saveStatus, setSaveStatus] = useState<SaveStatus>("saving"),
+    [importNotice, setImportNotice] = useState<ImportNotice>(null);
+  const importInputRef = useRef<HTMLInputElement>(null),
+    projectRef = useRef(project);
+  projectRef.current = project;
   const model = useMemo(() => deriveModel(project), [project]);
   const cost = useMemo(
     () => estimateProjectCost(project, model),
@@ -129,6 +142,24 @@ export function App() {
     ) as Lang,
     t = (key: any) => tr(lang, key),
     view = (project.ui?.view || "3d") as ViewMode;
+  const saveText =
+    saveStatus === "saving"
+      ? lang === "ru"
+        ? "Сохраняю…"
+        : lang === "ar"
+          ? "جارٍ الحفظ…"
+          : "Saving…"
+      : saveStatus === "error"
+        ? lang === "ru"
+          ? "Не сохранено"
+          : lang === "ar"
+            ? "لم يتم الحفظ"
+            : "Not saved"
+        : lang === "ru"
+          ? "Сохранено"
+          : lang === "ar"
+            ? "تم الحفظ"
+            : "Saved";
   const actualDoorCount = selectedModule
     ? ["cornerBaseBlind", "cornerWallBlind"].includes(selectedModule.type)
       ? 1
@@ -143,8 +174,17 @@ export function App() {
               : 1
     : 0;
   useEffect(() => {
-    saveEditorProject(project);
+    setSaveStatus("saving");
+    const timer = window.setTimeout(() => {
+      setSaveStatus(saveEditorProject(project) ? "saved" : "error");
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [project]);
+  useEffect(() => {
+    const flushSave = () => saveEditorProject(projectRef.current);
+    window.addEventListener("pagehide", flushSave);
+    return () => window.removeEventListener("pagehide", flushSave);
+  }, []);
   useEffect(() => {
     document
       .querySelector('meta[name="theme-color"]')
@@ -274,6 +314,92 @@ export function App() {
       </button>
     );
   };
+  const resetAfterHistoryNavigation = () => {
+      setSelection(null);
+      setFocusId(null);
+      setDetail("none");
+      setImportNotice(null);
+      setPanel((current) =>
+        current === "selection" || current === "parts" || current === "print"
+          ? null
+          : current,
+      );
+    },
+    handleUndo = () => {
+      if (!canUndo) return;
+      undo();
+      resetAfterHistoryNavigation();
+    },
+    handleRedo = () => {
+      if (!canRedo) return;
+      redo();
+      resetAfterHistoryNavigation();
+    },
+    requestProjectImport = () => {
+      setImportNotice(null);
+      if (!importInputRef.current) return;
+      importInputRef.current.value = "";
+      importInputRef.current.click();
+    },
+    importProjectFile = async (file: File) => {
+      try {
+        if (file.size > 1_000_000)
+          throw new Error("Файл слишком большой (максимум 1 МБ)");
+        const imported = decodeEditorProject(await file.text());
+        setProject(imported);
+        setSelection(null);
+        setFocusId(null);
+        setDetail("none");
+        setPanel("project");
+        setImportNotice({
+          kind: "success",
+          message:
+            lang === "ru"
+              ? `Проект «${imported.name}» импортирован. При необходимости импорт можно отменить.`
+              : lang === "ar"
+                ? `تم استيراد المشروع «${imported.name}». يمكن التراجع عن الاستيراد.`
+                : `Project “${imported.name}” imported. You can undo the import if needed.`,
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        setImportNotice({
+          kind: "error",
+          message:
+            lang === "ru"
+              ? `Не удалось импортировать проект: ${reason}`
+              : lang === "ar"
+                ? `تعذر استيراد المشروع: ${reason}`
+                : `Could not import project: ${reason}`,
+        });
+      }
+    };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']"))
+        return;
+      const key = event.key.toLowerCase();
+      const wantsRedo = key === "y" || (key === "z" && event.shiftKey);
+      const wantsUndo = key === "z" && !event.shiftKey;
+      if ((wantsUndo && !canUndo) || (wantsRedo && !canRedo)) return;
+      if (!wantsUndo && !wantsRedo) return;
+      event.preventDefault();
+      if (wantsRedo) redo();
+      else undo();
+      setSelection(null);
+      setFocusId(null);
+      setDetail("none");
+      setImportNotice(null);
+      setPanel((current) =>
+        current === "selection" || current === "parts" || current === "print"
+          ? null
+          : current,
+      );
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canRedo, canUndo, redo, undo]);
   return (
     <div
       dir={lang === "ar" ? "rtl" : "ltr"}
@@ -289,6 +415,58 @@ export function App() {
             <span>{sizeText(selectedModule)}</span>
           </div>
         )}
+        <div className="topbarTools">
+          <span
+            className={`saveIndicator ${saveStatus}`}
+            role="status"
+            aria-live="polite"
+          >
+            <span className="saveDot" aria-hidden="true" />
+            <span className="saveText">{saveText}</span>
+          </span>
+          <div
+            className="historyControls"
+            role="group"
+            aria-label={
+              lang === "ru"
+                ? "История изменений"
+                : lang === "ar"
+                  ? "سجل التغييرات"
+                  : "Edit history"
+            }
+          >
+            <button
+              type="button"
+              disabled={!canUndo}
+              aria-label={
+                lang === "ru"
+                  ? "Отменить изменение"
+                  : lang === "ar"
+                    ? "تراجع"
+                    : "Undo change"
+              }
+              title="Ctrl+Z"
+              onClick={handleUndo}
+            >
+              <UndoIcon size={18} />
+            </button>
+            <button
+              type="button"
+              disabled={!canRedo}
+              aria-label={
+                lang === "ru"
+                  ? "Повторить изменение"
+                  : lang === "ar"
+                    ? "إعادة"
+                    : "Redo change"
+              }
+              title="Ctrl+Shift+Z / Ctrl+Y"
+              onClick={handleRedo}
+            >
+              <RedoIcon size={18} />
+            </button>
+          </div>
+        </div>
       </header>
       <main className={panel ? "editor panelOpen" : "editor"}>
         <section className="scenePanel">
@@ -711,11 +889,7 @@ export function App() {
                   <NumberField
                     compact
                     label={
-                      lang === "ru"
-                        ? "Отход"
-                        : lang === "ar"
-                          ? "هدر"
-                          : "Waste"
+                      lang === "ru" ? "Отход" : lang === "ar" ? "هدر" : "Waste"
                     }
                     value={cost.settings.wastePercent}
                     unit="%"
@@ -1087,11 +1261,7 @@ export function App() {
                   <NumberField
                     compact
                     label={
-                      lang === "ru"
-                        ? "Отход"
-                        : lang === "ar"
-                          ? "هدر"
-                          : "Waste"
+                      lang === "ru" ? "Отход" : lang === "ar" ? "هدر" : "Waste"
                     }
                     value={cost.settings.wastePercent}
                     unit="%"
@@ -1310,11 +1480,50 @@ export function App() {
                 </p>
               </section>
               <section>
-                <h3>{lang === "ru" ? "Экспорт проекта" : "Project export"}</h3>
+                <h3>
+                  {lang === "ru"
+                    ? "Файл проекта"
+                    : lang === "ar"
+                      ? "ملف المشروع"
+                      : "Project file"}
+                </h3>
+                <input
+                  ref={importInputRef}
+                  className="hiddenFileInput"
+                  type="file"
+                  accept="application/json,.json"
+                  hidden
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  onChange={(event) => {
+                    const input = event.currentTarget,
+                      file = input.files?.[0];
+                    if (!file) return;
+                    void importProjectFile(file).finally(() => {
+                      input.value = "";
+                    });
+                  }}
+                />
                 <div className="exportGrid">
                   <button onClick={() => downloadJson(project)}>
                     <DownloadIcon />
-                    <span>{t("json")}</span>
+                    <span>
+                      {lang === "ru"
+                        ? "Скачать JSON"
+                        : lang === "ar"
+                          ? "تنزيل JSON"
+                          : "Download JSON"}
+                    </span>
+                  </button>
+                  <button onClick={requestProjectImport}>
+                    <UploadIcon />
+                    <span>
+                      {lang === "ru"
+                        ? "Импорт JSON"
+                        : lang === "ar"
+                          ? "استيراد JSON"
+                          : "Import JSON"}
+                    </span>
                   </button>
                   <button onClick={() => downloadCsv(model)}>
                     <DownloadIcon />
@@ -1325,17 +1534,27 @@ export function App() {
                     <span>{t("png")}</span>
                   </button>
                   <button
-                    className="primary"
+                    className="primary wide"
                     onClick={() => printReport(project, model)}
                   >
                     <PrintIcon />
                     <span>{t("pdf")}</span>
                   </button>
                 </div>
+                {importNotice && (
+                  <p
+                    className={`importNotice ${importNotice.kind}`}
+                    role={importNotice.kind === "error" ? "alert" : "status"}
+                  >
+                    {importNotice.message}
+                  </p>
+                )}
                 <p className="note">
                   {lang === "ru"
-                    ? "PDF: обзор проекта, затем для каждого шкафа компактный лист Фронт/Сверху/Сбоку и лист Разобранный 3D + напил."
-                    : "PDF: project overview, then a compact Front/Top/Side sheet and an Exploded 3D + cut-list sheet per cabinet."}
+                    ? "Импорт проверяет формат и версию файла. PDF содержит обзор проекта и листы деталей для каждого шкафа."
+                    : lang === "ar"
+                      ? "يتحقق الاستيراد من تنسيق الملف وإصداره قبل استبدال المشروع."
+                      : "Import validates the file format and version. PDF includes the project overview and cabinet detail sheets."}
                 </p>
               </section>
               {model.warnings.slice(0, 8).map((w: string, i: number) => (

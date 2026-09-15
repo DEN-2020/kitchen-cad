@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "name": "Импортированная кухня",
+  "room": {
+    "width": 4200,
+    "depth": 3100,
+    "height": 2800,
+    "wallColor": "#f3f1ec",
+    "floorColor": "#d8d4cc"
+  },
+  "ui": {
+    "language": "ru",
+    "theme": "dark"
+  },
+  "defaults": {
+    "washerClearance": 15
+  },
+  "modules": [],
+  "fixtures": [],
+  "countertop": {
+    "enabled": true,
+    "depth": 620,
+    "thickness": 20,
+    "overhang": 0,
+    "decor": "marble",
+    "color": "#e7e5dd",
+    "gloss": false,
+    "lengthMode": "auto",
+    "length": 1700,
+    "offsetX": 0
+  }
+}
