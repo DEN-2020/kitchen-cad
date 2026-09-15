@@ -1,0 +1,35 @@
+/* v28 — compact, sectioned mobile editor */
+.bottomNav:not(.focusNav){grid-template-columns:repeat(5,minmax(0,1fr));gap:1px}
+.bottomNav:not(.focusNav) button{min-width:0;padding:2px 1px;font-size:8.5px}
+.bottomNav:not(.focusNav) button svg{width:20px;height:20px}
+.inspectorBody{padding:7px 8px 16px;scrollbar-width:thin}
+.inspectorBody section{margin:0 0 8px;padding:8px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--panel2) 72%,transparent)}
+.inspectorBody section>h3:first-child{margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.015em}
+.dimensionGrid,.twoGrid,.optionGrid{gap:5px}
+.numberField,.field{font-size:9px}
+.fieldCaption{min-height:15px;font-size:8px;line-height:1.05}
+.numberField.compact input,.field input,.field select{height:34px;margin-top:2px;padding-left:7px;padding-right:7px;border-radius:8px;font-size:12px}
+.field select{font-size:10px}
+.segmented{display:flex;flex-wrap:nowrap;gap:5px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;padding-bottom:2px}
+.segmented::-webkit-scrollbar{display:none}
+.segmented button{flex:0 0 auto;min-height:34px;padding:5px 9px;scroll-snap-align:start;white-space:nowrap}
+.doorOverrides{display:flex;grid-template-columns:none;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:3px;scroll-snap-type:x proximity}
+.doorOverrides::-webkit-scrollbar{display:none}
+.doorOverride{flex:0 0 min(170px,72vw);padding:7px;scroll-snap-align:start}
+.doorOverride .field+.field{margin-top:4px}
+.settingsList{gap:5px}.settingsList button{min-height:38px;margin-bottom:0;padding:0 8px}.settingsList span,.settingsList b{font-size:10px}
+.rangeRow{gap:6px;font-size:10px;margin:4px 0}
+.note,.empty{font-size:10px;line-height:1.35}
+.costBreakdown{display:grid;gap:4px}.costBreakdown small{display:flex;justify-content:space-between;gap:6px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);font-size:9px}
+@media(max-width:430px){
+ .editor{--sheet-height:min(52%,410px)}
+ .dimensionGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .twoGrid,.optionGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+ .inspectorHead{min-height:40px;padding:4px 8px}.inspectorHead b{font-size:13px}
+ .bottomNav{min-height:58px;padding-left:3px;padding-right:3px}
+ .bottomNav:not(.focusNav) button{min-height:47px;gap:2px}
+}
+@media(max-width:350px){
+ .bottomNav:not(.focusNav) button span{font-size:7.5px}
+ .dimensionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

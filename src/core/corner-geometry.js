@@ -1,0 +1,4 @@
+const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
+export function cornerRunDepth(module){const wall=String(module?.type||'').includes('Wall');const fallback=wall?320:600;const v=num(module?.cornerRunDepth,0);return v>0?v:fallback}
+export function cornerFootprintStatus(module){const run=cornerRunDepth(module),a=num(module?.width),b=num(module?.depth),type=String(module?.type||''),corner=type.includes('corner')||type.includes('Corner'),diagonal=type.includes('Diagonal');const ra=a-run,rb=b-run,valid=!corner||(ra>0&&rb>0),angle=diagonal&&valid?Math.atan2(rb,ra)*180/Math.PI:null;return{runDepth:run,sideA:a,sideB:b,returnA:ra,returnB:rb,valid,angle,isNear45:angle==null?false:Math.abs(angle-45)<=5}}
+export function suggestedCornerFootprint(runDepth=600){const run=Math.max(150,num(runDepth,600));return Math.round(run*1.5)}
