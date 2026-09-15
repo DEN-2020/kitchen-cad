@@ -31,7 +31,7 @@ export function AppV2(){
  const t=(key:any)=>tr(lang,key);
  const dark=project.ui?.theme!=='light';
  const view=(project.ui?.view||'3d') as ViewMode;
- useEffect(()=>saveEditorProject(project),[project]);
+ useEffect(()=>{saveEditorProject(project)},[project]);
  useEffect(()=>{document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#111a1f':'#f6f9fa')},[dark]);
  useEffect(()=>{if(!fixtureTargetId||!floorTargets.some((m:any)=>m.id===fixtureTargetId))setFixtureTargetId(floorTargets[0]?.id||'')},[fixtureTargetId,model.modules.length]);
  const select=(s:Selection)=>{setSelection(s);if(!s&&!focusId){setPanel(null);setDetail('none')}};
