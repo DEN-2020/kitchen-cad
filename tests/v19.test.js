@@ -7,7 +7,7 @@ test('v19 corner catalog exposes blind, diagonal and L-shaped variants',()=>{
  const base=CATALOG_GROUPS.find(g=>g.id==='base-corner');
  const wall=CATALOG_GROUPS.find(g=>g.id==='wall-corner');
  assert.deepEqual(base.types,['cornerBaseBlind','cornerBaseDiagonal','cornerBaseL']);
- assert.deepEqual(wall.types,['cornerWallDiagonal','cornerWallL']);
+ assert.deepEqual(wall.types,['cornerWallBlind','cornerWallDiagonal','cornerWallL']);
  for(const type of [...base.types,...wall.types])assert.equal(isCornerType(type),true);
  assert.equal(isWallMountedType('cornerWallDiagonal'),true);
 });

@@ -62,11 +62,27 @@ buildProject
 Нужен Node.js 22.16+.
 
 ```powershell
+npm ci
 npm test
 npm run build
 ```
 
 GitHub Pages публикуется workflow-файлом `.github/workflows/pages.yml` после push в `main`.
+
+## Cloudflare Pages
+
+Покупать домен не обязательно: Cloudflare выдаёт проекту адрес вида
+`https://<project>.pages.dev`. Для Git-интеграции используйте:
+
+- production branch: `main`;
+- build command: `npm run build`;
+- output directory: `dist`;
+- environment variable: `NODE_VERSION=22.16.0`.
+
+Сборка использует относительные пути к ресурсам, поэтому один и тот же `dist`
+работает на GitHub Pages, Cloudflare Pages и preview-адресах. Cloudflare Tunnel
+лучше оставить для временного показа локального dev-сервера, а не для постоянного
+размещения приложения.
 
 ## 3D assets
 
