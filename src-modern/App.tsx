@@ -86,6 +86,7 @@ import {
 import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
 import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
 import { applianceBayMeasurements } from "../src/core/appliance-bay.js";
+import { auditProductionReadiness } from "../src/core/production-audit.js";
 import { useProjectHistory } from "./state/useProjectHistory";
 
 type Panel =
@@ -376,6 +377,10 @@ export function App() {
     () => estimateProjectCost(project, model),
     [project, model],
   );
+  const productionAudit = useMemo(
+    () => auditProductionReadiness(project, model, cost),
+    [project, model, cost],
+  );
   const furnitureModules = model.modules.filter(
       (module: any) => !isDisplayOnlyType(module.type),
     ),
@@ -548,11 +553,26 @@ export function App() {
       patchCost({
         materialPrices: { ...cost.settings.materialPrices, [id]: price },
       }),
+    patchHardwarePrice = (id: string, price: number) =>
+      patchCost({
+        hardwarePrices: { ...cost.settings.hardwarePrices, [id]: price },
+      }),
     applyCostPreset = (id: keyof typeof COST_PRESETS) =>
       setProject((p: any) => applyMaterialPreset(p, id)),
     patchRoom = (patch: any) =>
       setProject((p: any) => ({ ...p, room: { ...p.room, ...patch } })),
-    patchUi = (patch: any) => setProject((p: any) => updateUi(p, patch));
+    patchUi = (patch: any) => setProject((p: any) => updateUi(p, patch)),
+    guardProductionExport = (action: () => void) => {
+      if (
+        productionAudit.ready ||
+        window.confirm(
+          lang === "ru"
+            ? `Проект содержит блокирующие проверки: ${productionAudit.blockers.length}. Экспортировать как черновик?`
+            : `The project has ${productionAudit.blockers.length} blocking checks. Export a draft anyway?`,
+        )
+      )
+        action();
+    };
   const remove = () => {
       if (selectedModuleId) {
         setProject((p: any) => deleteModule(p, selectedModuleId));
@@ -1282,13 +1302,13 @@ export function App() {
                 </h3>
                 <div className="projectStats">
                   <div>
-                    <b>{Math.round(cost.total).toLocaleString()}</b>
-                    <span>EGP</span>
+                    <b>{Math.round(cost.procurementTotal).toLocaleString()}</b>
+                    <span>{lang === "ru" ? "EGP к закупке" : "EGP purchase"}</span>
                   </div>
                   <div>
                     <b>
-                      {Math.round(cost.rangeLow).toLocaleString()}–
-                      {Math.round(cost.rangeHigh).toLocaleString()}
+                      {Math.round(cost.procurementRangeLow).toLocaleString()}–
+                      {Math.round(cost.procurementRangeHigh).toLocaleString()}
                     </b>
                     <span>
                       {lang === "ru"
@@ -1311,11 +1331,32 @@ export function App() {
                 </div>
                 <p className="note">
                   {lang === "ru"
-                    ? `Считается вся кухня: ${furnitureModuleCount} мебельных модулей. Цена нормализована на м², а листы показаны отдельно как ориентир закупки.`
+                    ? `Считается вся кухня: ${furnitureModuleCount} мебельных модулей. Главный итог использует реально покупаемые целые листы; стоимость израсходованной площади — ${Math.round(cost.consumedTotal).toLocaleString()} EGP.`
                     : lang === "ar"
                       ? "يتم حساب المطبخ كاملاً، وتُفصل الألواح حسب الخامة واللون والسماكة."
-                      : `Whole-kitchen estimate for ${furnitureModuleCount} furniture modules. Cost uses EGP/m²; sheet counts are purchasing guidance.`}
+                      : `Whole-kitchen estimate for ${furnitureModuleCount} furniture modules. The main total uses whole sheets; consumed-area cost is ${Math.round(cost.consumedTotal).toLocaleString()} EGP.`}
                 </p>
+                <div className={productionAudit.ready ? "fitStatus ok" : "fitStatus bad"}>
+                  <b>
+                    {productionAudit.ready
+                      ? lang === "ru" ? "Проверки пройдены" : "Checks passed"
+                      : lang === "ru" ? `Не готово к производству · ${productionAudit.blockers.length}` : `Not production-ready · ${productionAudit.blockers.length}`}
+                  </b>
+                  <span>
+                    {lang === "ru"
+                      ? `Предупреждений: ${productionAudit.warnings.length}. Экспорт с блокерами помечается как черновой.`
+                      : `Warnings: ${productionAudit.warnings.length}. Exports with blockers are drafts.`}
+                  </span>
+                </div>
+                {!productionAudit.ready && (
+                  <div className="productionFindings">
+                    {productionAudit.blockers.slice(0, 6).map((item: any, index: number) => (
+                      <p className="warning" key={`${item.code}-${item.moduleId || index}`}>
+                        {item.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </section>
               <section>
                 <h3>
@@ -1585,6 +1626,32 @@ export function App() {
                     onCommit={(n) => patchCost({ uncertaintyPercent: n })}
                   />
                 </div>
+                {!!cost.hardwareBill.length && (
+                  <details className="materialPriceDetails">
+                    <summary>
+                      {lang === "ru" ? "Фурнитура по количеству" : "Hardware quantities"}
+                    </summary>
+                    <div className="dimensionGrid">
+                      {cost.hardwareBill.map((row: any) => (
+                        <NumberField
+                          key={row.id}
+                          compact
+                          label={`${row.name} · ${row.quantity} ${row.unit}`}
+                          value={row.unitPrice}
+                          unit="EGP"
+                          min={0}
+                          max={50000}
+                          onCommit={(n) => patchHardwarePrice(row.id, n)}
+                        />
+                      ))}
+                    </div>
+                    <p className="note">
+                      {lang === "ru"
+                        ? "Количество считается автоматически. Поле «Фурнитура» выше остаётся резервом на позиции, которых ещё нет в каталоге."
+                        : "Quantities are automatic. The fixed hardware field remains an allowance for uncatalogued items."}
+                    </p>
+                  </details>
+                )}
               </section>
               <section>
                 <h3>
@@ -1595,6 +1662,14 @@ export function App() {
                       : "Breakdown"}
                 </h3>
                 <div className="costBreakdown">
+                  <small>
+                    {lang === "ru" ? "Итого к закупке" : "Purchase total"}: {" "}
+                    <b>{Math.round(cost.procurementTotal).toLocaleString()} EGP</b>
+                  </small>
+                  <small>
+                    {lang === "ru" ? "Израсходованный материал и работы" : "Consumed material & work"}: {" "}
+                    <b>{Math.round(cost.consumedTotal).toLocaleString()} EGP</b>
+                  </small>
                   <small>
                     {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
                     : {cost.body.pricedArea.toFixed(2)} м² ={" "}
@@ -1697,11 +1772,7 @@ export function App() {
                     {lang === "ru"
                       ? "Листы по фактическим материалам"
                       : "Sheets by actual material"}
-                    <span>
-                      {(cost.body.batches?.length || 0) +
-                        (cost.front.batches?.length || 0) +
-                        (cost.back.batches?.length || 0)}
-                    </span>
+                    <span>{cost.sheetCount}</span>
                   </summary>
                   <div className="costStockList">
                     {[
@@ -1763,7 +1834,7 @@ export function App() {
                 </h3>
                 <div className="projectStats">
                   <div>
-                    <b>{Math.round(cost.total).toLocaleString()}</b>
+                    <b>{Math.round(cost.procurementTotal).toLocaleString()}</b>
                     <span>EGP</span>
                   </div>
                   <div>
@@ -1789,11 +1860,19 @@ export function App() {
                 </div>
                 <p className="note">
                   {lang === "ru"
-                    ? `Ориентир: ${Math.round(cost.rangeLow).toLocaleString()}–${Math.round(cost.rangeHigh).toLocaleString()} EGP. Цена приблизительная и зависит от раскроя/цеха.`
+                    ? `Закупка: ${Math.round(cost.procurementRangeLow).toLocaleString()}–${Math.round(cost.procurementRangeHigh).toLocaleString()} EGP. Расход по площади: ${Math.round(cost.consumedTotal).toLocaleString()} EGP.`
                     : lang === "ar"
-                      ? `تقريباً ${Math.round(cost.rangeLow).toLocaleString()}–${Math.round(cost.rangeHigh).toLocaleString()} EGP`
-                      : `Approx. ${Math.round(cost.rangeLow).toLocaleString()}–${Math.round(cost.rangeHigh).toLocaleString()} EGP.`}
+                      ? `تقريباً ${Math.round(cost.procurementRangeLow).toLocaleString()}–${Math.round(cost.procurementRangeHigh).toLocaleString()} EGP`
+                      : `Purchase estimate ${Math.round(cost.procurementRangeLow).toLocaleString()}–${Math.round(cost.procurementRangeHigh).toLocaleString()} EGP.`}
                 </p>
+                <div className={productionAudit.ready ? "fitStatus ok" : "fitStatus bad"}>
+                  <b>
+                    {productionAudit.ready
+                      ? lang === "ru" ? "Готово по автоматическим проверкам" : "Automated checks passed"
+                      : lang === "ru" ? `Блокирующих проверок: ${productionAudit.blockers.length}` : `Blocking checks: ${productionAudit.blockers.length}`}
+                  </b>
+                  <span>{lang === "ru" ? `Предупреждений: ${productionAudit.warnings.length}` : `Warnings: ${productionAudit.warnings.length}`}</span>
+                </div>
                 <div className="segmented costPresetSelector">
                   <button
                     type="button"
@@ -2126,7 +2205,7 @@ export function App() {
                           : "Import JSON"}
                     </span>
                   </button>
-                  <button onClick={() => downloadCsv(model)}>
+                  <button onClick={() => guardProductionExport(() => downloadCsv(model))}>
                     <DownloadIcon />
                     <span>{t("csv")}</span>
                   </button>
@@ -2136,7 +2215,7 @@ export function App() {
                   </button>
                   <button
                     className="primary wide"
-                    onClick={() => printReport(project, model)}
+                    onClick={() => guardProductionExport(() => printReport(project, model))}
                   >
                     <PrintIcon />
                     <span>{t("pdf")}</span>
@@ -2157,6 +2236,13 @@ export function App() {
                       ? "يتحقق الاستيراد من تنسيق الملف وإصداره قبل استبدال المشروع."
                       : "Import validates the file format and version. PDF includes the project overview and cabinet detail sheets."}
                 </p>
+                {!productionAudit.ready && (
+                  <p className="warning">
+                    {lang === "ru"
+                      ? `Производственный экспорт содержит ${productionAudit.blockers.length} блокирующих проверок. CSV/PDF можно выгрузить только как черновик после подтверждения.`
+                      : `Production export has ${productionAudit.blockers.length} blocking checks. CSV/PDF can only be exported as a confirmed draft.`}
+                  </p>
+                )}
               </section>
               {model.warnings.slice(0, 8).map((w: string, i: number) => (
                 <div className="warning" key={i}>
@@ -2520,7 +2606,11 @@ export function App() {
                   </section>
                   <div className="exportGrid">
                     <button
-                      onClick={() => downloadCsv(model, selectedModule.id)}
+                      onClick={() =>
+                        guardProductionExport(() =>
+                          downloadCsv(model, selectedModule.id),
+                        )
+                      }
                     >
                       <DownloadIcon />
                       <span>{t("moduleCsv")}</span>
@@ -2536,7 +2626,9 @@ export function App() {
                     <button
                       className="primary wide"
                       onClick={() =>
-                        printReport(project, model, selectedModule.id)
+                        guardProductionExport(() =>
+                          printReport(project, model, selectedModule.id),
+                        )
                       }
                     >
                       <PrintIcon />
