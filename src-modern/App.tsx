@@ -314,7 +314,10 @@ export function App() {
           : lang === "ar"
             ? "تم الحفظ"
             : "Saved";
-  const actualDoorCount = selectedModule
+  const frontsEnabled = selectedModule
+      ? selectedModule.type === "drawer" || selectedModule.frontEnabled !== false
+      : false,
+    actualDoorCount = selectedModule && frontsEnabled
     ? ["cornerBaseBlind", "cornerWallBlind"].includes(selectedModule.type)
       ? 1
       : ["cornerBaseL", "cornerWallL"].includes(selectedModule.type)
@@ -326,7 +329,8 @@ export function App() {
             : selectedModule.width > 650
               ? 2
               : 1
-    : 0;
+    : 0,
+    selectedFrontParts = parts.filter((part: any) => part.role === "front");
   useEffect(() => {
     setSaveStatus("saving");
     const timer = window.setTimeout(() => {
@@ -2594,14 +2598,14 @@ export function App() {
                         max={30}
                         onCommit={(n) => patchModule({ board: n })}
                       />
-                      <NumberField
+                      {frontsEnabled && <NumberField
                         compact
                         label={lang === "ru" ? "Фасад" : "Front"}
                         value={selectedModule.frontThickness}
                         min={12}
                         max={30}
                         onCommit={(n) => patchModule({ frontThickness: n })}
-                      />
+                      />}
                       <NumberField
                         compact
                         label={
@@ -2758,7 +2762,9 @@ export function App() {
                       <div className="cornerConstructionNote">
                         <span className="fieldCaption">
                           {lang === "ru"
-                            ? "Сторона дверцы и проёма"
+                            ? frontsEnabled
+                              ? "Сторона проёма и фасада"
+                              : "Сторона проёма"
                             : "Door and opening side"}
                         </span>
                         <div
@@ -2766,7 +2772,9 @@ export function App() {
                           role="group"
                           aria-label={
                             lang === "ru"
-                              ? "Сторона дверцы глухого углового модуля"
+                              ? frontsEnabled
+                                ? "Сторона фасада глухого углового модуля"
+                                : "Сторона проёма глухого углового модуля"
                               : "Blind-corner door side"
                           }
                         >
@@ -2792,11 +2800,21 @@ export function App() {
                               }
                             >
                               {lang === "ru"
-                                ? `Дверца ${side === "left" ? "слева" : "справа"}`
-                                : `Door ${side}`}
+                                ? `${frontsEnabled ? "Фасад" : "Проём"} ${side === "left" ? "слева" : "справа"}`
+                                : `${frontsEnabled ? "Front" : "Opening"} ${side}`}
                             </button>
                           ))}
                         </div>
+                        <NumberField
+                          compact
+                          label={lang === "ru" ? "Стойка петель" : "Hinge stile"}
+                          value={selectedModule.cornerMuntinWidth || 70}
+                          min={28}
+                          max={150}
+                          onCommit={(n) =>
+                            patchModule({ cornerMuntinWidth: n })
+                          }
+                        />
                         <b>
                           {lang === "ru"
                             ? "Как устроен глухой угол"
@@ -2804,14 +2822,14 @@ export function App() {
                         </b>
                         <span>
                           {lang === "ru"
-                            ? `Дверца и доступный проём ${selectedModule.cornerOpening || 0} мм сейчас ${selectedModule.cornerOpeningSide === "left" ? "слева" : "справа"}. Глухая часть с другой стороны — стенка корпуса, не дверца.`
-                            : `The ${selectedModule.cornerOpening || 0} mm door opening is on the ${selectedModule.cornerOpeningSide === "left" ? "left" : "right"}. The opposite blind section is a body panel.`}
+                            ? `Доступный проём ${selectedModule.cornerOpening || 0} мм сейчас ${selectedModule.cornerOpeningSide === "left" ? "слева" : "справа"}. Между ним и глухой панелью стоит узкая монтажная стойка ${selectedModule.cornerMuntinWidth || 70} мм — к ней крепятся специальные петли глухого угла. Полной перегородки в глубину нет, поэтому доступ в угловую зону не перекрывается.`
+                            : `The ${selectedModule.cornerOpening || 0} mm access opening is on the ${selectedModule.cornerOpeningSide === "left" ? "left" : "right"}. A ${selectedModule.cornerMuntinWidth || 70} mm mounting stile between the opening and blind panel carries the blind-corner hinges without blocking the storage zone.`}
                         </span>
-                        <span>
+                        {frontsEnabled && <span>
                           {lang === "ru"
                             ? `Фасад накладной: между корпусом и дверцей ${selectedModule.gap || 0} мм, поэтому лицевая плоскость выступает примерно на ${(selectedModule.gap || 0) + (selectedModule.frontThickness || 0)} мм — это нормально.`
                             : `The overlay door sits ${selectedModule.gap || 0} mm off the body, so its face projects about ${(selectedModule.gap || 0) + (selectedModule.frontThickness || 0)} mm.`}
-                        </span>
+                        </span>}
                         {selectedModule.type === "cornerBaseBlind" && (
                           <>
                             <span>
@@ -2878,34 +2896,67 @@ export function App() {
                             patchModule({ shelfCount: Math.round(n) })
                           }
                         />
-                        <NumberField
+                        {frontsEnabled && <NumberField
                           compact
                           label={lang === "ru" ? "Зазор фасада" : "Front gap"}
                           value={selectedModule.gap}
                           min={1}
                           max={8}
                           onCommit={(n) => patchModule({ gap: n })}
-                        />
+                        />}
                       </div>
                     )}
                   </section>
                   <section>
                     <h3>{t("facade")}</h3>
-                    <div className="segmented">
-                      {Object.keys(FRONT_STYLES).map((k) => (
+                    {selectedModule.type !== "drawer" && (
+                      <div
+                        className="segmented frontPresence"
+                        role="group"
+                        aria-label={lang === "ru" ? "Наличие фасада" : "Front presence"}
+                      >
                         <button
-                          key={k}
-                          className={
-                            selectedModule.frontStyle === k ? "active" : ""
-                          }
-                          onClick={() => patchModule({ frontStyle: k })}
+                          type="button"
+                          className={frontsEnabled ? "active" : ""}
+                          aria-pressed={frontsEnabled}
+                          onClick={() => patchModule({ frontEnabled: true })}
                         >
-                          {frontLabel(lang, k)}
+                          {lang === "ru" ? "С фасадом" : "With front"}
                         </button>
-                      ))}
-                    </div>
+                        <button
+                          type="button"
+                          className={!frontsEnabled ? "active" : ""}
+                          aria-pressed={!frontsEnabled}
+                          onClick={() => patchModule({ frontEnabled: false })}
+                        >
+                          {lang === "ru" ? "Без фасада" : "Open front"}
+                        </button>
+                      </div>
+                    )}
+                    {!frontsEnabled && (
+                      <p className="note openFrontNote">
+                        {lang === "ru"
+                          ? "Фасад, ручка и петли исключены из 3D, деталировки и сметы. Корпус, полки и угловая монтажная стойка остаются."
+                          : "The front, handle and hinges are excluded from 3D, parts and cost; the carcass, shelves and corner mounting stile remain."}
+                      </p>
+                    )}
+                    {frontsEnabled && (
+                      <div className="segmented">
+                        {Object.keys(FRONT_STYLES).map((k) => (
+                          <button
+                            key={k}
+                            className={
+                              selectedModule.frontStyle === k ? "active" : ""
+                            }
+                            onClick={() => patchModule({ frontStyle: k })}
+                          >
+                            {frontLabel(lang, k)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div className="optionGrid">
-                      <label className="field">
+                      {frontsEnabled && <label className="field">
                         {t("handles")}
                         <select
                           value={selectedModule.handleStyle}
@@ -2919,7 +2970,7 @@ export function App() {
                             </option>
                           ))}
                         </select>
-                      </label>
+                      </label>}
                       {!isWallMountedType(selectedModule.type) && (
                         <label className="field">
                           {t("legs")}
@@ -2937,7 +2988,7 @@ export function App() {
                           </select>
                         </label>
                       )}
-                      {selectedModule.type !== "drawer" &&
+                      {frontsEnabled && selectedModule.type !== "drawer" &&
                         ![
                           "cornerBaseBlind",
                           "cornerWallBlind",
@@ -2971,6 +3022,7 @@ export function App() {
                             : "Hidden means adjustable feet behind a plinth. At 0 mm the carcass sits directly on the floor."}
                       </p>
                     )}
+                    {frontsEnabled && <>
                     <h3>
                       {lang === "ru" ? "Выступ фасада" : "Front overhang"}
                     </h3>
@@ -3010,11 +3062,12 @@ export function App() {
                         onCommit={(n) => patchModule({ frontOverhangRight: n })}
                       />
                     </div>
+                    </>}
                   </section>
                   <section>
                     <h3>{t("materials")}</h3>
                     <div className="optionGrid">
-                      <label className="field">
+                      {frontsEnabled && <label className="field">
                         {lang === "ru" ? "Основа фасада" : "Front substrate"}
                         <select
                           value={selectedModule.frontSubstrate}
@@ -3030,7 +3083,7 @@ export function App() {
                               </option>
                             ))}
                         </select>
-                      </label>
+                      </label>}
                       <label className="field">
                         {lang === "ru" ? "Основа корпуса" : "Body substrate"}
                         <select
@@ -3049,7 +3102,7 @@ export function App() {
                         </select>
                       </label>
                     </div>
-                    <DecorPicker
+                    {frontsEnabled && <DecorPicker
                       label={
                         lang === "ru"
                           ? "Декор фасадов"
@@ -3077,7 +3130,7 @@ export function App() {
                           ),
                         })
                       }
-                    />
+                    />}
                     <DecorPicker
                       label={
                         lang === "ru"
@@ -3099,6 +3152,7 @@ export function App() {
                         patchModule({ bodyColor })
                       }
                     />
+                    {frontsEnabled && <>
                     <p className="note materialHelp">
                       {lang === "ru"
                         ? "Образец задаёт рисунок и стартовый цвет. «Оттенок» перекрашивает этот же рисунок. Общая настройка применяется ко всем фасадам."
@@ -3186,7 +3240,12 @@ export function App() {
                         </p>
                         <div className="doorOverrides">
                           {Array.from({ length: actualDoorCount }, (_, i) => {
-                            const ov = selectedModule.frontOverrides?.[i] || {};
+                            const ov = selectedModule.frontOverrides?.[i] || {},
+                              renderedFront = selectedFrontParts[i],
+                              blindCornerFront = [
+                                "cornerBaseBlind",
+                                "cornerWallBlind",
+                              ].includes(selectedModule.type);
                             return (
                               <div className="doorOverride" key={i}>
                                 <b>
@@ -3251,13 +3310,17 @@ export function App() {
                                 </label>
                                 <label className="field">
                                   {lang === "ru"
-                                    ? "Петли"
+                                    ? blindCornerFront
+                                      ? "Петли по стойке"
+                                      : "Петли"
                                     : lang === "ar"
                                       ? "المفصلات"
                                       : "Hinges"}
                                   <select
+                                    disabled={blindCornerFront}
                                     value={
                                       ov.hingeSide ||
+                                      renderedFront?.hingeSide ||
                                       (actualDoorCount === 1
                                         ? "left"
                                         : i === 0
@@ -3320,6 +3383,7 @@ export function App() {
                         </div>
                       </details>
                     )}
+                    </>}
                   </section>
                   {!focusId && (
                     <button className="focusBtn" onClick={enterFocus}>

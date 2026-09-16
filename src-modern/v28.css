@@ -282,6 +282,10 @@
 .cornerConstructionNote .fieldCaption{min-height:0;margin:0;color:var(--muted)}
 .cornerSideSelector{margin-bottom:2px}
 .cornerSideSelector button{flex:1}
+.cornerConstructionNote .numberField{max-width:180px}
+.frontPresence{width:max-content;max-width:100%;margin-bottom:7px;padding:2px;border-radius:8px;background:var(--surface-raised)}
+.frontPresence button{min-width:106px;border-color:transparent}
+.openFrontNote{margin:0 0 8px;padding:7px 8px;border-left:3px solid var(--accent);border-radius:4px;background:var(--surface-raised)}
 .cornerSinkAction{
  min-height:36px;
  padding:0 10px;
