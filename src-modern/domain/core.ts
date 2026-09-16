@@ -16,15 +16,16 @@ import {
   DECORS,
   isDisplayOnlyType,
   isWallMountedType,
+  modulePlacementPolicy,
 } from "../../src/catalog/materials.js";
 import {
   buildCountertopSegments,
   countertopSegmentForModule,
 } from "../../src/core/countertop-segments.js";
 import {
-  wallSnapPose,
   clampPoseToRoom,
   normalizeRotation,
+  resolvePlacementPose,
 } from "../../src/core/placement.js";
 export type Selection =
   | { kind: "module"; id: string }
@@ -55,6 +56,8 @@ export function createEditorProject() {
     showGrid: true,
     showRoomDimensions: true,
     showAllModuleDimensions: false,
+    doorsOpen: false,
+    autoOrbit: false,
   };
   p.defaults = { ...defaultStyle(), ...(p.defaults || {}) };
   return p;
@@ -74,6 +77,8 @@ export function normalizeEditorProject(raw: any) {
     p.ui.showRoomDimensions = true;
   if (typeof p.ui.showAllModuleDimensions !== "boolean")
     p.ui.showAllModuleDimensions = false;
+  if (typeof p.ui.doorsOpen !== "boolean") p.ui.doorsOpen = false;
+  if (typeof p.ui.autoOrbit !== "boolean") p.ui.autoOrbit = false;
   if (typeof p.ui.autoRotateToWall !== "boolean") p.ui.autoRotateToWall = true;
   p.defaults = { ...defaultStyle(), ...(p.defaults || {}) };
   for (const m of p.modules || []) {
@@ -170,7 +175,7 @@ export function deriveModel(project: any) {
       role: "countertop",
       moduleId: null,
       appearance: {
-        pattern: "stone",
+        pattern: DECORS[p.countertop?.decor]?.pattern || "stone",
         color: p.countertop?.color || "#e7e5dd",
         gloss: !!p.countertop?.gloss,
       },
@@ -385,18 +390,6 @@ export function removeFixture(project: any, id: string) {
   p.fixtures = (p.fixtures || []).filter((f: any) => f.id !== id);
   return p;
 }
-const snap = (v: number, c: number[], d = 60) => {
-  let best = v,
-    bd = d + 1;
-  for (const x of c) {
-    const q = Math.abs(v - x);
-    if (q < bd) {
-      best = x;
-      bd = q;
-    }
-  }
-  return bd <= d ? best : Math.round(v / 50) * 50;
-};
 export function snapModuleAbsolute(
   project: any,
   id: string,
@@ -409,42 +402,38 @@ export function snapModuleAbsolute(
     src = p.modules.find((x: any) => x.id === id);
   if (!m || !src) return p;
   const proposedCenterX = xAbs + m.width / 2,
-    proposedCenterZ = zAbs + m.depth / 2;
-  if (p.ui?.autoRotateToWall !== false && !isWallMountedType(m.type)) {
-    const pose = wallSnapPose({
+    proposedCenterZ = zAbs + m.depth / 2,
+    policy = modulePlacementPolicy(m.type),
+    pose = resolvePlacementPose({
       roomWidth: p.room.width,
       roomDepth: p.room.depth,
       moduleWidth: m.width,
       moduleDepth: m.depth,
+      rotationY: m.rotationY || 0,
       centerX: proposedCenterX,
       centerZ: proposedCenterZ,
-      threshold: 180,
+      autoRotate: p.ui?.autoRotateToWall !== false,
+      snapToWall: policy.snapToWall,
+      wallThreshold: 180,
       grid: 50,
-    });
-    if (pose) {
-      src.rotationY = pose.rotationY;
-      const targetX = pose.centerX - m.width / 2,
-        targetZ = pose.centerZ - m.depth / 2,
-        nominal = m.x - (src.offsetX || 0);
-      src.offsetX = Math.round(targetX - nominal);
-      src.offsetZ = Math.round(targetZ);
-      return p;
-    }
-  }
-  const xs = [0, p.room.width - m.width],
-    zs = [0, p.room.depth - m.depth];
-  for (const n of model.modules) {
-    if (n.id === id || isWallMountedType(n.type)) continue;
-    if (zAbs < n.z + n.depth + 80 && zAbs + m.depth > n.z - 80)
-      xs.push(n.x + n.width, n.x - m.width, n.x);
-    if (xAbs < n.x + n.width + 80 && xAbs + m.width > n.x - 80)
-      zs.push(n.z + n.depth, n.z - m.depth, n.z);
-  }
-  const x = snap(xAbs, xs),
-    z = snap(zAbs, zs),
+      layer: policy.layer,
+      neighbors: model.modules
+        .filter((n: any) => n.id !== id)
+        .map((n: any) => ({
+          width: n.width,
+          depth: n.depth,
+          rotationY: n.rotationY || 0,
+          centerX: n.x + n.width / 2,
+          centerZ: n.z + n.depth / 2,
+          layer: modulePlacementPolicy(n.type).layer,
+        })),
+    }),
+    targetX = pose.centerX - m.width / 2,
+    targetZ = pose.centerZ - m.depth / 2,
     nominal = m.x - (src.offsetX || 0);
-  src.offsetX = Math.round(x - nominal);
-  src.offsetZ = Math.round(z);
+  src.rotationY = pose.rotationY;
+  src.offsetX = Math.round(targetX - nominal);
+  src.offsetZ = Math.round(targetZ);
   return p;
 }
 export function rotateModule(project: any, id: string, rotationY: number) {

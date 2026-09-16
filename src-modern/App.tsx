@@ -698,6 +698,40 @@ export function App() {
             >
               {t("top")}
             </button>
+            <button
+              type="button"
+              className={project.ui?.doorsOpen ? "active" : ""}
+              aria-label={
+                lang === "ru"
+                  ? project.ui?.doorsOpen
+                    ? "Закрыть все дверцы"
+                    : "Открыть все дверцы"
+                  : project.ui?.doorsOpen
+                    ? "Close all doors"
+                    : "Open all doors"
+              }
+              title={lang === "ru" ? "Все дверцы" : "All doors"}
+              aria-pressed={!!project.ui?.doorsOpen}
+              onClick={() => patchUi({ doorsOpen: !project.ui?.doorsOpen })}
+            >
+              ◫
+            </button>
+            <button
+              type="button"
+              className={project.ui?.autoOrbit ? "active" : ""}
+              aria-label={
+                lang === "ru"
+                  ? "Плавное вращение камеры"
+                  : "Smooth camera rotation"
+              }
+              title={lang === "ru" ? "Режим стенда" : "Showroom mode"}
+              aria-pressed={!!project.ui?.autoOrbit}
+              onClick={() =>
+                patchUi({ autoOrbit: !project.ui?.autoOrbit, view: "3d" })
+              }
+            >
+              ↻
+            </button>
             {!focusId && (
               <>
                 <button
@@ -1128,8 +1162,8 @@ export function App() {
                 <p className="note costPresetNote">
                   {lang === "ru"
                     ? activeCostPreset
-                      ? "Активный сценарий подсвечен. Он задаёт цену листа корпуса и фасада для всей кухни."
-                      : "Используются свои цены. Визуальный декор разделяет листы, но цену автоматически не меняет."
+                      ? "Активный сценарий задаёт цены корпуса, матового и глянцевого фасада для всей кухни."
+                      : "Используются свои цены. Декор, оттенок и финиш разделяют материал на разные листы."
                     : activeCostPreset
                       ? "The active scenario is highlighted and prices all body/front sheets."
                       : "Custom prices are active. Visual decor separates sheets but does not set their price automatically."}
@@ -1154,16 +1188,31 @@ export function App() {
                     compact
                     label={
                       lang === "ru"
-                        ? "Лист фасада"
+                        ? "Матовый фасад/лист"
                         : lang === "ar"
                           ? "لوح الواجهة"
-                          : "Front sheet"
+                          : "Matte front sheet"
                     }
                     value={cost.settings.frontSheetPrice}
                     unit="EGP"
                     min={0}
                     max={50000}
                     onCommit={(n) => patchCost({ frontSheetPrice: n })}
+                  />
+                  <NumberField
+                    compact
+                    label={
+                      lang === "ru"
+                        ? "Глянцевый фасад/лист"
+                        : lang === "ar"
+                          ? "لوح واجهة لامع"
+                          : "Gloss front sheet"
+                    }
+                    value={cost.settings.glossFrontSheetPrice}
+                    unit="EGP"
+                    min={0}
+                    max={50000}
+                    onCommit={(n) => patchCost({ glossFrontSheetPrice: n })}
                   />
                   <NumberField
                     compact
@@ -1349,15 +1398,16 @@ export function App() {
                     : {cost.body.sheets} × {cost.settings.bodySheetPrice} ={" "}
                     <b>{Math.round(cost.body.cost).toLocaleString()} EGP</b>
                   </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Фасады"
-                      : lang === "ar"
-                        ? "واجهات"
-                        : "Fronts"}
-                    : {cost.front.sheets} × {cost.settings.frontSheetPrice} ={" "}
-                    <b>{Math.round(cost.front.cost).toLocaleString()} EGP</b>
-                  </small>
+                  {!!cost.front.matte.sheets && <small>
+                    {lang === "ru" ? "Фасады · матовые" : lang === "ar" ? "واجهات مطفية" : "Fronts · matte"}
+                    : {cost.front.matte.sheets} × {cost.settings.frontSheetPrice} ={" "}
+                    <b>{Math.round(cost.front.matte.cost).toLocaleString()} EGP</b>
+                  </small>}
+                  {!!cost.front.gloss.sheets && <small>
+                    {lang === "ru" ? "Фасады · глянец" : lang === "ar" ? "واجهات لامعة" : "Fronts · gloss"}
+                    : {cost.front.gloss.sheets} × {cost.settings.glossFrontSheetPrice} ={" "}
+                    <b>{Math.round(cost.front.gloss.cost).toLocaleString()} EGP</b>
+                  </small>}
                   <small>
                     {lang === "ru"
                       ? "Задники"
@@ -1476,6 +1526,11 @@ export function App() {
                                 batch.substrate}{" "}
                               ·{" "}
                               {(DECORS as any)[batch.decor]?.name || batch.decor}
+                              {batch.finish
+                                ? " · " + (batch.finish === "gloss"
+                                  ? lang === "ru" ? "глянец" : "gloss"
+                                  : lang === "ru" ? "матовый" : "matte")
+                                : ""}
                               {batch.thickness
                                 ? " · " + batch.thickness + " мм"
                                 : ""}
@@ -1488,8 +1543,8 @@ export function App() {
                   </div>
                   <p className="note">
                     {lang === "ru"
-                      ? "Разные декоры, оттенки, основы и толщины нельзя объединять в один лист. Цена листа пока задаётся общая для категории выше."
-                      : "Different decors, tints, substrates and thicknesses cannot share one sheet. The per-sheet price is still set by category above."}
+                      ? "Разные декоры, оттенки, основы, толщины и финиши считаются отдельными листами. Цена матового и глянцевого фасада задаётся выше."
+                      : "Different decors, tints, substrates, thicknesses and finishes use separate sheets. Matte and gloss prices are set above."}
                   </p>
                 </details>
               </section>
@@ -1574,10 +1629,10 @@ export function App() {
                     onClick={() => patchCost(COST_PRESETS.gloss)}
                   >
                     {lang === "ru"
-                      ? "Глянец 2500"
+                      ? "Стандарт"
                       : lang === "ar"
                         ? "لامع 2500"
-                        : "Gloss 2500"}
+                        : "Standard"}
                   </button>
                   <button
                     type="button"
@@ -1621,16 +1676,31 @@ export function App() {
                     compact
                     label={
                       lang === "ru"
-                        ? "Лист фасада"
+                        ? "Матовый фасад/лист"
                         : lang === "ar"
                           ? "لوح الواجهة"
-                          : "Front sheet"
+                          : "Matte front sheet"
                     }
                     value={cost.settings.frontSheetPrice}
                     unit="EGP"
                     min={0}
                     max={50000}
                     onCommit={(n) => patchCost({ frontSheetPrice: n })}
+                  />
+                  <NumberField
+                    compact
+                    label={
+                      lang === "ru"
+                        ? "Глянцевый фасад/лист"
+                        : lang === "ar"
+                          ? "لوح واجهة لامع"
+                          : "Gloss front sheet"
+                    }
+                    value={cost.settings.glossFrontSheetPrice}
+                    unit="EGP"
+                    min={0}
+                    max={50000}
+                    onCommit={(n) => patchCost({ glossFrontSheetPrice: n })}
                   />
                   <NumberField
                     compact
@@ -2357,6 +2427,65 @@ export function App() {
                     }
                   />
                 </div>
+              </section>
+              <section>
+                <h3>
+                  {lang === "ru"
+                    ? "Материал столешницы"
+                    : lang === "ar"
+                      ? "خامة سطح العمل"
+                      : "Countertop material"}
+                </h3>
+                <DecorPicker
+                  label={
+                    lang === "ru"
+                      ? "Декор и текстура"
+                      : lang === "ar"
+                        ? "الديكور والملمس"
+                        : "Decor and texture"
+                  }
+                  value={project.countertop.decor || "marble"}
+                  color={project.countertop.color || DECORS.marble.color}
+                  lang={lang}
+                  onChange={(decor) =>
+                    setProject((p: any) =>
+                      updateCountertop(p, {
+                        decor,
+                        color: (DECORS as any)[decor].color,
+                      }),
+                    )
+                  }
+                  onColorChange={(color) =>
+                    setProject((p: any) => updateCountertop(p, { color }))
+                  }
+                />
+                <div className="segmented finishSelector" role="group">
+                  <button
+                    type="button"
+                    className={!project.countertop.gloss ? "active" : ""}
+                    aria-pressed={!project.countertop.gloss}
+                    onClick={() =>
+                      setProject((p: any) => updateCountertop(p, { gloss: false }))
+                    }
+                  >
+                    {lang === "ru" ? "Матовая" : lang === "ar" ? "مطفي" : "Matte"}
+                  </button>
+                  <button
+                    type="button"
+                    className={project.countertop.gloss ? "active" : ""}
+                    aria-pressed={!!project.countertop.gloss}
+                    onClick={() =>
+                      setProject((p: any) => updateCountertop(p, { gloss: true }))
+                    }
+                  >
+                    {lang === "ru" ? "Глянцевая" : lang === "ar" ? "لامع" : "Gloss"}
+                  </button>
+                </div>
+                <p className="note">
+                  {lang === "ru"
+                    ? "Образец задаёт рисунок, оттенок перекрашивает его, а финиш меняет отражение света."
+                    : "The swatch sets the pattern, tint recolors it and finish changes reflections."}
+                </p>
               </section>
               <section>
                 <h3>{t("fixtures")}</h3>

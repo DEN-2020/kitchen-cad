@@ -18,9 +18,9 @@ test('cost estimate rounds material demand up to whole sheets',()=>{
  assert.equal(r.body.cost,3000);
 });
 
-test('gloss preset keeps budget body and 2500 EGP front sheet',()=>{
- assert.equal(COST_PRESETS.gloss.bodySheetPrice,1500);
- assert.equal(COST_PRESETS.gloss.frontSheetPrice,2500);
+test('market presets keep separate matte and gloss front prices',()=>{
+ assert.ok(COST_PRESETS.budget.glossFrontSheetPrice>COST_PRESETS.budget.frontSheetPrice);
+ assert.ok(COST_PRESETS.gloss.glossFrontSheetPrice>COST_PRESETS.gloss.frontSheetPrice);
 });
 
 test('estimate exposes uncertainty range around total',()=>{
@@ -36,10 +36,10 @@ test('Egypt sample-scale estimate is in the same order as the recent ~8000 EGP j
  // Approximate areas: four 500 mm cabinets without backs + one 1800x400 extra panel;
  // one glossy-front sheet, three budget body sheets after waste/rounding.
  const parts=[];
- const add=(u,v,role='body',edges=[0,0,0,0])=>parts.push({u,v,role,edges,edgeType:'ABS'});
+ const add=(u,v,role='body',edges=[0,0,0,0])=>parts.push({u,v,role,edges,edgeType:'ABS',appearance:{gloss:role==='front'}});
  for(let k=0;k<2;k++){add(560,720);add(560,720);add(464,560);add(464,100);add(464,100);add(462,540);add(496,716,'front',[2,2,2,2]);}
  for(let k=0;k<2;k++){add(400,720);add(400,720);add(464,400);add(464,400);add(462,380);add(496,716,'front',[2,2,2,2]);}
  add(1800,400);
- const r=estimateProjectCost({costing:{...DEFAULT_COSTING,bodySheetPrice:1500,frontSheetPrice:2500}},{parts});
+ const r=estimateProjectCost({costing:{...DEFAULT_COSTING,bodySheetPrice:1500,frontSheetPrice:1500,glossFrontSheetPrice:3500}},{parts});
  assert.ok(r.total>6500&&r.total<10000,`unexpected sample estimate ${r.total}`);
 });

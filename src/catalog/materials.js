@@ -58,7 +58,16 @@ export const DISPLAY_ONLY_TYPES = Object.freeze([...APPLIANCE_TYPES,...ROOM_ELEM
 export const isApplianceType = type => APPLIANCE_TYPES.includes(type);
 export const isRoomElementType = type => ROOM_ELEMENT_TYPES.includes(type);
 export const isDisplayOnlyType = type => DISPLAY_ONLY_TYPES.includes(type);
-export const isWallMountedType = type => ['wall','cornerWall','cornerWallBlind','cornerWallDiagonal','cornerWallL','microwave','hood','window'].includes(type);
+const WALL_MOUNTED_TYPES = Object.freeze(['wall','cornerWall','cornerWallBlind','cornerWallDiagonal','cornerWallL','microwave','hood','window']);
+export const MODULE_PLACEMENT = Object.freeze(Object.fromEntries(
+  Object.keys(MODULE_TYPES).map(type => [type, Object.freeze({
+    layer: WALL_MOUNTED_TYPES.includes(type) ? 'wall' : isRoomElementType(type) ? 'room' : 'floor',
+    snapToWall: true,
+    clampToRoom: true,
+  })]),
+));
+export const modulePlacementPolicy = type => MODULE_PLACEMENT[type] || Object.freeze({layer:'floor',snapToWall:true,clampToRoom:true});
+export const isWallMountedType = type => modulePlacementPolicy(type).layer === 'wall';
 export const CORNER_TYPES = Object.freeze(['cornerBase','cornerBaseBlind','cornerBaseDiagonal','cornerBaseL','cornerWall','cornerWallBlind','cornerWallDiagonal','cornerWallL']);
 export const isCornerType = type => CORNER_TYPES.includes(type);
 export const isDrawerType = type => type === 'drawer';

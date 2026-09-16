@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Edges,
   Environment,
@@ -15,6 +15,8 @@ import { ApplianceVisual } from "./ApplianceVisual";
 import { explodedCentre } from "../domain/view-math.js";
 import { DECORS, isDisplayOnlyType } from "../../src/catalog/materials.js";
 import { jointLinePoints } from "../../src/core/countertop-joints.js";
+import { doorHingeFrame, objectInDoorFrame } from "../../src/core/door-motion.js";
+import { clampPoseToRoom } from "../../src/core/placement.js";
 import type { DimensionDetail, Selection, ViewMode } from "../domain/core";
 const mm = (v: number) => v / 1000,
   skinTypes = new Set(["washer", "dishwasher", "oven", "fridge"]),
@@ -167,6 +169,52 @@ function Surface({
     </mesh>
   );
 }
+function DoorAssembly({
+  front,
+  attachments,
+  open,
+  selected,
+  onSelect,
+}: {
+  front: any;
+  attachments: any[];
+  open: boolean;
+  selected: boolean;
+  onSelect?: () => void;
+}) {
+  const moving = useRef<THREE.Group>(null!),
+    { invalidate } = useThree(),
+    frame = useMemo(() => doorHingeFrame(front), [front]),
+    framedFront = useMemo(
+      () => ({ ...front, localCenter: frame.frontCenter, rotationY: 0 }),
+      [front, frame],
+    ),
+    framedAttachments = useMemo(
+      () => attachments.map((object) => objectInDoorFrame(object, frame)),
+      [attachments, frame],
+    );
+  useEffect(() => invalidate(), [open, invalidate]);
+  useFrame((_, delta) => {
+    if (!moving.current) return;
+    const target = open ? frame.openAngle : 0,
+      next = THREE.MathUtils.damp(moving.current.rotation.y, target, 8, delta);
+    moving.current.rotation.y = Math.abs(next - target) < 0.001 ? target : next;
+    if (Math.abs(moving.current.rotation.y - target) >= 0.001) invalidate();
+  });
+  return (
+    <group
+      position={frame.position.map(mm) as [number, number, number]}
+      rotation={[0, frame.rotationY, 0]}
+    >
+      <group ref={moving}>
+        <Surface object={framedFront} selected={selected} onSelect={onSelect} />
+        {framedAttachments.map((object) => (
+          <Surface key={object.id} object={object} onSelect={onSelect} />
+        ))}
+      </group>
+    </group>
+  );
+}
 function setControlsEnabled(controls: any, value: boolean) {
   if (controls && "enabled" in controls) {
     controls.enabled = value;
@@ -242,23 +290,27 @@ function CornerVisual({ module }: { module: any }) {
 }
 function ModuleVisual({
   module,
+  room,
   objects,
   selected,
   selectedPartId,
   focus,
   detail,
   explode,
+  doorsOpen,
   onSelect,
   onSelectPart,
   onCommitPosition,
 }: {
   module: any;
+  room: any;
   objects: any[];
   selected: boolean;
   selectedPartId: string | null;
   focus: boolean;
   detail: DimensionDetail;
   explode: number;
+  doorsOpen: boolean;
   onSelect: () => void;
   onSelectPart: (id: string) => void;
   onCommitPosition: (x: number, z: number) => void;
@@ -283,9 +335,39 @@ function ModuleVisual({
       [objects, module, detailMode, explode],
     ),
     visibleObjects = localObjects,
+    rootObjects = detailMode
+      ? visibleObjects
+      : visibleObjects.filter((o) => !o.parentFrontId),
     fixtureObjects = localObjects.filter(
       (o) => o.kind === "fixture-sink" || o.kind === "fixture-hob",
     );
+  const renderObject = (object: any, selectInCorner = false) => {
+    const onObjectSelect =
+      (detailMode && object.kind === "part") || selectInCorner
+        ? () => onSelectPart(object.id)
+        : undefined;
+    if (object.role === "front" && object.hingeSide && !detailMode)
+      return (
+        <DoorAssembly
+          key={object.id}
+          front={object}
+          attachments={visibleObjects.filter(
+            (candidate) => candidate.parentFrontId === object.id,
+          )}
+          open={doorsOpen}
+          selected={selectedPartId === object.id}
+          onSelect={onObjectSelect}
+        />
+      );
+    return (
+      <Surface
+        key={object.id}
+        object={object}
+        selected={selectedPartId === object.id}
+        onSelect={onObjectSelect}
+      />
+    );
+  };
   const down = (e: any) => {
     e.stopPropagation();
     if (!selected) {
@@ -310,8 +392,18 @@ function ModuleVisual({
     e.stopPropagation();
     const p = pointOnPlane(e, mm(module.y));
     if (!p) return;
-    group.current.position.x = Math.round((p.x + offset.current.x) * 20) / 20;
-    group.current.position.z = Math.round((p.z + offset.current.z) * 20) / 20;
+    const safe = clampPoseToRoom({
+      roomWidth: room.width,
+      roomDepth: room.depth,
+      moduleWidth: module.width,
+      moduleDepth: module.depth,
+      rotationY: module.rotationY || 0,
+      centerX: (p.x + offset.current.x) * 1000,
+      centerZ: (p.z + offset.current.z) * 1000,
+      grid: 50,
+    });
+    group.current.position.x = mm(safe.centerX);
+    group.current.position.z = mm(safe.centerZ);
     invalidate();
   };
   const up = (e: any) => {
@@ -345,21 +437,14 @@ function ModuleVisual({
         {cornerVisualTypes.has(module.type) && !detailMode ? (
           <>
             <CornerVisual module={module} />
-            {visibleObjects
+            {rootObjects
               .filter(
                 (o: any) =>
                   o.role === "front" ||
                   o.role === "support" ||
                   o.kind !== "part",
               )
-              .map((o: any) => (
-                <Surface
-                  key={o.id}
-                  object={o}
-                  selected={selectedPartId === o.id}
-                  onSelect={() => onSelectPart(o.id)}
-                />
-              ))}
+              .map((o: any) => renderObject(o, true))}
           </>
         ) : skinTypes.has(module.type) ? (
           <>
@@ -370,19 +455,7 @@ function ModuleVisual({
           </>
         ) : (
           <>
-            {visibleObjects.map((o: any) => (
-              <group key={o.id}>
-                <Surface
-                  object={o}
-                  selected={selectedPartId === o.id}
-                  onSelect={
-                    detailMode && o.kind === "part"
-                      ? () => onSelectPart(o.id)
-                      : undefined
-                  }
-                />
-              </group>
-            ))}
+            {rootObjects.map((o: any) => renderObject(o))}
           </>
         )}
       </group>
@@ -808,13 +881,15 @@ function CameraRig({
   model,
   focusId,
   view,
+  autoOrbit,
 }: {
   project: any;
   model: any;
   focusId: string | null;
   view: ViewMode;
+  autoOrbit: boolean;
 }) {
-  const { camera } = useThree(),
+  const { camera, invalidate } = useThree(),
     controls = useRef<any>(null),
     initialized = useRef(false),
     previousView = useRef<ViewMode>(view),
@@ -831,6 +906,11 @@ function CameraRig({
           mm(project.room.height * 0.35),
           mm(project.room.depth / 2),
         );
+  useFrame(() => {
+    if (!autoOrbit || view !== "3d" || !controls.current) return;
+    controls.current.update();
+    invalidate();
+  });
   useEffect(() => {
     camera.up.set(0, 1, 0);
     const roomScale = Math.max(
@@ -928,7 +1008,10 @@ function CameraRig({
       ref={controls}
       makeDefault
       enableRotate={view === "3d"}
-      enableDamping={false}
+      enableDamping
+      dampingFactor={0.07}
+      autoRotate={autoOrbit && view === "3d"}
+      autoRotateSpeed={0.65}
       rotateSpeed={0.95}
       zoomSpeed={1}
       panSpeed={0.8}
@@ -1136,12 +1219,14 @@ function SceneContent(props: any) {
         <ModuleVisual
           key={m.id}
           module={m}
+          room={project.room}
           objects={model.objects.filter((o: any) => o.moduleId === m.id)}
           selected={selectedModuleId === m.id}
           selectedPartId={selectedPartId}
           focus={!!focusId}
           detail={detail}
           explode={explode}
+          doorsOpen={!!project.ui?.doorsOpen}
           onSelect={() => setSelection({ kind: "module", id: m.id })}
           onSelectPart={(id: string) =>
             setSelection({ kind: "part", id, moduleId: m.id })
@@ -1195,6 +1280,7 @@ function SceneContent(props: any) {
         model={model}
         focusId={focusId}
         view={view}
+        autoOrbit={!!project.ui?.autoOrbit}
       />
       <SnapshotBridge />
     </>
