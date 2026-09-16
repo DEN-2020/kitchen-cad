@@ -85,6 +85,7 @@ import {
 } from "./i18n";
 import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
 import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
+import { applianceBayMeasurements } from "../src/core/appliance-bay.js";
 import { useProjectHistory } from "./state/useProjectHistory";
 
 type Panel =
@@ -411,15 +412,32 @@ export function App() {
     selectedFixture = selectedFixtures[0] || null,
     applianceBayEligible = !!selectedModule && ["base", "sink", "cornerBaseBlind"].includes(selectedModule.type),
     applianceBayActive = !!selectedModule && ["washer", "dishwasher"].includes(selectedModule.applianceBay),
-    applianceRequiredClearance = selectedModule?.applianceBay === "washer" ? Math.max(5, Number(project.defaults?.washerClearance) || 15) : 5,
-    applianceAvailableWidth = selectedModule?.type === "cornerBaseBlind" ? Number(selectedModule.cornerOpening) || 450 : Number(selectedModule?.width) || 0,
-    applianceAvailableHeight = selectedModule ? (Number(selectedModule.height) || 0) + (Number(selectedModule.feet) || 0) : 0,
-    applianceAvailableDepth = selectedModule ? Math.max(Number(selectedModule.depth) || 0, Number(project.countertop?.depth) || 0) : 0,
-    applianceFits = !applianceBayActive || (
-      Number(selectedModule?.applianceWidth) <= applianceAvailableWidth &&
-      Number(selectedModule?.applianceHeight) + applianceRequiredClearance <= applianceAvailableHeight &&
-      Number(selectedModule?.applianceDepth) <= applianceAvailableDepth
-    );
+    applianceMeasurements = selectedModule
+      ? applianceBayMeasurements(selectedModule, {
+          ...project.defaults,
+          countertopDepth: project.countertop?.depth,
+        })
+      : null,
+    applianceRequiredClearance = applianceMeasurements?.topClearance || 0,
+    applianceAvailableWidth = applianceMeasurements?.openingWidth || 0,
+    applianceAvailableHeight = applianceMeasurements?.availableHeight || 0,
+    applianceAvailableDepth = applianceMeasurements?.availableDepth || 0,
+    applianceWorktopDrop =
+      selectedFixture?.type === "hob"
+        ? Math.max(
+            0,
+            Number(selectedFixture.installationHeight || 51) -
+              Number(project.countertop?.thickness || 20),
+          )
+        : 0,
+    applianceFits =
+      !applianceBayActive ||
+      (!!applianceMeasurements?.fits &&
+        selectedFixture?.type !== "sink" &&
+        Number(selectedModule?.applianceHeight || 0) +
+          applianceRequiredClearance +
+          applianceWorktopDrop <=
+          applianceAvailableHeight);
   const floorTargets = model.modules.filter((m: any) =>
     fixtureTargetTypes.has(m.type),
   );
@@ -3430,22 +3448,29 @@ export function App() {
                           patchModule({ bodyMaterialId })
                         }
                       />
-                      {frontsEnabled && (
-                        <MaterialProductSelect
-                          label={lang === "ru" ? "Материал дверок" : "Door material"}
-                          role="front"
-                          value={
-                            selectedModule.frontMaterialId ||
-                            "highGlossMdfPvc18"
-                          }
-                          lang={lang}
-                          onChange={(frontMaterialId) =>
-                            patchModule({ frontMaterialId })
-                          }
-                        />
-                      )}
+                      <MaterialProductSelect
+                        label={lang === "ru" ? "Материал фасада" : "Front material"}
+                        role="front"
+                        value={
+                          selectedModule.frontMaterialId ||
+                          "highGlossMdfPvc18"
+                        }
+                        lang={lang}
+                        onChange={(frontMaterialId) =>
+                          patchModule({ frontMaterialId })
+                        }
+                      />
                     </div>
-                    {frontsEnabled && <DecorPicker
+                    {!frontsEnabled && (
+                      <p className="note retainedFrontSettings">
+                        {lang === "ru"
+                          ? applianceBayActive
+                            ? "Фасад сейчас заменён лицевой частью техники, но его материал и цвет не потеряны: они снова применятся при возврате в режим «Шкаф»."
+                            : "У модуля отключён фасад. Его материал и цвет сохранены и применятся, если снова включить фасад."
+                          : "The front is currently inactive, but its saved material and decor will be restored when the front is enabled again."}
+                      </p>
+                    )}
+                    <DecorPicker
                       label={
                         lang === "ru"
                           ? "Декор фасадов"
@@ -3473,7 +3498,7 @@ export function App() {
                           ),
                         })
                       }
-                    />}
+                    />
                     <DecorPicker
                       label={
                         lang === "ru"
@@ -3495,7 +3520,7 @@ export function App() {
                         patchModule({ bodyColor })
                       }
                     />
-                    {frontsEnabled && <>
+                    <>
                     <p className="note materialHelp">
                       {lang === "ru"
                         ? "Образец задаёт рисунок и стартовый цвет. «Оттенок» перекрашивает этот же рисунок. Общая настройка применяется ко всем фасадам."
@@ -3726,7 +3751,7 @@ export function App() {
                         </div>
                       </details>
                     )}
-                    </>}
+                    </>
                   </section>
                   {applianceBayEligible && (
                     <section className={moduleTab === "equipment" ? "equipmentSection" : "moduleTabHidden"}>
@@ -3754,22 +3779,49 @@ export function App() {
                             {lang === "ru"
                               ? selectedModule.type === "cornerBaseBlind"
                                 ? "Доступная часть углового модуля становится проёмом под технику. Дно, полки, фасад, цоколь и опоры убираются только из проёма; глухая секция остаётся с дном и полками."
-                                : "Это отдельный проём под общей столешницей, а не техника между боковинами 600‑мм шкафа. Дно, полки, фасад, цоколь и ножки этого проёма исключаются из деталировки."
+                                : "Это самонесущая ниша: столешница опирается на две полноразмерные боковины. Между ними остаётся чистый проём под технику; дна, полок, фасада, цоколя и ножек внутри него нет. Боковины нужно закрепить к стене и столешнице."
                               : selectedModule.type === "cornerBaseBlind"
                                 ? "The accessible corner section becomes an appliance bay; the blind storage section keeps its bottom and shelves."
-                                : "This is a clear opening under the shared worktop, not an appliance squeezed between cabinet sides."}
+                                : "Two full-height side panels support the worktop; the clear opening between them contains the appliance."}
                           </p>
                           <div className="dimensionGrid">
-                            <NumberField compact label={t("width")} value={selectedModule.applianceWidth || 600} min={400} max={1200} onCommit={(n) => patchModule({ applianceWidth: n })} />
-                            <NumberField compact label={t("height")} value={selectedModule.applianceHeight || (selectedModule.applianceBay === "washer" ? 850 : 815)} min={500} max={1000} onCommit={(n) => patchModule({ applianceHeight: n })} />
-                            <NumberField compact label={t("depth")} value={selectedModule.applianceDepth || (selectedModule.applianceBay === "washer" ? 600 : 570)} min={400} max={900} onCommit={(n) => patchModule({ applianceDepth: n })} />
+                            <NumberField compact label={t("width")} value={selectedModule.applianceWidth || 598} min={400} max={1200} onCommit={(n) => patchModule({ applianceWidth: n })} />
+                            <NumberField compact label={t("height")} value={selectedModule.applianceHeight || (selectedModule.applianceBay === "washer" ? 845 : 815)} min={500} max={1000} onCommit={(n) => patchModule({ applianceHeight: n })} />
+                            <NumberField compact label={t("depth")} value={selectedModule.applianceDepth || (selectedModule.applianceBay === "washer" ? 590 : 550)} min={400} max={900} onCommit={(n) => patchModule({ applianceDepth: n })} />
+                            <NumberField compact label={lang === "ru" ? "Боковой люфт, всего" : "Total side clearance"} value={selectedModule.applianceSideClearance ?? (selectedModule.applianceBay === "washer" ? 20 : 2)} min={0} max={100} onCommit={(n) => patchModule({ applianceSideClearance: n })} />
                           </div>
                           <div className={applianceFits ? "fitStatus ok" : "fitStatus bad"}>
                             <b>{applianceFits ? (lang === "ru" ? "Помещается" : "Fits") : (lang === "ru" ? "Не помещается" : "Does not fit")}</b>
                             <span>
-                              {lang === "ru" ? "Доступно" : "Available"}: {applianceAvailableWidth}×{applianceAvailableHeight}×{applianceAvailableDepth} мм · {lang === "ru" ? "верхний зазор" : "top clearance"} {applianceRequiredClearance} мм
+                              {lang === "ru" ? "Чистый проём" : "Clear opening"}: {applianceAvailableWidth}×{applianceAvailableHeight}×{applianceAvailableDepth} мм · {lang === "ru" ? "нужно по ширине" : "required width"} {applianceMeasurements?.requiredOpeningWidth || 0} мм · {lang === "ru" ? "верхний зазор" : "top clearance"} {applianceRequiredClearance} мм{applianceWorktopDrop > 0 ? ` · ${lang === "ru" ? "корпус варочной ниже столешницы" : "hob drop below worktop"} ${applianceWorktopDrop} мм` : ""}
                             </span>
                           </div>
+                          {selectedModule.type !== "cornerBaseBlind" &&
+                            applianceMeasurements &&
+                            selectedModule.width < applianceMeasurements.requiredOuterWidth && (
+                              <button
+                                type="button"
+                                className="fitModuleBtn"
+                                onClick={() => patchModule({ width: applianceMeasurements.requiredOuterWidth })}
+                              >
+                                {lang === "ru"
+                                  ? `Расширить модуль до ${applianceMeasurements.requiredOuterWidth} мм`
+                                  : `Resize module to ${applianceMeasurements.requiredOuterWidth} mm`}
+                              </button>
+                            )}
+                          {selectedModule.type === "cornerBaseBlind" &&
+                            applianceMeasurements &&
+                            selectedModule.cornerOpening < applianceMeasurements.requiredOpeningWidth && (
+                              <button
+                                type="button"
+                                className="fitModuleBtn"
+                                onClick={() => patchModule({ cornerOpening: applianceMeasurements.requiredOpeningWidth })}
+                              >
+                                {lang === "ru"
+                                  ? `Увеличить проём до ${applianceMeasurements.requiredOpeningWidth} мм`
+                                  : `Resize opening to ${applianceMeasurements.requiredOpeningWidth} mm`}
+                              </button>
+                            )}
                         </>
                       ) : (
                         <p className="note equipmentExplanation">
@@ -3798,17 +3850,30 @@ export function App() {
                         ))}
                       </div>
                       {selectedFixture && (
-                        <div className="dimensionGrid fixtureInlineFields">
-                          <NumberField compact label={t("width")} value={selectedFixture.width} min={100} max={1200} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { width: n }))} />
-                          <NumberField compact label={t("depth")} value={selectedFixture.depth} min={100} max={900} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { depth: n }))} />
-                          <NumberField compact label="X" value={selectedFixture.offsetX || 0} min={-1000} max={1000} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { offsetX: n }))} />
-                        </div>
+                        <>
+                          <div className="dimensionGrid fixtureInlineFields">
+                            <NumberField compact label={t("width")} value={selectedFixture.width} min={100} max={1200} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { width: n }))} />
+                            <NumberField compact label={t("depth")} value={selectedFixture.depth} min={100} max={900} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { depth: n }))} />
+                            <NumberField compact label={selectedFixture.type === "sink" ? (lang === "ru" ? "Глубина чаши" : "Bowl depth") : (lang === "ru" ? "Высота корпуса" : "Body height")} value={selectedFixture.installationHeight || (selectedFixture.type === "sink" ? 200 : 51)} min={selectedFixture.type === "sink" ? 80 : 20} max={selectedFixture.type === "sink" ? 400 : 150} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { installationHeight: n }))} />
+                            <NumberField compact label={lang === "ru" ? "Высота борта" : "Rim height"} value={selectedFixture.rimHeight || 6} min={1} max={30} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { rimHeight: n }))} />
+                            <NumberField compact label="X" value={selectedFixture.offsetX || 0} min={-1000} max={1000} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { offsetX: n }))} />
+                          </div>
+                          <p className="note fixtureDepthNote">
+                            {lang === "ru"
+                              ? selectedFixture.type === "sink"
+                                ? "Глубина чаши учитывается ниже столешницы; 200 мм — реалистичное стартовое значение, но точный вырез и глубину нужно брать из паспорта мойки."
+                                : "Тонкая стеклянная панель видна сверху, а корпус варочной поверхности уходит под столешницу. Стартовая высота 51 мм взята как типовая, точные зазоры зависят от модели."
+                              : selectedFixture.type === "sink"
+                                ? "Bowl depth extends below the worktop; verify the exact cut-out and depth from the sink datasheet."
+                                : "The thin glass top remains visible while the appliance body extends below the worktop; verify model-specific clearances."}
+                          </p>
+                        </>
                       )}
                       {applianceBayActive && selectedFixture?.type === "sink" && (
                         <p className="warning">{lang === "ru" ? "Конфликт: мойка и техника занимают один проём. Такой вариант нельзя отдавать в производство." : "Conflict: the sink and appliance occupy the same bay."}</p>
                       )}
                       {applianceBayActive && selectedFixture?.type === "hob" && (
-                        <p className="warning">{lang === "ru" ? "Варочная поверхность над техникой возможна не всегда: проверь вентиляцию, высоту и минимальные зазоры по паспортам обеих моделей." : "A hob above an appliance requires model-specific ventilation and clearance checks."}</p>
+                        <p className="warning">{lang === "ru" ? applianceFits ? "По введённым размерам корпуса помещаются, но вентиляцию и минимальные зазоры всё равно нужно сверить по паспортам обеих моделей." : `Не помещается по высоте: корпус варочной выступает ниже столешницы на ${applianceWorktopDrop} мм. Увеличь высоту столешницы/ниши или выбери совместимые модели.` : "A hob above an appliance requires model-specific ventilation and clearance checks."}</p>
                       )}
                     </section>
                   )}

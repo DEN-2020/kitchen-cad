@@ -23,6 +23,10 @@ import {
 } from "../../src/catalog/materials.js";
 import { COST_PRESETS } from "../../src/core/cost.js";
 import {
+  applianceBayMeasurements,
+  applianceDefaults,
+} from "../../src/core/appliance-bay.js";
+import {
   buildCountertopSegments,
   countertopSegmentForModule,
 } from "../../src/core/countertop-segments.js";
@@ -91,6 +95,36 @@ export function normalizeEditorProject(raw: any) {
       m.edgeOverrides = {};
   }
   for (const m of p.modules || []) {
+    if (["washer", "dishwasher"].includes(m.applianceBay)) {
+      const legacyWasher =
+          m.applianceBay === "washer" &&
+          m.applianceWidth === 600 &&
+          m.applianceHeight === 850 &&
+          m.applianceDepth === 600,
+        legacyDishwasher =
+          m.applianceBay === "dishwasher" &&
+          m.applianceWidth === 600 &&
+          m.applianceHeight === 815 &&
+          m.applianceDepth === 570;
+      if (legacyWasher || legacyDishwasher) {
+        const spec = applianceDefaults(m.applianceBay);
+        m.applianceWidth = spec.width;
+        m.applianceHeight = spec.height;
+        m.applianceDepth = spec.depth;
+        m.applianceSideClearance = spec.sideClearance;
+      }
+      const measurements = applianceBayMeasurements(m, {
+        ...p.defaults,
+        countertopDepth: p.countertop?.depth,
+      });
+      if (m.type === "cornerBaseBlind")
+        m.cornerOpening = Math.max(
+          Number(m.cornerOpening) || 450,
+          measurements.requiredOpeningWidth,
+        );
+      else if (["base", "sink"].includes(m.type) && Number(m.width) <= 600)
+        m.width = measurements.requiredOuterWidth;
+    }
     if (["cornerBaseDiagonal", "cornerBaseL"].includes(m.type)) {
       if (!Number.isFinite(m.cornerRunDepth) || m.cornerRunDepth <= 0)
         m.cornerRunDepth = 600;
@@ -249,14 +283,25 @@ export function updateModule(
   if (m) {
     Object.assign(m, patch);
     if ("applianceBay" in patch && ["washer", "dishwasher"].includes(String(m.applianceBay))) {
-      const defaults =
-        m.applianceBay === "dishwasher"
-          ? { applianceWidth: 600, applianceHeight: 815, applianceDepth: 570 }
-          : { applianceWidth: 600, applianceHeight: 850, applianceDepth: 600 };
-      for (const [key, value] of Object.entries(defaults))
+      const defaults = applianceDefaults(m.applianceBay);
+      for (const [key, value] of Object.entries({
+        applianceWidth: defaults.width,
+        applianceHeight: defaults.height,
+        applianceDepth: defaults.depth,
+        applianceSideClearance: defaults.sideClearance,
+      }))
         if (!(key in patch)) m[key] = value;
+      const measurements = applianceBayMeasurements(m, {
+        ...p.defaults,
+        countertopDepth: p.countertop?.depth,
+      });
       if (m.type === "cornerBaseBlind")
-        m.cornerOpening = Math.max(Number(m.cornerOpening) || 450, Number(m.applianceWidth) || 600);
+        m.cornerOpening = Math.max(
+          Number(m.cornerOpening) || 450,
+          measurements.requiredOpeningWidth,
+        );
+      else
+        m.width = Math.max(Number(m.width) || 0, measurements.requiredOuterWidth);
     }
     if ("bodyMaterialId" in patch)
       Object.assign(m, materialSelectionPatch("body", String(m.bodyMaterialId)));

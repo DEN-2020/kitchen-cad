@@ -3,18 +3,41 @@ import assert from "node:assert/strict";
 import { buildProject } from "../src/core/parts.js";
 import { createModule, createProject } from "../src/core/project.js";
 
-test("a 600 mm base appliance bay is an opening, not a machine squeezed into a carcass", () => {
+test("a self-supporting appliance bay keeps side panels and a clear 600 mm opening", () => {
   const project = createProject();
   const module = createModule("base");
   module.applianceBay = "dishwasher";
-  module.applianceWidth = 600;
+  module.applianceWidth = 598;
   module.applianceHeight = 815;
-  module.applianceDepth = 570;
+  module.applianceDepth = 550;
+  module.applianceSideClearance = 2;
+  module.width = 636;
   project.modules = [module];
   const model = buildProject(project);
-  assert.equal(model.parts.filter((part) => part.moduleId === module.id).length, 0);
+  const parts = model.parts.filter((part) => part.moduleId === module.id);
+  assert.ok(parts.some((part) => part.name === "Несущая боковина ниши левая"));
+  assert.ok(parts.some((part) => part.name === "Несущая боковина ниши правая"));
+  assert.equal(parts.some((part) => part.name.includes("Дно")), false);
+  assert.equal(parts.some((part) => part.role === "front"), false);
   assert.ok(model.objects.some((object) => object.moduleId === module.id && object.embeddedAppliance));
   assert.equal(model.issues.some((issue) => issue.type === "appliance-bay-fit"), false);
+});
+
+test("an embedded washer retains its round front-loading door geometry", () => {
+  const project = createProject();
+  const module = createModule("base");
+  module.applianceBay = "washer";
+  module.applianceWidth = 598;
+  module.applianceHeight = 845;
+  module.applianceDepth = 590;
+  module.applianceSideClearance = 20;
+  module.width = 654;
+  project.modules = [module];
+  const model = buildProject(project);
+  const applianceObjects = model.objects.filter((object) => object.embeddedAppliance);
+  assert.ok(applianceObjects.some((object) => object.kind === "appliance-port" && object.shape === "disc"));
+  assert.ok(applianceObjects.some((object) => object.kind === "appliance-glass" && object.shape === "disc"));
+  assert.ok(applianceObjects.every((object) => object.applianceType === "washer"));
 });
 
 test("blind corner keeps a useful storage section beside an appliance opening", () => {
@@ -23,9 +46,10 @@ test("blind corner keeps a useful storage section beside an appliance opening", 
   module.width = 1200;
   module.cornerOpening = 600;
   module.applianceBay = "dishwasher";
-  module.applianceWidth = 600;
+  module.applianceWidth = 598;
   module.applianceHeight = 815;
-  module.applianceDepth = 570;
+  module.applianceDepth = 550;
+  module.applianceSideClearance = 2;
   module.shelfCount = 1;
   project.modules = [module];
   const model = buildProject(project);
@@ -53,4 +77,29 @@ test("sink and appliance in the same bay produce a hard conflict", () => {
   }];
   const model = buildProject(project);
   assert.ok(model.issues.some((issue) => issue.type === "appliance-fixture-conflict"));
+});
+
+test("hob body depth is checked above an appliance", () => {
+  const project = createProject();
+  const module = createModule("base");
+  module.applianceBay = "washer";
+  module.applianceWidth = 598;
+  module.applianceHeight = 845;
+  module.applianceDepth = 590;
+  module.applianceSideClearance = 20;
+  module.width = 654;
+  project.modules = [module];
+  project.fixtures = [{
+    id: "fixture-hob",
+    type: "hob",
+    targetModuleId: module.id,
+    width: 300,
+    depth: 520,
+    offsetX: 0,
+    offsetZ: 0,
+    installationHeight: 51,
+    rimHeight: 6,
+  }];
+  const model = buildProject(project);
+  assert.ok(model.issues.some((issue) => issue.type === "appliance-hob-clearance"));
 });

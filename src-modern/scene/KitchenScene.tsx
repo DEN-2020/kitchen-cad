@@ -8,6 +8,7 @@ import {
   Lightformer,
   Line,
   OrbitControls,
+  RoundedBox,
 } from "@react-three/drei";
 import * as THREE from "three";
 import { proceduralTexture } from "./materials";
@@ -36,18 +37,41 @@ function pointOnPlane(e: any, y: number) {
 function FixtureVisual({ object }: { object: any }) {
   const [x, y, z] = object.localCenter.map(mm),
     w = mm(object.size[0]),
-    d = mm(object.size[2]);
+    d = mm(object.size[2]),
+    installationHeight = mm(object.installationHeight || object.size[1]),
+    rimHeight = mm(object.rimHeight || 6);
   if (object.kind === "fixture-hob")
     return (
       <group position={[x, y, z]}>
         <mesh>
-          <boxGeometry args={[w, 0.014, d]} />
-          <meshStandardMaterial color="#11181c" roughness={0.16} />
+          <boxGeometry args={[w, rimHeight, d]} />
+          <meshPhysicalMaterial
+            color="#0b1114"
+            roughness={0.1}
+            clearcoat={0.9}
+            clearcoatRoughness={0.08}
+          />
         </mesh>
-        {[-w * 0.22, w * 0.22].map((dx, i) => (
+        <mesh
+          position={[
+            0,
+            -(Math.max(0.02, installationHeight - rimHeight) + rimHeight) / 2,
+            0,
+          ]}
+        >
+          <boxGeometry
+            args={[
+              w * 0.86,
+              Math.max(0.02, installationHeight - rimHeight),
+              d * 0.78,
+            ]}
+          />
+          <meshStandardMaterial color="#252d31" metalness={0.28} roughness={0.4} />
+        </mesh>
+        {[-w * 0.25, w * 0.25].map((dx, i) => (
           <group
             key={i}
-            position={[dx, 0.011, 0]}
+            position={[dx, rimHeight / 2 + 0.003, 0]}
             rotation={[-Math.PI / 2, 0, 0]}
           >
             <mesh>
@@ -60,19 +84,36 @@ function FixtureVisual({ object }: { object: any }) {
     );
   return (
     <group position={[x, y, z]}>
-      <mesh>
-        <boxGeometry args={[w, 0.014, d]} />
-        <meshStandardMaterial color="#aeb8bb" metalness={0.7} />
+      <RoundedBox
+        args={[w * 0.8, rimHeight, d * 0.74]}
+        radius={Math.min(0.025, w * 0.04)}
+        smoothness={3}
+      >
+        <meshStandardMaterial color="#94a0a4" metalness={0.76} roughness={0.23} />
+      </RoundedBox>
+      <RoundedBox
+        args={[w * 0.69, rimHeight + 0.003, d * 0.61]}
+        radius={Math.min(0.022, w * 0.035)}
+        smoothness={3}
+        position={[0, rimHeight / 2 + 0.002, 0]}
+      >
+        <meshStandardMaterial color="#26373e" metalness={0.34} roughness={0.2} />
+      </RoundedBox>
+      <mesh position={[0, -installationHeight / 2, 0]}>
+        <boxGeometry args={[w * 0.68, installationHeight, d * 0.6]} />
+        <meshStandardMaterial
+          color="#7d8b90"
+          metalness={0.7}
+          roughness={0.28}
+          transparent
+          opacity={0.72}
+        />
       </mesh>
-      <mesh position={[0, -0.026, 0]}>
-        <boxGeometry args={[w * 0.78, 0.065, d * 0.72]} />
-        <meshStandardMaterial color="#859397" metalness={0.7} />
-      </mesh>
-      <mesh position={[0, 0.09, -d * 0.34]}>
+      <mesh position={[0, 0.09, -d * 0.36]}>
         <cylinderGeometry args={[0.012, 0.012, 0.17, 16]} />
         <meshStandardMaterial color="#abb5b8" metalness={0.8} />
       </mesh>
-      <mesh position={[0, 0.18, -d * 0.27]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 0.18, -d * 0.29]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.065, 0.011, 10, 24, Math.PI]} />
         <meshStandardMaterial color="#abb5b8" metalness={0.8} />
       </mesh>
@@ -109,7 +150,26 @@ function Surface({
           : object.role === "front"
             ? 0.4
             : 0.58;
-  if (object.shape === "disc") return null;
+  if (object.shape === "disc")
+    return (
+      <mesh
+        position={local}
+        rotation={[Math.PI / 2, object.rotationY || 0, 0]}
+        castShadow
+        receiveShadow
+      >
+        <cylinderGeometry args={[size[0] / 2, size[0] / 2, size[2], 48]} />
+        <meshPhysicalMaterial
+          color={a.color || "#77858a"}
+          roughness={object.kind === "appliance-glass" ? 0.1 : 0.24}
+          metalness={object.kind === "appliance-glass" ? 0.12 : 0.62}
+          clearcoat={object.kind === "appliance-glass" ? 0.8 : 0.2}
+          transparent={object.kind === "appliance-glass"}
+          opacity={object.kind === "appliance-glass" ? 0.88 : 1}
+        />
+        {selected && <Edges color="#9a75ff" lineWidth={2} />}
+      </mesh>
+    );
   return (
     <mesh
       position={local}

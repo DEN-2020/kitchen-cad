@@ -432,6 +432,8 @@
 .fitStatus b{white-space:nowrap}.fitStatus span{color:var(--muted)}
 .fitStatus.ok b{color:#48b987}.fitStatus.bad{border-left:3px solid #d79b4b}.fitStatus.bad b{color:#d79b4b}
 .fixtureInlineFields{margin-top:8px}
+.fitModuleBtn{width:100%;margin-top:7px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--text);font-weight:700}
+.retainedFrontSettings,.fixtureDepthNote{margin:8px 0}
 
 .costStockList,.sheetPlan{min-width:0;max-width:100%}
 .sheetPlan{border-bottom:1px solid var(--divider);overflow:hidden}
