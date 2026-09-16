@@ -1,4 +1,5 @@
 import { MATERIAL_PRODUCTS, inferMaterialProductId } from '../catalog/materials.js';
+import { planSheetLayout } from './sheet-layout.js';
 
 export const DEFAULT_MATERIAL_PRICES=Object.freeze(Object.fromEntries(
   Object.values(MATERIAL_PRODUCTS).map(product=>[product.id,product.pricePerM2]),
@@ -6,6 +7,7 @@ export const DEFAULT_MATERIAL_PRICES=Object.freeze(Object.fromEntries(
 
 export const DEFAULT_COSTING=Object.freeze({
   currency:'EGP',wastePercent:15,materialPrices:DEFAULT_MATERIAL_PRICES,
+  sawKerf:4,sheetEdgeTrim:10,
   cuttingPerSheet:100,serviceBase:300,edge08PerM:12,edge2PerM:25,
   countertopPerM:0,hardwareFixed:0,extraCost:0,uncertaintyPercent:12,
 });
@@ -66,14 +68,14 @@ function materialsFor(parts,role,c,{includeFinish=false}={}){
     const product=productForPart(part,role),finish=product.finish||((part.appearance?.gloss)?'gloss':'matte'),key=materialKey(part,role),current=groups.get(key)||{
       materialProductId:product.id,materialName:product.name,substrate:product.substrate,decor:part.decor||'unspecified',color:part.appearance?.color||'',
       thickness:n(part.thickness,product.thickness),productThickness:product.thickness,finish:includeFinish?finish:undefined,sheetWidth:product.sheetWidth,sheetHeight:product.sheetHeight,
-      sheetArea:product.sheetWidth*product.sheetHeight/1e6,area:0,
+      sheetArea:product.sheetWidth*product.sheetHeight/1e6,area:0,parts:[],
     };
-    current.area+=areaM2(part);groups.set(key,current);
+    current.area+=areaM2(part);current.parts.push(part);groups.set(key,current);
   }
   const batches=[...groups.values()].map(batch=>{
-    const pricedArea=batch.area*wasteFactor,pricePerM2=c.materialPrices[batch.materialProductId],sheets=pricedArea>0?Math.ceil(pricedArea/batch.sheetArea):0;
-    return{...batch,pricedArea,sheets,pricePerM2,unitPrice:pricePerM2,cost:pricedArea*pricePerM2,referenceSheetPrice:batch.sheetArea*pricePerM2,thicknessMismatch:Math.abs(batch.thickness-batch.productThickness)>.01};
-  }),area=batches.reduce((sum,batch)=>sum+batch.area,0),pricedArea=batches.reduce((sum,batch)=>sum+batch.pricedArea,0),sheets=batches.reduce((sum,batch)=>sum+batch.sheets,0),cost=batches.reduce((sum,batch)=>sum+batch.cost,0),result={area,pricedArea,sheets,cost,batches};
+    const pricedArea=batch.area*wasteFactor,pricePerM2=c.materialPrices[batch.materialProductId],reserveSheets=pricedArea>0?Math.ceil(pricedArea/batch.sheetArea):0,stockPlan=planSheetLayout(batch.parts,{sheetWidth:batch.sheetWidth,sheetHeight:batch.sheetHeight},{kerf:c.sawKerf,trim:c.sheetEdgeTrim,minimumSheets:reserveSheets}),sheets=stockPlan.sheetCount,{parts:_parts,...publicBatch}=batch;
+    return{...publicBatch,partCount:batch.parts.length,pricedArea,sheets,reserveSheets,stockPlan,pricePerM2,unitPrice:pricePerM2,cost:pricedArea*pricePerM2,purchaseCost:sheets*batch.sheetArea*pricePerM2,referenceSheetPrice:batch.sheetArea*pricePerM2,thicknessMismatch:Math.abs(batch.thickness-batch.productThickness)>.01};
+  }),area=batches.reduce((sum,batch)=>sum+batch.area,0),pricedArea=batches.reduce((sum,batch)=>sum+batch.pricedArea,0),sheets=batches.reduce((sum,batch)=>sum+batch.sheets,0),cost=batches.reduce((sum,batch)=>sum+batch.cost,0),purchaseCost=batches.reduce((sum,batch)=>sum+batch.purchaseCost,0),reusableArea=batches.reduce((sum,batch)=>sum+batch.stockPlan.reusableArea,0),leftoverArea=batches.reduce((sum,batch)=>sum+batch.stockPlan.leftoverArea,0),result={area,pricedArea,sheets,cost,purchaseCost,reusableArea,leftoverArea,batches};
   if(includeFinish)for(const finish of ['matte','gloss']){const selected=batches.filter(batch=>batch.finish===finish);result[finish]={area:selected.reduce((sum,batch)=>sum+batch.area,0),pricedArea:selected.reduce((sum,batch)=>sum+batch.pricedArea,0),sheets:selected.reduce((sum,batch)=>sum+batch.sheets,0),cost:selected.reduce((sum,batch)=>sum+batch.cost,0),batches:selected}}
   return result;
 }
@@ -83,5 +85,6 @@ function edgeSummary(parts,c){let cost=0,meters08=0,meters2=0;for(const part of 
 export function estimateProjectCost(project,model){
   const c=normalizedCosting(project),parts=Array.isArray(model?.parts)?model.parts:[],bodyParts=group(parts,'body'),frontParts=group(parts,'front'),backParts=group(parts,'back'),body=materialsFor(bodyParts,'body',c),front=materialsFor(frontParts,'front',c,{includeFinish:true}),back=materialsFor(backParts,'back',c),bodyEdge=edgeSummary(bodyParts,c),frontEdge=edgeSummary(frontParts,c),backEdge=edgeSummary(backParts,c),edgeCost=bodyEdge.cost+frontEdge.cost+backEdge.cost,edge08=bodyEdge.meters08+frontEdge.meters08+backEdge.meters08,edge2=bodyEdge.meters2+frontEdge.meters2+backEdge.meters2,sheetCount=body.sheets+front.sheets+back.sheets,cutting=sheetCount*c.cuttingPerSheet+c.serviceBase,ctLength=countertopLength(model),countertop=ctLength>0&&c.countertopPerM>0?ctLength/1000*c.countertopPerM:0,hardware=c.hardwareFixed,extras=c.extraCost,materials=body.cost+front.cost+back.cost,total=materials+edgeCost+cutting+countertop+hardware+extras,unc=c.uncertaintyPercent/100;
   const materialWarnings=[...body.batches,...front.batches,...back.batches].filter(batch=>batch.thicknessMismatch).map(batch=>({materialProductId:batch.materialProductId,materialName:batch.materialName,partThickness:batch.thickness,productThickness:batch.productThickness}));
-  return{settings:c,body,front,back,sheetCount,materials,materialWarnings,edge:{meters08:edge08,meters2:edge2,meters:edge08+edge2,cost:edgeCost,body:bodyEdge,front:frontEdge,back:backEdge},cutting,countertop,countertopLength:ctLength,hardware,extras,total,rangeLow:Math.max(0,total*(1-unc)),rangeHigh:total*(1+unc),countertopPriced:ctLength===0||c.countertopPerM>0};
+  const purchaseMaterials=body.purchaseCost+front.purchaseCost+back.purchaseCost,stockWarnings=[...body.batches,...front.batches,...back.batches].flatMap(batch=>batch.stockPlan.unplaced.map(part=>({materialProductId:batch.materialProductId,materialName:batch.materialName,...part})));
+  return{settings:c,body,front,back,sheetCount,materials,purchaseMaterials,stockWarnings,materialWarnings,edge:{meters08:edge08,meters2:edge2,meters:edge08+edge2,cost:edgeCost,body:bodyEdge,front:frontEdge,back:backEdge},cutting,countertop,countertopLength:ctLength,hardware,extras,total,rangeLow:Math.max(0,total*(1-unc)),rangeHigh:total*(1+unc),countertopPriced:ctLength===0||c.countertopPerM>0};
 }

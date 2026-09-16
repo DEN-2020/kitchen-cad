@@ -4,10 +4,12 @@ import { NumberField } from "./ui/NumberField";
 import { useViewport } from "./ui/useViewport";
 import {
   BackIcon,
+  ApplianceIcon,
   CatalogGlyph,
   CatalogIcon,
   CloseIcon,
   CopyIcon,
+  ConstructionIcon,
   CostIcon,
   DownloadIcon,
   DepthIcon,
@@ -16,6 +18,7 @@ import {
   HomeIcon,
   HeightIcon,
   ModuleDimensionsIcon,
+  MaterialIcon,
   OrbitIcon,
   PartsIcon,
   PrintIcon,
@@ -42,7 +45,6 @@ import {
   HANDLE_STYLES,
   LEG_STYLES,
   MATERIAL_PRODUCTS,
-  SUBSTRATES,
   isDisplayOnlyType,
   isWallMountedType,
   materialProductLabel,
@@ -82,6 +84,7 @@ import {
   type Lang,
 } from "./i18n";
 import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
+import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
 import { useProjectHistory } from "./state/useProjectHistory";
 
 type Panel =
@@ -95,6 +98,7 @@ type Panel =
   | "print"
   | null;
 type SaveStatus = "saving" | "saved" | "error";
+type ModuleTab = "geometry" | "construction" | "facade" | "materials" | "equipment";
 type ImportNotice = { kind: "success" | "error"; message: string } | null;
 const sizeText = (m: any) => `${m.width} × ${m.height} × ${m.depth} мм`;
 const fixtureTargetTypes = new Set([
@@ -273,6 +277,82 @@ function MaterialProductSelect({
   );
 }
 
+function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang }) {
+  const [sampleWidth, setSampleWidth] = useState(600);
+  const [sampleHeight, setSampleHeight] = useState(720);
+  const plan = batch.stockPlan;
+  if (!plan) return null;
+  const freeRects = plan.sheets.flatMap((sheet: any) => sheet.usefulOffcuts || []);
+  const wood = (DECORS as any)[batch.decor]?.pattern === "wood";
+  const fitCount = countPartsInOffcuts(
+    freeRects,
+    sampleWidth,
+    sampleHeight,
+    !wood,
+  );
+  return (
+    <details className="sheetPlan">
+      <summary>
+        <span
+          className="costStockColor"
+          style={{ background: batch.color || "#87949a" }}
+        />
+        <span className="sheetPlanTitle">
+          <b>{role} · {batch.materialName}</b>
+          <small>
+            {(DECORS as any)[batch.decor]?.name || batch.decor} · {batch.thickness} мм · {batch.sheetWidth}×{batch.sheetHeight}
+          </small>
+        </span>
+        <strong>{batch.sheets} {lang === "ru" ? "л." : "sheets"}</strong>
+      </summary>
+      <div className="sheetMetrics">
+        <span><b>{plan.usedArea.toFixed(2)} м²</b>{lang === "ru" ? "детали" : "parts"}</span>
+        <span><b>{plan.reusableArea.toFixed(2)} м²</b>{lang === "ru" ? "полезный остаток" : "usable offcut"}</span>
+        <span><b>{Math.round(plan.utilization * 100)}%</b>{lang === "ru" ? "использовано" : "utilized"}</span>
+      </div>
+      <div className="sheetMaps">
+        {plan.sheets.map((sheet: any) => (
+          <div className="sheetMapCard" key={sheet.index}>
+            <div><b>{lang === "ru" ? "Лист" : "Sheet"} {sheet.index}</b><small>{Math.round(sheet.utilization * 100)}%</small></div>
+            <svg
+              viewBox={`0 0 ${sheet.width} ${sheet.height}`}
+              role="img"
+              aria-label={`${lang === "ru" ? "Раскрой листа" : "Sheet layout"} ${sheet.index}`}
+            >
+              <rect x="0" y="0" width={sheet.width} height={sheet.height} className="sheetStock" />
+              {sheet.placements.map((item: any, index: number) => (
+                <g key={`${item.id}-${index}`}>
+                  <rect x={item.x} y={item.y} width={item.width} height={item.height} className="sheetPart" />
+                  {item.width > 230 && item.height > 100 && (
+                    <text x={item.x + item.width / 2} y={item.y + item.height / 2}>{item.width}×{item.height}</text>
+                  )}
+                </g>
+              ))}
+            </svg>
+            <small>
+              {sheet.usefulOffcuts?.length
+                ? `${lang === "ru" ? "Остатки" : "Offcuts"}: ${sheet.usefulOffcuts.slice(0, 3).map((rect: any) => `${Math.round(rect.width)}×${Math.round(rect.height)}`).join(", ")}${sheet.usefulOffcuts.length > 3 ? "…" : ""}`
+                : lang === "ru" ? "Полезных остатков нет" : "No useful offcuts"}
+            </small>
+          </div>
+        ))}
+      </div>
+      <div className="offcutFit">
+        <span>{lang === "ru" ? "Что ещё войдёт в остатки" : "What still fits"}</span>
+        <label><input type="number" min="1" value={sampleWidth} onChange={(event) => setSampleWidth(Math.max(1, Number(event.target.value) || 1))} /><small>мм</small></label>
+        <span>×</span>
+        <label><input type="number" min="1" value={sampleHeight} onChange={(event) => setSampleHeight(Math.max(1, Number(event.target.value) || 1))} /><small>мм</small></label>
+        <strong>≈ {fitCount} шт.</strong>
+      </div>
+      <p className="note">
+        {lang === "ru"
+          ? `По площади с запасом ${batch.reserveSheets} л.; раскладка рекомендует ${batch.sheets} л. Закупка целыми листами ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. Пропил ${plan.kerf} мм, обрезка края ${plan.trim} мм${wood ? ", направление текстуры зафиксировано" : ""}.`
+          : `Area reserve: ${batch.reserveSheets} sheets; nesting recommends ${batch.sheets}. Whole-sheet purchase ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. Kerf ${plan.kerf} mm, edge trim ${plan.trim} mm${wood ? ", grain direction locked" : ""}.`}
+      </p>
+    </details>
+  );
+}
+
 export function App() {
   useViewport();
   const { project, setProject, undo, redo, canUndo, canRedo } =
@@ -285,7 +365,8 @@ export function App() {
     [saveStatus, setSaveStatus] = useState<SaveStatus>("saving"),
     [importNotice, setImportNotice] = useState<ImportNotice>(null),
     [catalogQuery, setCatalogQuery] = useState(""),
-    [catalogSearchOpen, setCatalogSearchOpen] = useState(false);
+    [catalogSearchOpen, setCatalogSearchOpen] = useState(false),
+    [moduleTab, setModuleTab] = useState<ModuleTab>("geometry");
   const importInputRef = useRef<HTMLInputElement>(null),
     projectRef = useRef(project);
   projectRef.current = project;
@@ -323,7 +404,22 @@ export function App() {
         : null,
     parts = selectedModuleId
       ? model.parts.filter((p: any) => p.moduleId === selectedModuleId)
-      : [];
+      : [],
+    selectedFixtures = selectedModuleId
+      ? (project.fixtures || []).filter((fixture: any) => fixture.targetModuleId === selectedModuleId)
+      : [],
+    selectedFixture = selectedFixtures[0] || null,
+    applianceBayEligible = !!selectedModule && ["base", "sink", "cornerBaseBlind"].includes(selectedModule.type),
+    applianceBayActive = !!selectedModule && ["washer", "dishwasher"].includes(selectedModule.applianceBay),
+    applianceRequiredClearance = selectedModule?.applianceBay === "washer" ? Math.max(5, Number(project.defaults?.washerClearance) || 15) : 5,
+    applianceAvailableWidth = selectedModule?.type === "cornerBaseBlind" ? Number(selectedModule.cornerOpening) || 450 : Number(selectedModule?.width) || 0,
+    applianceAvailableHeight = selectedModule ? (Number(selectedModule.height) || 0) + (Number(selectedModule.feet) || 0) : 0,
+    applianceAvailableDepth = selectedModule ? Math.max(Number(selectedModule.depth) || 0, Number(project.countertop?.depth) || 0) : 0,
+    applianceFits = !applianceBayActive || (
+      Number(selectedModule?.applianceWidth) <= applianceAvailableWidth &&
+      Number(selectedModule?.applianceHeight) + applianceRequiredClearance <= applianceAvailableHeight &&
+      Number(selectedModule?.applianceDepth) <= applianceAvailableDepth
+    );
   const floorTargets = model.modules.filter((m: any) =>
     fixtureTargetTypes.has(m.type),
   );
@@ -373,7 +469,7 @@ export function App() {
             ? "تم الحفظ"
             : "Saved";
   const frontsEnabled = selectedModule
-      ? selectedModule.type === "drawer" || selectedModule.frontEnabled !== false
+      ? selectedModule.type === "drawer" || (selectedModule.frontEnabled !== false && !applianceBayActive)
       : false,
     actualDoorCount = selectedModule && frontsEnabled
     ? ["cornerBaseBlind", "cornerWallBlind"].includes(selectedModule.type)
@@ -389,6 +485,7 @@ export function App() {
               : 1
     : 0,
     selectedFrontParts = parts.filter((part: any) => part.role === "front");
+  useEffect(() => setModuleTab("geometry"), [selectedModuleId]);
   useEffect(() => {
     setSaveStatus("saving");
     const timer = window.setTimeout(() => {
@@ -553,6 +650,31 @@ export function App() {
       next = updateModule(next, selectedModule.id, { shelfCount: 0 });
       setFixtureTargetId(selectedModule.id);
       setProject(next);
+    },
+    setSelectedWorktopFixture = (type: "none" | "sink" | "hob") => {
+      if (!selectedModule) return;
+      setProject((current: any) => {
+        let next = current;
+        for (const fixture of current.fixtures || [])
+          if (fixture.targetModuleId === selectedModule.id)
+            next = removeFixture(next, fixture.id);
+        if (type === "none") return next;
+        const result = addFixture(next, type, selectedModule.id);
+        next = result.project;
+        if (type === "sink" && selectedModule.type === "cornerBaseBlind") {
+          const opening = Math.max(
+            250,
+            Math.min(selectedModule.cornerOpening || 450, selectedModule.width - 260),
+          );
+          next = updateFixture(next, result.id, {
+            width: Math.max(100, Math.min(500, opening - 40)),
+            offsetX: 0,
+            offsetZ: 0,
+          });
+          next = updateModule(next, selectedModule.id, { shelfCount: 0 });
+        }
+        return next;
+      });
     },
     decorOptions = Object.entries(DECORS) as [string, any][];
   const wallToggle = (key: string, label: string, defaultOn: boolean) => {
@@ -1116,10 +1238,10 @@ export function App() {
                   {g.id === "appliances" && (
                     <p className="note catalogApplianceNote">
                       {lang === "ru"
-                        ? "Стиральная и посудомоечная машины занимают отдельный проём между шкафами. Не размещай их внутри или поверх углового корпуса."
+                        ? "Стиральную и посудомоечную машины можно поставить отдельным объектом или выбрать во вкладке «Техника» у нижнего/глухого углового модуля — тогда приложение само освободит правильный проём."
                         : lang === "ar"
                           ? "توضع الغسالة وغسالة الصحون في فتحة مستقلة بين الخزائن، وليس داخل خزانة الزاوية."
-                          : "Washers and dishwashers use a separate bay between cabinets, never the inside of a corner cabinet."}
+                          : "Washers and dishwashers can be separate objects or assigned from the Appliance tab of a base/blind-corner module, which reserves the correct clear bay."}
                     </p>
                   )}
                 </section>
@@ -1244,6 +1366,13 @@ export function App() {
                       : "Some part thicknesses do not match the selected product. Choose a matching product or restore its standard thickness."}
                   </p>
                 )}
+                {!!cost.stockWarnings?.length && (
+                  <p className="warning">
+                    {lang === "ru"
+                      ? `В раскрой не помещается деталей: ${cost.stockWarnings.length}. Проверь формат листа, направление текстуры или размер детали — такие позиции нельзя считать готовыми к закупке.`
+                      : `${cost.stockWarnings.length} parts do not fit the selected sheet. Check sheet size, grain direction or part dimensions before purchasing.`}
+                  </p>
+                )}
                 <details className="materialPriceDetails" open>
                   <summary>
                     {lang === "ru" ? "Цены материалов, EGP/м²" : "Material prices, EGP/m²"}
@@ -1276,6 +1405,24 @@ export function App() {
                     min={0}
                     max={60}
                     onCommit={(n) => patchCost({ wastePercent: n })}
+                  />
+                  <NumberField
+                    compact
+                    label={lang === "ru" ? "Пропил пилы" : "Saw kerf"}
+                    value={cost.settings.sawKerf}
+                    unit="мм"
+                    min={0}
+                    max={20}
+                    onCommit={(n) => patchCost({ sawKerf: n })}
+                  />
+                  <NumberField
+                    compact
+                    label={lang === "ru" ? "Обрезка края" : "Edge trim"}
+                    value={cost.settings.sheetEdgeTrim}
+                    unit="мм"
+                    min={0}
+                    max={50}
+                    onCommit={(n) => patchCost({ sheetEdgeTrim: n })}
                   />
                 </div>
               </section>
@@ -1455,6 +1602,10 @@ export function App() {
                     <b>{Math.round(cost.back.cost).toLocaleString()} EGP</b>
                   </small>
                   <small>
+                    {lang === "ru" ? "Закупка целыми листами (справочно)" : "Whole-sheet purchase (reference)"}: {" "}
+                    <b>{Math.round(cost.purchaseMaterials).toLocaleString()} EGP</b>
+                  </small>
+                  <small>
                     {lang === "ru"
                       ? "Кромка корпуса"
                       : lang === "ar"
@@ -1541,59 +1692,26 @@ export function App() {
                       [lang === "ru" ? "Задник" : "Back", cost.back.batches],
                     ].flatMap(([role, batches]: any) =>
                       (batches || []).map((batch: any, index: number) => (
-                        <div
-                          className="costStockRow"
+                        <SheetPlan
                           key={[
                             role,
-                            batch.substrate,
+                            batch.materialProductId,
                             batch.decor,
                             batch.color,
                             batch.thickness,
                             index,
                           ].join("-")}
-                        >
-                          <span
-                            className="costStockColor"
-                            style={{ background: batch.color || "#87949a" }}
-                          />
-                          <span>
-                            <b>{role}</b>
-                            <small>
-                              {batch.materialName ||
-                                (SUBSTRATES as any)[batch.substrate]?.name ||
-                                batch.substrate}{" "}
-                              ·{" "}
-                              {(DECORS as any)[batch.decor]?.name || batch.decor}
-                              {batch.finish
-                                ? " · " + (batch.finish === "gloss"
-                                  ? lang === "ru" ? "глянец" : "gloss"
-                                  : lang === "ru" ? "матовый" : "matte")
-                                : ""}
-                              {batch.thickness
-                                ? " · " + batch.thickness + " мм"
-                                : ""}
-                              {batch.thicknessMismatch
-                                ? lang === "ru"
-                                  ? " · толщина не совпадает"
-                                  : " · thickness mismatch"
-                                : ""}
-                              {" · "}
-                              {batch.sheetWidth}×{batch.sheetHeight} мм
-                              {" · "}
-                              {Math.round(batch.pricePerM2)} EGP/м²
-                            </small>
-                          </span>
-                          <strong>
-                            {batch.pricedArea.toFixed(2)} м² · {batch.sheets} л.
-                          </strong>
-                        </div>
+                          batch={batch}
+                          role={role}
+                          lang={lang}
+                        />
                       )),
                     )}
                   </div>
                   <p className="note">
                     {lang === "ru"
-                      ? "15% отхода добавляется к площади по формуле. Разные декоры и материалы разделяются только в плане закупки листов."
-                      : "Waste is added to area by formula. Decors and products are separated only for sheet purchasing guidance."}
+                      ? "Цена сметы по-прежнему считается по м² с заданным запасом. Раскладка отдельно показывает, сколько целых листов реально покупать и какие прямоугольные остатки можно сохранить. Это предварительный раскрой: порядок резов и технологические поля нужно подтвердить в цехе."
+                      : "The estimate still uses m² plus the configured reserve. Nesting separately shows whole sheets to buy and reusable rectangular offcuts. It remains a preliminary layout for workshop confirmation."}
                   </p>
                 </details>
               </section>
@@ -2655,7 +2773,26 @@ export function App() {
             </div>
           ) : selectedModule ? (
             <div className="inspectorBody">
-              <section>
+              <nav className="moduleTabs" aria-label={lang === "ru" ? "Раздел настроек модуля" : "Module settings section"}>
+                <button type="button" className={moduleTab === "geometry" ? "active" : ""} aria-selected={moduleTab === "geometry"} onClick={() => setModuleTab("geometry")}>
+                  <ModuleDimensionsIcon size={18} /><span>{lang === "ru" ? "Размер" : "Size"}</span>
+                </button>
+                {selectedFurniture && <>
+                  <button type="button" className={moduleTab === "construction" ? "active" : ""} aria-selected={moduleTab === "construction"} onClick={() => setModuleTab("construction")}>
+                    <ConstructionIcon size={18} /><span>{lang === "ru" ? "Корпус" : "Build"}</span>
+                  </button>
+                  <button type="button" className={moduleTab === "facade" ? "active" : ""} aria-selected={moduleTab === "facade"} onClick={() => setModuleTab("facade")}>
+                    <DoorsIcon size={18} /><span>{lang === "ru" ? "Фасад" : "Front"}</span>
+                  </button>
+                  <button type="button" className={moduleTab === "materials" ? "active" : ""} aria-selected={moduleTab === "materials"} onClick={() => setModuleTab("materials")}>
+                    <MaterialIcon size={18} /><span>{lang === "ru" ? "Цвет" : "Finish"}</span>
+                  </button>
+                  {applianceBayEligible && <button type="button" className={moduleTab === "equipment" ? "active" : ""} aria-selected={moduleTab === "equipment"} onClick={() => setModuleTab("equipment")}>
+                    <ApplianceIcon size={18} /><span>{lang === "ru" ? "Техника" : "Appliance"}</span>
+                  </button>}
+                </>}
+              </nav>
+              <section className={moduleTab === "geometry" ? "" : "moduleTabHidden"}>
                 <h3>{lang === "ru" ? "Габариты" : "Dimensions"}</h3>
                 <div className="dimensionGrid">
                   <NumberField
@@ -2684,7 +2821,7 @@ export function App() {
                   />
                 </div>
               </section>
-              <section>
+              <section className={moduleTab === "geometry" ? "" : "moduleTabHidden"}>
                 <h3>{t("position")}</h3>
                 <div className="twoGrid">
                   <NumberField
@@ -2764,7 +2901,7 @@ export function App() {
               </section>
               {selectedFurniture && (
                 <>
-                  <section>
+                  <section className={moduleTab === "construction" ? "" : "moduleTabHidden"}>
                     <h3>{lang === "ru" ? "Конструкция" : "Construction"}</h3>
                     <div className="dimensionGrid">
                       <NumberField
@@ -3040,8 +3177,8 @@ export function App() {
                             </button>
                             <span className="warningText">
                               {lang === "ru"
-                                ? "Посудомоечную или стиральную машину внутрь корпуса не ставят: для неё нужен отдельный проём рядом."
-                                : "Dishwashers and washers need a separate bay beside this cabinet."}
+                                ? "Технику нельзя зажимать между боковинами обычного корпуса. Во вкладке «Техника» можно превратить доступную секцию в отдельный проём, сохранив пол и полки в глухой части."
+                                : "An appliance cannot be squeezed between normal cabinet sides. Use the Appliance tab to reserve the accessible section while keeping the blind storage section."}
                             </span>
                           </>
                         )}
@@ -3085,7 +3222,7 @@ export function App() {
                       </div>
                     )}
                   </section>
-                  <section>
+                  <section className={moduleTab === "facade" ? "" : "moduleTabHidden"}>
                     <h3>{t("facade")}</h3>
                     {selectedModule.type !== "drawer" && (
                       <div
@@ -3095,6 +3232,7 @@ export function App() {
                       >
                         <button
                           type="button"
+                          disabled={applianceBayActive}
                           className={frontsEnabled ? "active" : ""}
                           aria-pressed={frontsEnabled}
                           onClick={() => patchModule({ frontEnabled: true })}
@@ -3103,6 +3241,7 @@ export function App() {
                         </button>
                         <button
                           type="button"
+                          disabled={applianceBayActive}
                           className={!frontsEnabled ? "active" : ""}
                           aria-pressed={!frontsEnabled}
                           onClick={() => patchModule({ frontEnabled: false })}
@@ -3113,9 +3252,13 @@ export function App() {
                     )}
                     {!frontsEnabled && (
                       <p className="note openFrontNote">
-                        {lang === "ru"
-                          ? "Фасад, ручка и петли исключены из 3D, деталировки и сметы. Корпус, полки и угловая монтажная перегородка остаются."
-                          : "The front, handle and hinges are excluded from 3D, parts and cost; the carcass, shelves and corner mounting stile remain."}
+                        {applianceBayActive
+                          ? lang === "ru"
+                            ? "Фасад автоматически скрыт, потому что этот проём занят техникой. Верни режим «Шкаф» во вкладке «Техника», чтобы снова использовать фасад."
+                            : "The front is hidden because this bay contains an appliance. Switch back to Cabinet in the Appliance tab to restore it."
+                          : lang === "ru"
+                            ? "Фасад, ручка и петли исключены из 3D, деталировки и сметы. Корпус, полки и угловая монтажная перегородка остаются."
+                            : "The front, handle and hinges are excluded from 3D, parts and cost; the carcass, shelves and corner mounting stile remain."}
                       </p>
                     )}
                     {frontsEnabled && (
@@ -3275,7 +3418,7 @@ export function App() {
                     </div>
                     </>}
                   </section>
-                  <section>
+                  <section className={moduleTab === "materials" ? "" : "moduleTabHidden"}>
                     <h3>{t("materials")}</h3>
                     <div className="materialRoleGrid">
                       <MaterialProductSelect
@@ -3585,6 +3728,90 @@ export function App() {
                     )}
                     </>}
                   </section>
+                  {applianceBayEligible && (
+                    <section className={moduleTab === "equipment" ? "equipmentSection" : "moduleTabHidden"}>
+                      <h3>{lang === "ru" ? "Проём под технику" : "Appliance bay"}</h3>
+                      <div className="segmented applianceSelector" role="group" aria-label={lang === "ru" ? "Техника в модуле" : "Appliance in module"}>
+                        {(["none", "washer", "dishwasher"] as const).map((type) => (
+                          <button
+                            type="button"
+                            key={type}
+                            className={(selectedModule.applianceBay || "none") === type ? "active" : ""}
+                            aria-pressed={(selectedModule.applianceBay || "none") === type}
+                            onClick={() => patchModule({ applianceBay: type })}
+                          >
+                            {type === "none"
+                              ? lang === "ru" ? "Шкаф" : "Cabinet"
+                              : type === "washer"
+                                ? lang === "ru" ? "Стиралка" : "Washer"
+                                : lang === "ru" ? "Посудомойка" : "Dishwasher"}
+                          </button>
+                        ))}
+                      </div>
+                      {applianceBayActive ? (
+                        <>
+                          <p className="note equipmentExplanation">
+                            {lang === "ru"
+                              ? selectedModule.type === "cornerBaseBlind"
+                                ? "Доступная часть углового модуля становится проёмом под технику. Дно, полки, фасад, цоколь и опоры убираются только из проёма; глухая секция остаётся с дном и полками."
+                                : "Это отдельный проём под общей столешницей, а не техника между боковинами 600‑мм шкафа. Дно, полки, фасад, цоколь и ножки этого проёма исключаются из деталировки."
+                              : selectedModule.type === "cornerBaseBlind"
+                                ? "The accessible corner section becomes an appliance bay; the blind storage section keeps its bottom and shelves."
+                                : "This is a clear opening under the shared worktop, not an appliance squeezed between cabinet sides."}
+                          </p>
+                          <div className="dimensionGrid">
+                            <NumberField compact label={t("width")} value={selectedModule.applianceWidth || 600} min={400} max={1200} onCommit={(n) => patchModule({ applianceWidth: n })} />
+                            <NumberField compact label={t("height")} value={selectedModule.applianceHeight || (selectedModule.applianceBay === "washer" ? 850 : 815)} min={500} max={1000} onCommit={(n) => patchModule({ applianceHeight: n })} />
+                            <NumberField compact label={t("depth")} value={selectedModule.applianceDepth || (selectedModule.applianceBay === "washer" ? 600 : 570)} min={400} max={900} onCommit={(n) => patchModule({ applianceDepth: n })} />
+                          </div>
+                          <div className={applianceFits ? "fitStatus ok" : "fitStatus bad"}>
+                            <b>{applianceFits ? (lang === "ru" ? "Помещается" : "Fits") : (lang === "ru" ? "Не помещается" : "Does not fit")}</b>
+                            <span>
+                              {lang === "ru" ? "Доступно" : "Available"}: {applianceAvailableWidth}×{applianceAvailableHeight}×{applianceAvailableDepth} мм · {lang === "ru" ? "верхний зазор" : "top clearance"} {applianceRequiredClearance} мм
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="note equipmentExplanation">
+                          {lang === "ru"
+                            ? "В режиме «Шкаф» сохраняются корпус, фасад, полки и опоры. Выбор техники создаёт физический проём и сразу меняет деталировку и смету."
+                            : "Cabinet mode keeps the carcass, front, shelves and supports. Selecting an appliance creates a real opening and updates parts and cost."}
+                        </p>
+                      )}
+
+                      <h3>{lang === "ru" ? "В столешнице над модулем" : "In the worktop above"}</h3>
+                      <div className="segmented applianceSelector" role="group" aria-label={lang === "ru" ? "Элемент столешницы" : "Worktop fixture"}>
+                        {(["none", "sink", "hob"] as const).map((type) => (
+                          <button
+                            type="button"
+                            key={type}
+                            className={(selectedFixture?.type || "none") === type ? "active" : ""}
+                            aria-pressed={(selectedFixture?.type || "none") === type}
+                            onClick={() => setSelectedWorktopFixture(type)}
+                          >
+                            {type === "none"
+                              ? lang === "ru" ? "Нет" : "None"
+                              : type === "sink"
+                                ? lang === "ru" ? "Мойка" : "Sink"
+                                : lang === "ru" ? "Варочная" : "Hob"}
+                          </button>
+                        ))}
+                      </div>
+                      {selectedFixture && (
+                        <div className="dimensionGrid fixtureInlineFields">
+                          <NumberField compact label={t("width")} value={selectedFixture.width} min={100} max={1200} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { width: n }))} />
+                          <NumberField compact label={t("depth")} value={selectedFixture.depth} min={100} max={900} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { depth: n }))} />
+                          <NumberField compact label="X" value={selectedFixture.offsetX || 0} min={-1000} max={1000} onCommit={(n) => setProject((p: any) => updateFixture(p, selectedFixture.id, { offsetX: n }))} />
+                        </div>
+                      )}
+                      {applianceBayActive && selectedFixture?.type === "sink" && (
+                        <p className="warning">{lang === "ru" ? "Конфликт: мойка и техника занимают один проём. Такой вариант нельзя отдавать в производство." : "Conflict: the sink and appliance occupy the same bay."}</p>
+                      )}
+                      {applianceBayActive && selectedFixture?.type === "hob" && (
+                        <p className="warning">{lang === "ru" ? "Варочная поверхность над техникой возможна не всегда: проверь вентиляцию, высоту и минимальные зазоры по паспортам обеих моделей." : "A hob above an appliance requires model-specific ventilation and clearance checks."}</p>
+                      )}
+                    </section>
+                  )}
                   {!focusId && (
                     <button className="focusBtn" onClick={enterFocus}>
                       {t("focusEdit")}

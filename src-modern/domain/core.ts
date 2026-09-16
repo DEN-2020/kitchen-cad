@@ -248,6 +248,16 @@ export function updateModule(
     m = p.modules.find((x: any) => x.id === id);
   if (m) {
     Object.assign(m, patch);
+    if ("applianceBay" in patch && ["washer", "dishwasher"].includes(String(m.applianceBay))) {
+      const defaults =
+        m.applianceBay === "dishwasher"
+          ? { applianceWidth: 600, applianceHeight: 815, applianceDepth: 570 }
+          : { applianceWidth: 600, applianceHeight: 850, applianceDepth: 600 };
+      for (const [key, value] of Object.entries(defaults))
+        if (!(key in patch)) m[key] = value;
+      if (m.type === "cornerBaseBlind")
+        m.cornerOpening = Math.max(Number(m.cornerOpening) || 450, Number(m.applianceWidth) || 600);
+    }
     if ("bodyMaterialId" in patch)
       Object.assign(m, materialSelectionPatch("body", String(m.bodyMaterialId)));
     if ("frontMaterialId" in patch)

@@ -17,6 +17,7 @@ import { DECORS, isDisplayOnlyType } from "../../src/catalog/materials.js";
 import { jointLinePoints } from "../../src/core/countertop-joints.js";
 import { doorHingeFrame, objectInDoorFrame } from "../../src/core/door-motion.js";
 import { clampPoseToRoom } from "../../src/core/placement.js";
+import { cinematicCameraPose } from "../../src/core/showroom-path.js";
 import type { DimensionDetail, Selection, ViewMode } from "../domain/core";
 const mm = (v: number) => v / 1000,
   skinTypes = new Set(["washer", "dishwasher", "oven", "fridge"]),
@@ -889,8 +890,9 @@ function CameraRig({
   view: ViewMode;
   autoOrbit: boolean;
 }) {
-  const { camera, invalidate } = useThree(),
+  const { camera, invalidate, size } = useThree(),
     controls = useRef<any>(null),
+    showcaseTime = useRef(0),
     initialized = useRef(false),
     previousView = useRef<ViewMode>(view),
     previousFocusId = useRef<string | null>(focusId),
@@ -906,8 +908,33 @@ function CameraRig({
           mm(project.room.height * 0.35),
           mm(project.room.depth / 2),
         );
-  useFrame(() => {
+  useEffect(() => {
+    showcaseTime.current = 0;
+  }, [autoOrbit, focusId]);
+  useFrame((_, delta) => {
     if (!autoOrbit || view !== "3d" || !controls.current) return;
+    showcaseTime.current += Math.min(delta, 0.08);
+    const pose = cinematicCameraPose({
+        modules: model.modules,
+        room: project.room,
+        focusId,
+        phase: (showcaseTime.current % 24) / 24,
+        aspect: size.width / Math.max(1, size.height),
+      }),
+      desiredPosition = new THREE.Vector3(
+        mm(pose.position.x),
+        mm(pose.position.y),
+        mm(pose.position.z),
+      ),
+      desiredTarget = new THREE.Vector3(
+        mm(pose.target.x),
+        mm(pose.target.y),
+        mm(pose.target.z),
+      ),
+      blend = 1 - Math.exp(-delta * 1.25);
+    camera.up.set(0, 1, 0);
+    camera.position.lerp(desiredPosition, blend);
+    controls.current.target.lerp(desiredTarget, blend);
     controls.current.update();
     invalidate();
   });
@@ -1007,11 +1034,12 @@ function CameraRig({
     <OrbitControls
       ref={controls}
       makeDefault
-      enableRotate={view === "3d"}
+      enableRotate={view === "3d" && !autoOrbit}
+      enablePan={!autoOrbit}
+      enableZoom={!autoOrbit}
       enableDamping
       dampingFactor={0.07}
-      autoRotate={autoOrbit && view === "3d"}
-      autoRotateSpeed={0.65}
+      autoRotate={false}
       rotateSpeed={0.95}
       zoomSpeed={1}
       panSpeed={0.8}
@@ -1021,6 +1049,48 @@ function CameraRig({
         ONE: view === "3d" ? THREE.TOUCH.ROTATE : THREE.TOUCH.PAN,
         TWO: THREE.TOUCH.DOLLY_PAN,
       }}
+    />
+  );
+}
+function MovingShowcaseLight({
+  active,
+  project,
+  model,
+  focusId,
+}: {
+  active: boolean;
+  project: any;
+  model: any;
+  focusId: string | null;
+}) {
+  const light = useRef<THREE.PointLight>(null!);
+  const elapsed = useRef(0);
+  useFrame((_, delta) => {
+    if (!active || !light.current) return;
+    elapsed.current += Math.min(delta, 0.08);
+    const pose = cinematicCameraPose({
+      modules: model.modules,
+      room: project.room,
+      focusId,
+      phase: ((elapsed.current / 19) + 0.2) % 1,
+      aspect: 1,
+    });
+    light.current.position.lerp(
+      new THREE.Vector3(
+        mm(pose.target.x + (pose.position.x - pose.target.x) * 0.48),
+        mm(pose.target.y + 1250),
+        mm(pose.target.z + (pose.position.z - pose.target.z) * 0.48),
+      ),
+      1 - Math.exp(-delta * 1.1),
+    );
+  });
+  return (
+    <pointLight
+      ref={light}
+      intensity={active ? 13 : 0}
+      distance={7}
+      decay={2}
+      color="#fff3df"
     />
   );
 }
@@ -1099,6 +1169,12 @@ function SceneContent(props: any) {
         shadow-mapSize-width={1536}
         shadow-mapSize-height={1536}
         shadow-bias={-0.00025}
+      />
+      <MovingShowcaseLight
+        active={!!project.ui?.autoOrbit && view === "3d"}
+        project={project}
+        model={model}
+        focusId={focusId}
       />
       <directionalLight
         position={[-3, 2.4, -2.5]}

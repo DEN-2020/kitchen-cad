@@ -25,6 +25,9 @@ export const ResetIcon=(p:IconProps)=><Svg {...p}><path d="M5.4 7.8A8 8 0 1 1 4 
 export const SearchIcon=(p:IconProps)=><Svg {...p}><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4 4"/></Svg>;
 export const DepthIcon=(p:IconProps)=><Svg {...p}><path d="m6 17 11-11"/><path d="M6 12v5h5M12 6h5v5"/></Svg>;
 export const HeightIcon=(p:IconProps)=><Svg {...p}><path d="M7 4h10M7 20h10M12 7v10"/><path d="m9 9 3-3 3 3M9 15l3 3 3-3"/></Svg>;
+export const ConstructionIcon=(p:IconProps)=><Svg {...p}><path d="M5 4v16M19 4v16M5 8h14M5 16h14"/><path d="M9 8v8M15 8v8"/></Svg>;
+export const MaterialIcon=(p:IconProps)=><Svg {...p}><path d="M4 18 15.5 6.5l2 2L6 20H4z"/><path d="m14 8 2-4 4 4-4 2"/><path d="M9 17c2.4 0 3.8 1.1 3.8 2.3S11.4 21 9 21"/></Svg>;
+export const ApplianceIcon=(p:IconProps)=><Svg {...p}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 8h14"/><circle cx="12" cy="14" r="4"/><path d="M8 5.5h2M16 5.5h.1"/></Svg>;
 
 export function CatalogGlyph({type}:{type:string}){
  const c={width:44,height:44,viewBox:'0 0 48 48',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};
