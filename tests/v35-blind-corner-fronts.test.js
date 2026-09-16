@@ -22,9 +22,11 @@ for (const type of ['cornerBaseBlind', 'cornerWallBlind']) {
 
     assert.ok(rightDoor.center[0] > rightStile.center[0]);
     assert.ok(rightStile.center[0] > rightBlind.center[0]);
-    assert.equal(rightStile.name, 'Монтажная стойка петель');
+    assert.equal(rightStile.name, 'Монтажная перегородка петель');
     assert.equal(rightStile.role, 'body');
     assert.equal(rightStile.u, 70);
+    assert.equal(rightStile.size[0], right.cabinet.board);
+    assert.equal(rightStile.size[2], 70);
     assert.equal(rightDoor.hingeSide, 'left');
     assert.equal(rightDoor.hingeMountPartId, rightStile.id);
     assert.equal(rightDoor.hingeType, 'blind-corner-95');
@@ -91,5 +93,16 @@ test('legacy projects migrate to a front and a safe blind-corner hinge stile', (
   assert.doesNotThrow(() => validateProject(project));
 
   cabinet.cornerMuntinWidth = 27;
-  assert.throws(() => validateProject(project), /Ширина стойки петель/);
+  assert.throws(() => validateProject(project), /Глубина перегородки петель/);
+});
+
+test('blind corner supports one or two door leaves for base and wall variants', () => {
+  for (const type of ['cornerBaseBlind', 'cornerWallBlind']) {
+    const { project, cabinet } = modelFor(type);
+    cabinet.doorCount = 2;
+    const fronts = buildProject(project).parts.filter((part) => part.role === 'front');
+    assert.equal(fronts.length, 2, type);
+    assert.deepEqual(fronts.map((front) => front.hingeSide), ['left', 'right']);
+    assert.ok(fronts.every((front) => front.hingeMountPartId), type);
+  }
 });

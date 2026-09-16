@@ -16,6 +16,15 @@ export const UploadIcon=(p:IconProps)=><Svg {...p}><path d="M12 21V9M7 14l5-5 5 
 export const UndoIcon=(p:IconProps)=><Svg {...p}><path d="M9 7 4 12l5 5"/><path d="M5 12h8a6 6 0 0 1 6 6"/></Svg>;
 export const RedoIcon=(p:IconProps)=><Svg {...p}><path d="m15 7 5 5-5 5"/><path d="M19 12h-8a6 6 0 0 0-6 6"/></Svg>;
 export const PartsIcon=(p:IconProps)=><Svg {...p}><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="13" y="4" width="8" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></Svg>;
+export const DoorsIcon=(p:IconProps)=><Svg {...p}><path d="M4 5.5h16v13H4z"/><path d="m12 6-5 2v8l5 2M12 6l5 2v8l-5 2"/><circle cx="10" cy="12" r=".55" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r=".55" fill="currentColor" stroke="none"/></Svg>;
+export const OrbitIcon=(p:IconProps)=><Svg {...p}><path d="M5.2 8.5A8 8 0 0 1 19 7l1.3 1.5"/><path d="M20.3 4.6v3.9h-3.9"/><path d="M18.8 15.5A8 8 0 0 1 5 17l-1.3-1.5"/><path d="M3.7 19.4v-3.9h3.9"/><circle cx="12" cy="12" r="2.2"/></Svg>;
+export const RoomDimensionsIcon=(p:IconProps)=><Svg {...p}><path d="M4 7v10M20 7v10M7 12h10"/><path d="m9 9-3 3 3 3M15 9l3 3-3 3"/></Svg>;
+export const ModuleDimensionsIcon=(p:IconProps)=><Svg {...p}><rect x="5" y="5" width="14" height="14" rx="1.5"/><path d="M5 9h14M9 5v14M13.5 9v10M9 13.5h10"/></Svg>;
+export const CostIcon=(p:IconProps)=><Svg {...p}><circle cx="12" cy="12" r="8"/><path d="M15.5 8.5c-.7-.8-1.8-1.2-3-1.2-1.8 0-3 .9-3 2.2 0 3.3 6.4 1.1 6.4 4.8 0 1.4-1.3 2.4-3.3 2.4-1.4 0-2.7-.5-3.5-1.4M12.5 5.5v13"/></Svg>;
+export const ResetIcon=(p:IconProps)=><Svg {...p}><path d="M5.4 7.8A8 8 0 1 1 4 14"/><path d="M4 5v4.5h4.5"/></Svg>;
+export const SearchIcon=(p:IconProps)=><Svg {...p}><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4 4"/></Svg>;
+export const DepthIcon=(p:IconProps)=><Svg {...p}><path d="m6 17 11-11"/><path d="M6 12v5h5M12 6h5v5"/></Svg>;
+export const HeightIcon=(p:IconProps)=><Svg {...p}><path d="M7 4h10M7 20h10M12 7v10"/><path d="m9 9 3-3 3 3M9 15l3 3 3-3"/></Svg>;
 
 export function CatalogGlyph({type}:{type:string}){
  const c={width:44,height:44,viewBox:'0 0 48 48',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};
@@ -26,7 +35,9 @@ export function CatalogGlyph({type}:{type:string}){
  if(type==='sink')return <svg {...c}><rect x="7" y="13" width="34" height="29" rx="2"/><path d="M10 13V8h28v5M14 17h20v10c0 4-4 7-10 7s-10-3-10-7zM24 17v-5"/></svg>;
  if(type==='drawer')return <svg {...c}><rect x="8" y="8" width="32" height="34" rx="2"/><path d="M8 19h32M8 30h32M18 14h12M18 25h12M18 36h12"/></svg>;
  if(type==='wall')return <svg {...c}><rect x="7" y="7" width="34" height="28" rx="2"/><path d="M24 7v28M10 40h28"/></svg>;
- if(type==='cornerBase'||type==='cornerWall')return <svg {...c}><path d="M8 8h22v12h10v22H8z"/><path d="M30 8v12H18v22"/></svg>;
+ if(type.includes('Blind'))return <svg {...c}><rect x="7" y="8" width="34" height="34" rx="2"/><path d="M25 8v34M29 12v26M12 25h13"/></svg>;
+ if(type.includes('Diagonal'))return <svg {...c}><path d="M8 8h32v32H8zM15 40 40 15M8 23h17V8"/></svg>;
+ if(type.includes('corner')||type.includes('Corner'))return <svg {...c}><path d="M8 8h22v12h10v22H8z"/><path d="M30 8v12H18v22"/></svg>;
  if(type==='tall'||type==='tallOven')return <svg {...c}><rect x="13" y="3" width="22" height="42" rx="2"/><path d="M13 18h22M13 31h22"/>{type==='tallOven'&&<rect x="17" y="19" width="14" height="11" rx="1"/>}</svg>;
  if(type==='hood')return <svg {...c}><path d="M10 28h28l-4 9H14zM19 8h10v20H19z"/></svg>;
  if(type==='window')return <svg {...c}><rect x="6" y="7" width="36" height="32" rx="1"/><path d="M24 7v32M6 23h36"/></svg>;

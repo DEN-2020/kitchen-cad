@@ -14,10 +14,14 @@ import { hingeCountForHeight } from "../../src/core/hinges.js";
 import { detectCountertopJoints } from "../../src/core/countertop-joints.js";
 import {
   DECORS,
+  MATERIAL_PRODUCTS,
+  inferMaterialProductId,
   isDisplayOnlyType,
   isWallMountedType,
+  materialSelectionPatch,
   modulePlacementPolicy,
 } from "../../src/catalog/materials.js";
+import { COST_PRESETS } from "../../src/core/cost.js";
 import {
   buildCountertopSegments,
   countertopSegmentForModule,
@@ -244,6 +248,40 @@ export function updateModule(
     m = p.modules.find((x: any) => x.id === id);
   if (m) {
     Object.assign(m, patch);
+    if ("bodyMaterialId" in patch)
+      Object.assign(m, materialSelectionPatch("body", String(m.bodyMaterialId)));
+    if ("frontMaterialId" in patch)
+      Object.assign(m, materialSelectionPatch("front", String(m.frontMaterialId)));
+    if ("bodySubstrate" in patch && !("bodyMaterialId" in patch)) {
+      Object.assign(
+        m,
+        materialSelectionPatch(
+          "body",
+          inferMaterialProductId({ role: "body", substrate: m.bodySubstrate }),
+        ),
+      );
+    }
+    if (
+      ("frontSubstrate" in patch || "gloss" in patch) &&
+      !("frontMaterialId" in patch)
+    ) {
+      const current = MATERIAL_PRODUCTS[m.frontMaterialId];
+      const keepPremiumGloss =
+        patch.gloss === true && current?.id === "acrylicHighGlossMdf18";
+      Object.assign(
+        m,
+        materialSelectionPatch(
+          "front",
+          keepPremiumGloss
+            ? current.id
+            : inferMaterialProductId({
+                role: "front",
+                substrate: m.frontSubstrate,
+                gloss: m.gloss,
+              }),
+        ),
+      );
+    }
     if (
       ["cornerBaseDiagonal", "cornerBaseL"].includes(m.type) &&
       "cornerRunDepth" in patch
@@ -298,10 +336,54 @@ export function updateProjectDefaults(
 ) {
   const p = clone(project);
   p.defaults = { ...(p.defaults || defaultStyle()), ...patch };
+  if ("bodyMaterialId" in patch)
+    Object.assign(
+      p.defaults,
+      materialSelectionPatch("body", String(p.defaults.bodyMaterialId)),
+    );
+  if ("frontMaterialId" in patch)
+    Object.assign(
+      p.defaults,
+      materialSelectionPatch("front", String(p.defaults.frontMaterialId)),
+    );
+  if ("gloss" in patch && !("frontMaterialId" in patch)) {
+    const keepPremiumGloss =
+      p.defaults.gloss &&
+      p.defaults.frontMaterialId === "acrylicHighGlossMdf18";
+    if (!keepPremiumGloss)
+      Object.assign(
+        p.defaults,
+        materialSelectionPatch(
+          "front",
+          inferMaterialProductId({
+            role: "front",
+            substrate: p.defaults.frontSubstrate,
+            gloss: p.defaults.gloss,
+          }),
+        ),
+      );
+  }
   return p;
 }
 export function applyProjectFinish(project: any) {
   return applyDefaultFinishToModules(project);
+}
+export function applyMaterialPreset(
+  project: any,
+  presetId: keyof typeof COST_PRESETS,
+) {
+  const preset = COST_PRESETS[presetId];
+  if (!preset) return clone(project);
+  const p = updateProjectDefaults(project, preset);
+  for (const module of p.modules || []) {
+    if (isDisplayOnlyType(module.type)) continue;
+    Object.assign(
+      module,
+      materialSelectionPatch("body", preset.bodyMaterialId),
+      materialSelectionPatch("front", preset.frontMaterialId),
+    );
+  }
+  return p;
 }
 export function updateCountertop(project: any, patch: Record<string, unknown>) {
   const p = clone(project);
@@ -339,7 +421,20 @@ export function addModule(project: any, type: string) {
       frontColor: d.frontColor || DECORS[d.frontDecor]?.color || m.frontColor,
       bodyDecor: d.bodyDecor,
       bodyColor: d.bodyColor || DECORS[d.bodyDecor]?.color || m.bodyColor,
-      gloss: !!d.gloss,
+      ...materialSelectionPatch(
+        "body",
+        d.bodyMaterialId ||
+          inferMaterialProductId({ role: "body", substrate: d.bodySubstrate }),
+      ),
+      ...materialSelectionPatch(
+        "front",
+        d.frontMaterialId ||
+          inferMaterialProductId({
+            role: "front",
+            substrate: d.frontSubstrate,
+            gloss: d.gloss,
+          }),
+      ),
       frontStyle: d.frontStyle,
       handleStyle: d.handleStyle,
       legStyle: d.legStyle,

@@ -45,7 +45,7 @@ test('cost rounds visually different sheet materials separately', () => {
   );
   assert.equal(result.body.batches.length, 2);
   assert.equal(result.body.sheets, 2);
-  assert.equal(result.body.cost, 2 * DEFAULT_COSTING.bodySheetPrice);
+  assert.equal(result.body.cost, 0.18 * DEFAULT_COSTING.materialPrices.mfc18);
 });
 
 test('global kitchen finish updates furniture but preserves hinges and appliances', () => {

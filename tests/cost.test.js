@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {estimateProjectCost,edgeBandMeters,DEFAULT_COSTING,COST_PRESETS} from '../src/core/cost.js';
+import {MATERIAL_PRODUCTS,materialSelectionPatch} from '../src/catalog/materials.js';
 
 test('edge meters follow four actual edged sides',()=>{
  const p={u:500,v:700,edges:[0.8,0,2,2]};
  assert.equal(edgeBandMeters(p),1.7);
 });
 
-test('cost estimate rounds material demand up to whole sheets',()=>{
+test('cost uses square metres while sheet count stays purchasing guidance',()=>{
  const parts=[
   {u:1000,v:1000,role:'body',edges:[0,0,0,0]},
   {u:1000,v:1000,role:'body',edges:[0,0,0,0]},
@@ -15,12 +16,37 @@ test('cost estimate rounds material demand up to whole sheets',()=>{
  ];
  const r=estimateProjectCost({costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0}},{parts});
  assert.equal(r.body.sheets,2);
- assert.equal(r.body.cost,3000);
+ assert.equal(r.body.pricedArea,3);
+ assert.equal(r.body.cost,3*MATERIAL_PRODUCTS.mfc18.pricePerM2);
 });
 
-test('market presets keep separate matte and gloss front prices',()=>{
- assert.ok(COST_PRESETS.budget.glossFrontSheetPrice>COST_PRESETS.budget.frontSheetPrice);
- assert.ok(COST_PRESETS.gloss.glossFrontSheetPrice>COST_PRESETS.gloss.frontSheetPrice);
+test('market presets separate carcass and door products',()=>{
+ assert.equal(COST_PRESETS.budget.bodyMaterialId,'mfc18');
+ assert.equal(COST_PRESETS.budget.frontMaterialId,'highGlossMdfPvc18');
+ assert.equal(COST_PRESETS.premium.frontMaterialId,'acrylicHighGlossMdf18');
+});
+
+test('every estimator product carries its own dimensions, thickness and EGP per m2 price',()=>{
+ for(const product of Object.values(MATERIAL_PRODUCTS)){
+  assert.ok(product.sheetWidth>0);
+  assert.ok(product.sheetHeight>0);
+  assert.ok(product.thickness>0);
+  assert.ok(product.pricePerM2>0);
+ }
+});
+
+test('selecting a door product keeps substrate thickness and gloss in sync',()=>{
+ assert.deepEqual(materialSelectionPatch('front','highGlossMdfPvc18'),{
+  frontMaterialId:'highGlossMdfPvc18',frontSubstrate:'mdf',frontThickness:18,gloss:true,
+ });
+ assert.equal(materialSelectionPatch('front','melamineMdf18').gloss,false);
+});
+
+test('default 15 percent waste follows area times price formula',()=>{
+ const part={u:1000,v:1000,role:'front',materialProductId:'highGlossMdfPvc18',edges:[0,0,0,0]};
+ const r=estimateProjectCost({costing:{...DEFAULT_COSTING,serviceBase:0,cuttingPerSheet:0}},{parts:[part]});
+ assert.equal(r.front.pricedArea,1.15);
+ assert.equal(r.front.cost,1.15*MATERIAL_PRODUCTS.highGlossMdfPvc18.pricePerM2);
 });
 
 test('estimate exposes uncertainty range around total',()=>{
@@ -40,6 +66,14 @@ test('Egypt sample-scale estimate is in the same order as the recent ~8000 EGP j
  for(let k=0;k<2;k++){add(560,720);add(560,720);add(464,560);add(464,100);add(464,100);add(462,540);add(496,716,'front',[2,2,2,2]);}
  for(let k=0;k<2;k++){add(400,720);add(400,720);add(464,400);add(464,400);add(462,380);add(496,716,'front',[2,2,2,2]);}
  add(1800,400);
- const r=estimateProjectCost({costing:{...DEFAULT_COSTING,bodySheetPrice:1500,frontSheetPrice:1500,glossFrontSheetPrice:3500}},{parts});
- assert.ok(r.total>6500&&r.total<10000,`unexpected sample estimate ${r.total}`);
+ const r=estimateProjectCost({costing:DEFAULT_COSTING},{parts});
+ assert.ok(r.total>5500&&r.total<8500,`unexpected sample estimate ${r.total}`);
+});
+
+test('estimator warns when a part thickness differs from its selected product',()=>{
+ const part={u:1000,v:500,role:'body',thickness:22,materialProductId:'mfc18',edges:[0,0,0,0]};
+ const r=estimateProjectCost({costing:{...DEFAULT_COSTING,wastePercent:0}},{parts:[part]});
+ assert.equal(r.materialWarnings.length,1);
+ assert.equal(r.materialWarnings[0].productThickness,18);
+ assert.equal(r.materialWarnings[0].partThickness,22);
 });

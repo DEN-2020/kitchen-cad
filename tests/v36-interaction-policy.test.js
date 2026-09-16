@@ -5,23 +5,23 @@ import { MODULE_PLACEMENT, MODULE_TYPES, modulePlacementPolicy } from '../src/ca
 import { resolvePlacementPose, rotatedFootprint } from '../src/core/placement.js';
 import { doorHingeFrame, doorOpenAngle, objectInDoorFrame } from '../src/core/door-motion.js';
 
-const front=(gloss)=>({role:'front',u:500,v:700,thickness:18,substrate:'mdf',decor:'white',appearance:{color:'#eeeeee',gloss},edges:[0,0,0,0]});
+const front=(gloss)=>({role:'front',u:500,v:700,thickness:18,materialProductId:gloss?'highGlossMdfPvc18':'melamineMdf18',substrate:'mdf',decor:'white',appearance:{color:'#eeeeee',gloss},edges:[0,0,0,0]});
 
 test('matte and gloss fronts use separate sheet stocks and prices',()=>{
- const result=estimateProjectCost({costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0,frontSheetPrice:1500,glossFrontSheetPrice:3500}},{parts:[front(false),front(true)]});
+ const result=estimateProjectCost({costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0}},{parts:[front(false),front(true)]});
  assert.equal(result.front.batches.length,2);
  assert.equal(result.front.matte.sheets,1);
  assert.equal(result.front.gloss.sheets,1);
- assert.equal(result.front.matte.cost,1500);
- assert.equal(result.front.gloss.cost,3500);
- assert.equal(result.front.cost,5000);
+ assert.equal(result.front.matte.cost,.35*700);
+ assert.equal(result.front.gloss.cost,.35*1150);
+ assert.equal(result.front.cost,.35*(700+1150));
 });
 
 test('changing a front from matte to gloss changes the estimate',()=>{
- const project={costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0,frontSheetPrice:1500,glossFrontSheetPrice:3500}};
+ const project={costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0}};
  const matte=estimateProjectCost(project,{parts:[front(false)]});
  const gloss=estimateProjectCost(project,{parts:[front(true)]});
- assert.equal(gloss.total-matte.total,2000);
+ assert.ok(Math.abs((gloss.total-matte.total)-.35*(1150-700))<1e-9);
 });
 
 test('placement registry covers every catalog module',()=>{

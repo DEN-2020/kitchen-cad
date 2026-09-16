@@ -8,12 +8,21 @@ import {
   CatalogIcon,
   CloseIcon,
   CopyIcon,
+  CostIcon,
   DownloadIcon,
+  DepthIcon,
+  DoorsIcon,
   EditIcon,
   HomeIcon,
+  HeightIcon,
+  ModuleDimensionsIcon,
+  OrbitIcon,
   PartsIcon,
   PrintIcon,
   ProjectIcon,
+  RoomDimensionsIcon,
+  ResetIcon,
+  SearchIcon,
   SettingsIcon,
   TrashIcon,
   RedoIcon,
@@ -32,13 +41,17 @@ import {
   FRONT_STYLES,
   HANDLE_STYLES,
   LEG_STYLES,
+  MATERIAL_PRODUCTS,
   SUBSTRATES,
   isDisplayOnlyType,
   isWallMountedType,
+  materialProductLabel,
+  materialProductsForRole,
 } from "../src/catalog/materials.js";
 import {
   addFixture,
   addModule,
+  applyMaterialPreset,
   applyProjectFinish,
   deleteModule,
   decodeEditorProject,
@@ -212,11 +225,51 @@ function DecorPicker({
             title={lang === "ru" ? "Вернуть цвет образца" : "Reset swatch color"}
             onClick={() => onColorChange(selectedDecor.color)}
           >
-            ↺
+            <ResetIcon size={16} />
           </button>
         </span>
       </label>
     </div>
+  );
+}
+
+function MaterialProductSelect({
+  label,
+  role,
+  value,
+  lang,
+  onChange,
+}: {
+  label: string;
+  role: "body" | "front";
+  value: string;
+  lang: Lang;
+  onChange: (value: string) => void;
+}) {
+  const product = (MATERIAL_PRODUCTS as any)[value];
+  return (
+    <label className="field materialProductField">
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {materialProductsForRole(role).map((option: any) => (
+          <option key={option.id} value={option.id}>
+            {materialProductLabel(option, lang)}
+          </option>
+        ))}
+      </select>
+      {product && (
+        <small>
+          {product.sheetWidth}×{product.sheetHeight}×{product.thickness} мм ·{" "}
+          {product.finish === "gloss"
+            ? lang === "ru"
+              ? "глянец"
+              : "gloss"
+            : lang === "ru"
+              ? "матовый"
+              : "matte"}
+        </small>
+      )}
+    </label>
   );
 }
 
@@ -241,15 +294,20 @@ export function App() {
     () => estimateProjectCost(project, model),
     [project, model],
   );
-  const activeCostPreset =
-      Object.entries(COST_PRESETS).find(([, preset]: [string, any]) =>
-        Object.entries(preset).every(
-          ([key, value]) => cost.settings[key] === value,
-        ),
-      )?.[0] || null,
-    furnitureModuleCount = model.modules.filter(
+  const furnitureModules = model.modules.filter(
       (module: any) => !isDisplayOnlyType(module.type),
-    ).length;
+    ),
+    furnitureModuleCount = furnitureModules.length,
+    activeCostPreset =
+      Object.entries(COST_PRESETS).find(
+        ([, preset]: [string, any]) =>
+          furnitureModules.length > 0 &&
+          furnitureModules.every(
+            (module: any) =>
+              module.bodyMaterialId === preset.bodyMaterialId &&
+              module.frontMaterialId === preset.frontMaterialId,
+          ),
+      )?.[0] || null;
   const selectedModuleId =
     selection?.kind === "module"
       ? selection.id
@@ -319,7 +377,7 @@ export function App() {
       : false,
     actualDoorCount = selectedModule && frontsEnabled
     ? ["cornerBaseBlind", "cornerWallBlind"].includes(selectedModule.type)
-      ? 1
+      ? Math.max(1, Math.min(2, selectedModule.doorCount || 1))
       : ["cornerBaseL", "cornerWallL"].includes(selectedModule.type)
         ? 2
         : selectedModule.type === "drawer"
@@ -371,6 +429,12 @@ export function App() {
         ...p,
         costing: { ...(p.costing || {}), ...patch },
       })),
+    patchMaterialPrice = (id: string, price: number) =>
+      patchCost({
+        materialPrices: { ...cost.settings.materialPrices, [id]: price },
+      }),
+    applyCostPreset = (id: keyof typeof COST_PRESETS) =>
+      setProject((p: any) => applyMaterialPreset(p, id)),
     patchRoom = (patch: any) =>
       setProject((p: any) => ({ ...p, room: { ...p.room, ...patch } })),
     patchUi = (patch: any) => setProject((p: any) => updateUi(p, patch));
@@ -714,7 +778,7 @@ export function App() {
               aria-pressed={!!project.ui?.doorsOpen}
               onClick={() => patchUi({ doorsOpen: !project.ui?.doorsOpen })}
             >
-              ◫
+              <DoorsIcon size={19} />
             </button>
             <button
               type="button"
@@ -730,7 +794,7 @@ export function App() {
                 patchUi({ autoOrbit: !project.ui?.autoOrbit, view: "3d" })
               }
             >
-              ↻
+              <OrbitIcon size={19} />
             </button>
             {!focusId && (
               <>
@@ -753,7 +817,7 @@ export function App() {
                     })
                   }
                 >
-                  ↔
+                  <RoomDimensionsIcon size={19} />
                 </button>
                 <button
                   aria-label={
@@ -774,7 +838,7 @@ export function App() {
                     })
                   }
                 >
-                  ▦
+                  <ModuleDimensionsIcon size={19} />
                 </button>
               </>
             )}
@@ -844,7 +908,7 @@ export function App() {
                 <div className="dimensionGrid">
                   <NumberField
                     compact
-                    icon="↔"
+                    icon={<RoomDimensionsIcon size={14} />}
                     label={t("width")}
                     value={project.room.width}
                     min={800}
@@ -853,7 +917,7 @@ export function App() {
                   />
                   <NumberField
                     compact
-                    icon="↕"
+                    icon={<DepthIcon size={14} />}
                     label={t("depth")}
                     value={project.room.depth}
                     min={800}
@@ -862,7 +926,7 @@ export function App() {
                   />
                   <NumberField
                     compact
-                    icon="⇅"
+                    icon={<HeightIcon size={14} />}
                     label={t("height")}
                     value={project.room.height}
                     min={1800}
@@ -980,7 +1044,7 @@ export function App() {
                   aria-expanded={catalogSearchOpen}
                   onClick={() => setCatalogSearchOpen((open) => !open)}
                 >
-                  <span aria-hidden="true">⌕</span>
+                  <SearchIcon size={17} />
                   <b>
                     {catalogSearchOpen
                       ? lang === "ru"
@@ -1107,10 +1171,10 @@ export function App() {
                 </div>
                 <p className="note">
                   {lang === "ru"
-                    ? `Считается вся кухня: ${furnitureModuleCount} мебельных модулей. Детали разных декоров, цветов, основ и толщин округляются до отдельных листов.`
+                    ? `Считается вся кухня: ${furnitureModuleCount} мебельных модулей. Цена нормализована на м², а листы показаны отдельно как ориентир закупки.`
                     : lang === "ar"
                       ? "يتم حساب المطبخ كاملاً، وتُفصل الألواح حسب الخامة واللون والسماكة."
-                      : `Whole-kitchen estimate for ${furnitureModuleCount} furniture modules. Different materials, colors and thicknesses are rounded to separate sheets.`}
+                      : `Whole-kitchen estimate for ${furnitureModuleCount} furniture modules. Cost uses EGP/m²; sheet counts are purchasing guidance.`}
                 </p>
               </section>
               <section>
@@ -1126,7 +1190,7 @@ export function App() {
                     type="button"
                     className={activeCostPreset === "budget" ? "active" : ""}
                     aria-pressed={activeCostPreset === "budget"}
-                    onClick={() => patchCost(COST_PRESETS.budget)}
+                    onClick={() => applyCostPreset("budget")}
                   >
                     {lang === "ru"
                       ? "Бюджет"
@@ -1136,12 +1200,12 @@ export function App() {
                   </button>
                   <button
                     type="button"
-                    className={activeCostPreset === "gloss" ? "active" : ""}
-                    aria-pressed={activeCostPreset === "gloss"}
-                    onClick={() => patchCost(COST_PRESETS.gloss)}
+                    className={activeCostPreset === "standard" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "standard"}
+                    onClick={() => applyCostPreset("standard")}
                   >
                     {lang === "ru"
-                      ? "Глянец"
+                      ? "Стандарт"
                       : lang === "ar"
                         ? "لامع"
                         : "Gloss"}
@@ -1150,10 +1214,10 @@ export function App() {
                     type="button"
                     className={activeCostPreset === "premium" ? "active" : ""}
                     aria-pressed={activeCostPreset === "premium"}
-                    onClick={() => patchCost(COST_PRESETS.premium)}
+                    onClick={() => applyCostPreset("premium")}
                   >
                     {lang === "ru"
-                      ? "Лучше"
+                      ? "Премиум"
                       : lang === "ar"
                         ? "جودة أعلى"
                         : "Premium"}
@@ -1162,73 +1226,46 @@ export function App() {
                 <p className="note costPresetNote">
                   {lang === "ru"
                     ? activeCostPreset
-                      ? "Активный сценарий задаёт цены корпуса, матового и глянцевого фасада для всей кухни."
-                      : "Используются свои цены. Декор, оттенок и финиш разделяют материал на разные листы."
+                       ? "Сценарий применяет материалы корпуса и фасадов ко всем мебельным модулям."
+                       : "В кухне используются разные материалы. Цена считается для каждой детали по её материалу."
                     : activeCostPreset
-                      ? "The active scenario is highlighted and prices all body/front sheets."
-                      : "Custom prices are active. Visual decor separates sheets but does not set their price automatically."}
+                       ? "The preset applies body and front products to every furniture module."
+                       : "Mixed products are used. Each part is priced by its own material."}
                 </p>
+                <p className="note costFormulaNote">
+                  {lang === "ru"
+                    ? "Материал = площадь деталей × цена за м² × (1 + отход). Формат листа влияет на подсказку закупки, но не искажает цену."
+                    : "Material = part area × EGP/m² × waste factor. Sheet size is used for the purchasing estimate."}
+                </p>
+                {!!cost.materialWarnings.length && (
+                  <p className="warning">
+                    {lang === "ru"
+                      ? "Толщина некоторых деталей не совпадает с толщиной выбранного продукта. Цена остаётся приблизительной — выбери подходящий продукт или верни его штатную толщину."
+                      : "Some part thicknesses do not match the selected product. Choose a matching product or restore its standard thickness."}
+                  </p>
+                )}
+                <details className="materialPriceDetails" open>
+                  <summary>
+                    {lang === "ru" ? "Цены материалов, EGP/м²" : "Material prices, EGP/m²"}
+                  </summary>
+                  <div className="dimensionGrid">
+                    {Object.values(MATERIAL_PRODUCTS)
+                      .filter((product: any) => product.id !== "plywood18")
+                      .map((product: any) => (
+                        <NumberField
+                          key={product.id}
+                          compact
+                          label={materialProductLabel(product, lang)}
+                          value={cost.settings.materialPrices[product.id]}
+                          unit="EGP/м²"
+                          min={0}
+                          max={10000}
+                          onCommit={(n) => patchMaterialPrice(product.id, n)}
+                        />
+                      ))}
+                  </div>
+                </details>
                 <div className="dimensionGrid">
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Лист корпуса"
-                        : lang === "ar"
-                          ? "لوح الهيكل"
-                          : "Body sheet"
-                    }
-                    value={cost.settings.bodySheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ bodySheetPrice: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Матовый фасад/лист"
-                        : lang === "ar"
-                          ? "لوح الواجهة"
-                          : "Matte front sheet"
-                    }
-                    value={cost.settings.frontSheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ frontSheetPrice: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Глянцевый фасад/лист"
-                        : lang === "ar"
-                          ? "لوح واجهة لامع"
-                          : "Gloss front sheet"
-                    }
-                    value={cost.settings.glossFrontSheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ glossFrontSheetPrice: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Лист задника"
-                        : lang === "ar"
-                          ? "لوح الظهر"
-                          : "Back sheet"
-                    }
-                    value={cost.settings.backSheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ backSheetPrice: n })}
-                  />
                   <NumberField
                     compact
                     label={
@@ -1395,17 +1432,17 @@ export function App() {
                 <div className="costBreakdown">
                   <small>
                     {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
-                    : {cost.body.sheets} × {cost.settings.bodySheetPrice} ={" "}
+                    : {cost.body.pricedArea.toFixed(2)} м² ={" "}
                     <b>{Math.round(cost.body.cost).toLocaleString()} EGP</b>
                   </small>
                   {!!cost.front.matte.sheets && <small>
                     {lang === "ru" ? "Фасады · матовые" : lang === "ar" ? "واجهات مطفية" : "Fronts · matte"}
-                    : {cost.front.matte.sheets} × {cost.settings.frontSheetPrice} ={" "}
+                    : {cost.front.matte.pricedArea.toFixed(2)} м² ={" "}
                     <b>{Math.round(cost.front.matte.cost).toLocaleString()} EGP</b>
                   </small>}
                   {!!cost.front.gloss.sheets && <small>
                     {lang === "ru" ? "Фасады · глянец" : lang === "ar" ? "واجهات لامعة" : "Fronts · gloss"}
-                    : {cost.front.gloss.sheets} × {cost.settings.glossFrontSheetPrice} ={" "}
+                    : {cost.front.gloss.pricedArea.toFixed(2)} м² ={" "}
                     <b>{Math.round(cost.front.gloss.cost).toLocaleString()} EGP</b>
                   </small>}
                   <small>
@@ -1414,7 +1451,7 @@ export function App() {
                       : lang === "ar"
                         ? "ظهر"
                         : "Backs"}
-                    : {cost.back.sheets} × {cost.settings.backSheetPrice} ={" "}
+                    : {cost.back.pricedArea.toFixed(2)} м² ={" "}
                     <b>{Math.round(cost.back.cost).toLocaleString()} EGP</b>
                   </small>
                   <small>
@@ -1522,7 +1559,8 @@ export function App() {
                           <span>
                             <b>{role}</b>
                             <small>
-                              {(SUBSTRATES as any)[batch.substrate]?.name ||
+                              {batch.materialName ||
+                                (SUBSTRATES as any)[batch.substrate]?.name ||
                                 batch.substrate}{" "}
                               ·{" "}
                               {(DECORS as any)[batch.decor]?.name || batch.decor}
@@ -1534,17 +1572,28 @@ export function App() {
                               {batch.thickness
                                 ? " · " + batch.thickness + " мм"
                                 : ""}
+                              {batch.thicknessMismatch
+                                ? lang === "ru"
+                                  ? " · толщина не совпадает"
+                                  : " · thickness mismatch"
+                                : ""}
+                              {" · "}
+                              {batch.sheetWidth}×{batch.sheetHeight} мм
+                              {" · "}
+                              {Math.round(batch.pricePerM2)} EGP/м²
                             </small>
                           </span>
-                          <strong>{batch.sheets} л.</strong>
+                          <strong>
+                            {batch.pricedArea.toFixed(2)} м² · {batch.sheets} л.
+                          </strong>
                         </div>
                       )),
                     )}
                   </div>
                   <p className="note">
                     {lang === "ru"
-                      ? "Разные декоры, оттенки, основы, толщины и финиши считаются отдельными листами. Цена матового и глянцевого фасада задаётся выше."
-                      : "Different decors, tints, substrates, thicknesses and finishes use separate sheets. Matte and gloss prices are set above."}
+                      ? "15% отхода добавляется к площади по формуле. Разные декоры и материалы разделяются только в плане закупки листов."
+                      : "Waste is added to area by formula. Decors and products are separated only for sheet purchasing guidance."}
                   </p>
                 </details>
               </section>
@@ -1614,19 +1663,19 @@ export function App() {
                     type="button"
                     className={activeCostPreset === "budget" ? "active" : ""}
                     aria-pressed={activeCostPreset === "budget"}
-                    onClick={() => patchCost(COST_PRESETS.budget)}
+                    onClick={() => applyCostPreset("budget")}
                   >
                     {lang === "ru"
-                      ? "Бюджет 1500"
+                      ? "ЛДСП + High Gloss"
                       : lang === "ar"
                         ? "اقتصادي 1500"
-                        : "Budget 1500"}
+                        : "MFC + High Gloss"}
                   </button>
                   <button
                     type="button"
-                    className={activeCostPreset === "gloss" ? "active" : ""}
-                    aria-pressed={activeCostPreset === "gloss"}
-                    onClick={() => patchCost(COST_PRESETS.gloss)}
+                    className={activeCostPreset === "standard" ? "active" : ""}
+                    aria-pressed={activeCostPreset === "standard"}
+                    onClick={() => applyCostPreset("standard")}
                   >
                     {lang === "ru"
                       ? "Стандарт"
@@ -1638,13 +1687,13 @@ export function App() {
                     type="button"
                     className={activeCostPreset === "premium" ? "active" : ""}
                     aria-pressed={activeCostPreset === "premium"}
-                    onClick={() => patchCost(COST_PRESETS.premium)}
+                    onClick={() => applyCostPreset("premium")}
                   >
                     {lang === "ru"
-                      ? "Лучше 4000"
+                      ? "Акрил"
                       : lang === "ar"
                         ? "جودة أعلى 4000"
-                        : "Premium 4000"}
+                        : "Acrylic"}
                   </button>
                 </div>
                 <p className="note costPresetNote">
@@ -1657,51 +1706,23 @@ export function App() {
                       : "Custom whole-kitchen prices are active."}
                 </p>
                 <div className="dimensionGrid">
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Лист корпуса"
-                        : lang === "ar"
-                          ? "لوح الهيكل"
-                          : "Body sheet"
-                    }
-                    value={cost.settings.bodySheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ bodySheetPrice: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Матовый фасад/лист"
-                        : lang === "ar"
-                          ? "لوح الواجهة"
-                          : "Matte front sheet"
-                    }
-                    value={cost.settings.frontSheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ frontSheetPrice: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Глянцевый фасад/лист"
-                        : lang === "ar"
-                          ? "لوح واجهة لامع"
-                          : "Gloss front sheet"
-                    }
-                    value={cost.settings.glossFrontSheetPrice}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ glossFrontSheetPrice: n })}
-                  />
+                  {["mfc18", "highGlossMdfPvc18", "acrylicHighGlossMdf18"].map(
+                    (productId) => {
+                      const product = (MATERIAL_PRODUCTS as any)[productId];
+                      return (
+                        <NumberField
+                          key={productId}
+                          compact
+                          label={materialProductLabel(product, lang)}
+                          value={cost.settings.materialPrices[productId]}
+                          unit="EGP/м²"
+                          min={0}
+                          max={10000}
+                          onCommit={(n) => patchMaterialPrice(productId, n)}
+                        />
+                      );
+                    },
+                  )}
                   <NumberField
                     compact
                     label={
@@ -1792,7 +1813,7 @@ export function App() {
                 <div className="costBreakdown">
                   <small>
                     {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
-                    : {cost.body.sheets} × {cost.settings.bodySheetPrice} ={" "}
+                    : {cost.body.pricedArea.toFixed(2)} м² ={" "}
                     {Math.round(cost.body.cost)} EGP
                   </small>
                   <small>
@@ -1801,7 +1822,7 @@ export function App() {
                       : lang === "ar"
                         ? "واجهات"
                         : "Fronts"}
-                    : {cost.front.sheets} × {cost.settings.frontSheetPrice} ={" "}
+                    : {cost.front.pricedArea.toFixed(2)} м² ={" "}
                     {Math.round(cost.front.cost)} EGP
                   </small>
                   <small>
@@ -2112,6 +2133,33 @@ export function App() {
                     ? "Эти значения используются для новых шкафов. Каждый модуль после этого можно настроить отдельно."
                     : "These values are used for new cabinets. Every module can still be customized separately."}
                 </p>
+                <div className="materialRoleGrid">
+                  <MaterialProductSelect
+                    label={lang === "ru" ? "Материал корпуса" : "Carcass material"}
+                    role="body"
+                    value={project.defaults?.bodyMaterialId || "mfc18"}
+                    lang={lang}
+                    onChange={(bodyMaterialId) =>
+                      setProject((p: any) =>
+                        updateProjectDefaults(p, { bodyMaterialId }),
+                      )
+                    }
+                  />
+                  <MaterialProductSelect
+                    label={lang === "ru" ? "Материал дверок" : "Door material"}
+                    role="front"
+                    value={
+                      project.defaults?.frontMaterialId ||
+                      "highGlossMdfPvc18"
+                    }
+                    lang={lang}
+                    onChange={(frontMaterialId) =>
+                      setProject((p: any) =>
+                        updateProjectDefaults(p, { frontMaterialId }),
+                      )
+                    }
+                  />
+                </div>
                 <DecorPicker
                   label={lang === "ru" ? "Фасады кухни" : "Kitchen fronts"}
                   value={project.defaults?.frontDecor || "olive"}
@@ -2199,8 +2247,8 @@ export function App() {
                 </button>
                 <p className="note">
                   {lang === "ru"
-                    ? "Команда меняет только декор, оттенок и глянец. Размеры, ножки, ручки и петли сохраняются; действие можно отменить."
-                    : "Only decor, tint and gloss change. Sizes, legs, handles and hinges stay intact; the action can be undone."}
+                    ? "Команда применяет материалы, декор, оттенок и финиш. Размеры, ножки, ручки и петли сохраняются; действие можно отменить."
+                    : "Materials, decor, tint and finish are applied. Sizes, legs, handles and hinges stay intact; the action can be undone."}
                 </p>
               </section>
             </div>
@@ -2863,7 +2911,8 @@ export function App() {
                           </option>
                         </select>
                       </label>
-                      {["wall", "cornerWall"].includes(selectedModule.type) && (
+                      {isWallMountedType(selectedModule.type) &&
+                        !isDisplayOnlyType(selectedModule.type) && (
                         <label className="field">
                           {lang === "ru" ? "Верх" : "Top"}
                           <select
@@ -2936,7 +2985,7 @@ export function App() {
                         </div>
                         <NumberField
                           compact
-                          label={lang === "ru" ? "Стойка петель" : "Hinge stile"}
+                          label={lang === "ru" ? "Глубина стойки петель" : "Hinge partition depth"}
                           value={selectedModule.cornerMuntinWidth || 70}
                           min={28}
                           max={150}
@@ -2951,8 +3000,8 @@ export function App() {
                         </b>
                         <span>
                           {lang === "ru"
-                            ? `Доступный проём ${selectedModule.cornerOpening || 0} мм сейчас ${selectedModule.cornerOpeningSide === "left" ? "слева" : "справа"}. Между ним и глухой панелью стоит узкая монтажная стойка ${selectedModule.cornerMuntinWidth || 70} мм — к ней крепятся специальные петли глухого угла. Полной перегородки в глубину нет, поэтому доступ в угловую зону не перекрывается.`
-                            : `The ${selectedModule.cornerOpening || 0} mm access opening is on the ${selectedModule.cornerOpeningSide === "left" ? "left" : "right"}. A ${selectedModule.cornerMuntinWidth || 70} mm mounting stile between the opening and blind panel carries the blind-corner hinges without blocking the storage zone.`}
+                            ? `Доступный проём ${selectedModule.cornerOpening || 0} мм сейчас ${selectedModule.cornerOpeningSide === "left" ? "слева" : "справа"}. Монтажная перегородка повёрнута перпендикулярно фасаду, как боковина, и входит в корпус на ${selectedModule.cornerMuntinWidth || 70} мм. На неё крепится ответная планка петель, но она не перекрывает весь угловой объём.`
+                            : `The ${selectedModule.cornerOpening || 0} mm access opening is on the ${selectedModule.cornerOpeningSide === "left" ? "left" : "right"}. The hinge partition is perpendicular to the front like a side panel and runs ${selectedModule.cornerMuntinWidth || 70} mm into the cabinet without blocking the full corner volume.`}
                         </span>
                         {frontsEnabled && <span>
                           {lang === "ru"
@@ -3065,7 +3114,7 @@ export function App() {
                     {!frontsEnabled && (
                       <p className="note openFrontNote">
                         {lang === "ru"
-                          ? "Фасад, ручка и петли исключены из 3D, деталировки и сметы. Корпус, полки и угловая монтажная стойка остаются."
+                          ? "Фасад, ручка и петли исключены из 3D, деталировки и сметы. Корпус, полки и угловая монтажная перегородка остаются."
                           : "The front, handle and hinges are excluded from 3D, parts and cost; the carcass, shelves and corner mounting stile remain."}
                       </p>
                     )}
@@ -3117,23 +3166,47 @@ export function App() {
                           </select>
                         </label>
                       )}
-                      {frontsEnabled && selectedModule.type !== "drawer" &&
-                        ![
-                          "cornerBaseBlind",
-                          "cornerWallBlind",
-                          "cornerBaseL",
-                          "cornerWallL",
-                        ].includes(selectedModule.type) && (
+                      {frontsEnabled && selectedModule.type !== "drawer" && (
                           <label className="field">
-                            {t("doors")}
+                            {lang === "ru" ? "Количество створок" : t("doors")}
                             <select
-                              value={selectedModule.doorCount}
+                              value={
+                                ["cornerBaseL", "cornerWallL"].includes(
+                                  selectedModule.type,
+                                )
+                                  ? 2
+                                  : selectedModule.doorCount
+                              }
+                              disabled={["cornerBaseL", "cornerWallL"].includes(
+                                selectedModule.type,
+                              )}
                               onChange={(e) =>
                                 patchModule({ doorCount: +e.target.value })
                               }
                             >
-                              <option value="0">Auto</option>
-                              {[1, 2, 3, 4, 5, 6].map((n) => (
+                              {![
+                                "cornerBaseBlind",
+                                "cornerWallBlind",
+                                "cornerBaseDiagonal",
+                                "cornerWallDiagonal",
+                                "cornerBaseL",
+                                "cornerWallL",
+                              ].includes(selectedModule.type) && (
+                                <option value="0">Auto</option>
+                              )}
+                              {(["cornerBaseL", "cornerWallL"].includes(
+                                selectedModule.type,
+                              )
+                                ? [2]
+                                : [
+                                      "cornerBaseBlind",
+                                      "cornerWallBlind",
+                                      "cornerBaseDiagonal",
+                                      "cornerWallDiagonal",
+                                    ].includes(selectedModule.type)
+                                  ? [1, 2]
+                                  : [1, 2, 3, 4, 5, 6]
+                              ).map((n) => (
                                 <option key={n} value={n}>
                                   {n}
                                 </option>
@@ -3142,6 +3215,15 @@ export function App() {
                           </label>
                         )}
                     </div>
+                    {frontsEnabled && ["cornerBaseL", "cornerWallL"].includes(selectedModule.type) && (
+                      <p className="note">
+                        {lang === "ru"
+                          ? "L-образный угол конструктивно состоит из двух связанных фасадных панелей, поэтому здесь фиксировано 2 створки. Фасад целиком можно отключить переключателем «Без фасада»."
+                          : lang === "ar"
+                            ? "تتكون زاوية L إنشائياً من لوحتي واجهة مترابطتين، لذلك العدد ثابت عند بابين. يمكن إخفاء الواجهة بالكامل بخيار «بدون واجهة»."
+                            : "The L-corner uses two linked front panels, so its leaf count is fixed at 2. Disable the whole front with the No front switch."}
+                      </p>
+                    )}
                     {!isWallMountedType(selectedModule.type) && (
                       <p className="note">
                         {lang === "ru"
@@ -3195,41 +3277,30 @@ export function App() {
                   </section>
                   <section>
                     <h3>{t("materials")}</h3>
-                    <div className="optionGrid">
-                      {frontsEnabled && <label className="field">
-                        {lang === "ru" ? "Основа фасада" : "Front substrate"}
-                        <select
-                          value={selectedModule.frontSubstrate}
-                          onChange={(e) =>
-                            patchModule({ frontSubstrate: e.target.value })
+                    <div className="materialRoleGrid">
+                      <MaterialProductSelect
+                        label={lang === "ru" ? "Материал корпуса" : "Carcass material"}
+                        role="body"
+                        value={selectedModule.bodyMaterialId || "mfc18"}
+                        lang={lang}
+                        onChange={(bodyMaterialId) =>
+                          patchModule({ bodyMaterialId })
+                        }
+                      />
+                      {frontsEnabled && (
+                        <MaterialProductSelect
+                          label={lang === "ru" ? "Материал дверок" : "Door material"}
+                          role="front"
+                          value={
+                            selectedModule.frontMaterialId ||
+                            "highGlossMdfPvc18"
                           }
-                        >
-                          {Object.entries(SUBSTRATES)
-                            .filter(([, v]: any) => v.group === "panel")
-                            .map(([k, v]: any) => (
-                              <option key={k} value={k}>
-                                {v.name}
-                              </option>
-                            ))}
-                        </select>
-                      </label>}
-                      <label className="field">
-                        {lang === "ru" ? "Основа корпуса" : "Body substrate"}
-                        <select
-                          value={selectedModule.bodySubstrate}
-                          onChange={(e) =>
-                            patchModule({ bodySubstrate: e.target.value })
+                          lang={lang}
+                          onChange={(frontMaterialId) =>
+                            patchModule({ frontMaterialId })
                           }
-                        >
-                          {Object.entries(SUBSTRATES)
-                            .filter(([, v]: any) => v.group === "panel")
-                            .map(([k, v]: any) => (
-                              <option key={k} value={k}>
-                                {v.name}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
+                        />
+                      )}
                     </div>
                     {frontsEnabled && <DecorPicker
                       label={
@@ -3555,7 +3626,7 @@ export function App() {
             className={panel === "cost" ? "active" : ""}
             onClick={() => openPanel("cost")}
           >
-            <span style={{ fontSize: 22, lineHeight: 1 }}>₤</span>
+            <CostIcon />
             <span>
               {lang === "ru" ? "Смета" : lang === "ar" ? "التكلفة" : "Cost"}
             </span>
