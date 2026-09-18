@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $node = (Get-Command node -ErrorAction Stop).Source
 $environmentFile = Join-Path $repository ".env.local"
-$serverFile = Join-Path $repository "server\index.mjs"
+$serverFile = Join-Path $repository "server\agent.mjs"
 $taskName = "Kitchen CAD Sync Server"
 
 if (-not (Test-Path -LiteralPath (Join-Path $repository ".env.local"))) {
@@ -12,6 +12,10 @@ if (-not (Test-Path -LiteralPath (Join-Path $repository ".env.local"))) {
   } finally {
     Pop-Location
   }
+}
+
+if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+  Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 }
 
 $action = New-ScheduledTaskAction `
@@ -31,7 +35,7 @@ Register-ScheduledTask `
   -Action $action `
   -Trigger $trigger `
   -Settings $settings `
-  -Description "Runs the local Kitchen CAD SQLite synchronization API." `
+  -Description "Runs the local Kitchen CAD SQLite API and its automatic Cloudflare Quick Tunnel." `
   -Force | Out-Null
 
 Start-ScheduledTask -TaskName $taskName

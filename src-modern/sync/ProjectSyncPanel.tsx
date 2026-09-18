@@ -12,6 +12,7 @@ type Props = {
 
 export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
   const [showToken, setShowToken] = useState(false);
+  const [pairCode, setPairCode] = useState("");
   const ru = lang === "ru";
   const busy = sync.state.status === "checking" || sync.state.status === "syncing";
   const ready =
@@ -22,6 +23,14 @@ export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
   const check = async () => {
     try {
       await sync.check();
+    } catch {
+      // State and user-facing message are managed by the hook.
+    }
+  };
+  const pair = async () => {
+    try {
+      await sync.pair(pairCode);
+      setPairCode("");
     } catch {
       // State and user-facing message are managed by the hook.
     }
@@ -84,16 +93,38 @@ export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
       </div>
       <div className="syncFields">
         <label className="field syncUrlField">
-          {ru ? "HTTPS-адрес Cloudflare Tunnel" : "Cloudflare Tunnel HTTPS URL"}
+          {ru ? "Постоянный адрес синхронизации" : "Stable sync address"}
           <input
             inputMode="url"
             autoCapitalize="none"
             autoCorrect="off"
-            placeholder="https://kitchen-sync.example.com"
+            placeholder="https://kitchen-cad.pages.dev/api/sync"
             value={sync.config.baseUrl}
             onChange={(event) => sync.updateConfig({ baseUrl: event.target.value })}
           />
         </label>
+        {sync.config.token.length < 32 && (
+          <label className="field syncTokenField">
+            {ru ? "Одноразовый код подключения" : "One-time connection code"}
+            <span className="syncTokenInput">
+              <input
+                autoCapitalize="characters"
+                autoComplete="off"
+                maxLength={32}
+                placeholder={ru ? "Код с локального компьютера" : "Code from the local PC"}
+                value={pairCode}
+                onChange={(event) => setPairCode(event.target.value.trim())}
+              />
+              <button
+                type="button"
+                disabled={pairCode.length < 8 || busy}
+                onClick={() => void pair()}
+              >
+                {ru ? "Подключить" : "Connect"}
+              </button>
+            </span>
+          </label>
+        )}
         <label className="field">
           {ru ? "Код проекта" : "Project ID"}
           <input
@@ -164,8 +195,8 @@ export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
       )}
       <p className="note syncNote">
         {ru
-          ? "Ключ хранится только в этом браузере и не входит в JSON проекта. SQLite и ежедневные резервные копии находятся на локальном компьютере."
-          : "The key stays in this browser and is excluded from project JSON. SQLite and daily backups stay on the local PC."}
+          ? "Адрес pages.dev остаётся постоянным, даже когда временный туннель меняется. Ключ хранится только в этом браузере; SQLite и резервные копии — на локальном компьютере."
+          : "The pages.dev address stays stable when the temporary tunnel changes. The key stays in this browser; SQLite and backups remain on the local PC."}
       </p>
     </section>
   );

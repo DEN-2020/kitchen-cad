@@ -7,6 +7,7 @@ import { createSyncServer } from "../server/index.mjs";
 import { ProjectStorage } from "../server/storage.mjs";
 
 const TOKEN = "test-token-that-is-longer-than-thirty-two-characters";
+const PAIRING_CODE = "one-time-code-123";
 const ORIGIN = "https://kitchen-cad.pages.dev";
 const project = {
   schemaVersion: 1,
@@ -20,10 +21,16 @@ const project = {
 describe("local SQLite sync server", () => {
   const dataDirectory = mkdtempSync(join(tmpdir(), "kitchen-cad-sync-"));
   const storage = new ProjectStorage({ dataDirectory, maxVersions: 3 });
+  let pairingConsumed = 0;
   const server = createSyncServer({
     storage,
     token: TOKEN,
     allowedOrigins: new Set([ORIGIN]),
+    pairingCode: PAIRING_CODE,
+    pairingExpiresAt: Date.now() + 60_000,
+    onPairingConsumed: () => {
+      pairingConsumed += 1;
+    },
   });
   let baseUrl = "";
 
@@ -48,6 +55,24 @@ describe("local SQLite sync server", () => {
       headers: { Origin: ORIGIN },
     });
     assert.equal(unauthorized.status, 401);
+  });
+
+  it("exchanges a one-time pairing code for the sync token only once", async () => {
+    const paired = await fetch(`${baseUrl}/api/pair`, {
+      method: "POST",
+      headers: { Origin: ORIGIN, "Content-Type": "application/json" },
+      body: JSON.stringify({ code: PAIRING_CODE }),
+    });
+    assert.equal(paired.status, 200);
+    assert.equal((await paired.json()).token, TOKEN);
+    assert.equal(pairingConsumed, 1);
+
+    const reused = await fetch(`${baseUrl}/api/pair`, {
+      method: "POST",
+      headers: { Origin: ORIGIN, "Content-Type": "application/json" },
+      body: JSON.stringify({ code: PAIRING_CODE }),
+    });
+    assert.equal(reused.status, 410);
   });
 
   it("rejects browser origins outside the allowlist", async () => {

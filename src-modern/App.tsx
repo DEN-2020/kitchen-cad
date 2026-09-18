@@ -565,7 +565,7 @@ export function App() {
     patchRoom = (patch: any) =>
       setProject((p: any) => ({ ...p, room: { ...p.room, ...patch } })),
     patchUi = (patch: any) => setProject((p: any) => updateUi(p, patch)),
-    guardProductionExport = (action: () => void) => {
+    guardProductionExport = (action: (draft: boolean) => void) => {
       if (
         productionAudit.ready ||
         window.confirm(
@@ -574,7 +574,7 @@ export function App() {
             : `The project has ${productionAudit.blockers.length} blocking checks. Export a draft anyway?`,
         )
       )
-        action();
+        action(!productionAudit.ready);
     };
   const remove = () => {
       if (selectedModuleId) {
@@ -2208,7 +2208,7 @@ export function App() {
                           : "Import JSON"}
                     </span>
                   </button>
-                  <button onClick={() => guardProductionExport(() => downloadCsv(model))}>
+                  <button onClick={() => guardProductionExport((draft) => downloadCsv(model, undefined, { draft, blockers: productionAudit.blockers.length }))}>
                     <DownloadIcon />
                     <span>{t("csv")}</span>
                   </button>
@@ -2638,8 +2638,8 @@ export function App() {
                   <div className="exportGrid">
                     <button
                       onClick={() =>
-                        guardProductionExport(() =>
-                          downloadCsv(model, selectedModule.id),
+                        guardProductionExport((draft) =>
+                          downloadCsv(model, selectedModule.id, { draft, blockers: productionAudit.blockers.length }),
                         )
                       }
                     >

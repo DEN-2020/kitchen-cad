@@ -1,4 +1,5 @@
 export const SYNC_CONFIG_KEY = "kitchen-cad-sync-v1";
+export const STABLE_SYNC_URL = "https://kitchen-cad.pages.dev/api/sync";
 
 export type SyncConfig = {
   baseUrl: string;
@@ -33,7 +34,7 @@ export class ProjectSyncError extends Error {
 }
 
 export const DEFAULT_SYNC_CONFIG: SyncConfig = {
-  baseUrl: "",
+  baseUrl: STABLE_SYNC_URL,
   token: "",
   projectId: "main",
   autoSync: false,
@@ -47,7 +48,10 @@ export function loadSyncConfig(): SyncConfig {
     const parsed = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || "null");
     if (!parsed || typeof parsed !== "object") return { ...DEFAULT_SYNC_CONFIG };
     return {
-      baseUrl: typeof parsed.baseUrl === "string" ? parsed.baseUrl : "",
+      baseUrl:
+        typeof parsed.baseUrl === "string" && parsed.baseUrl.trim()
+          ? parsed.baseUrl
+          : STABLE_SYNC_URL,
       token: typeof parsed.token === "string" ? parsed.token : "",
       projectId: /^[a-zA-Z0-9_-]{1,64}$/.test(parsed.projectId)
         ? parsed.projectId
@@ -133,6 +137,8 @@ async function request(config: SyncConfig, url: string, init: RequestInit = {}) 
           ? "Неверный ключ синхронизации."
           : response.status === 403
             ? "Этот адрес сайта не разрешён локальным сервером."
+            : response.status === 503
+              ? "Локальный компьютер сейчас выключен или туннель ещё запускается."
             : response.status === 409
               ? "На компьютере уже есть более новая версия проекта."
               : body?.error || `Ошибка сервера ${response.status}`,
@@ -151,6 +157,37 @@ async function request(config: SyncConfig, url: string, init: RequestInit = {}) 
       "offline",
       error,
     );
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+export async function pairRemoteComputer(config: SyncConfig, code: string) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch(`${normalizeSyncUrl(config.baseUrl)}/api/pair`, {
+      method: "POST",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.trim() }),
+    });
+    const body = (await response.json().catch(() => ({}))) as { token?: string; error?: string };
+    if (!response.ok || !body.token || body.token.length < 32)
+      throw new ProjectSyncError(
+        response.status === 401
+          ? "Неверный или уже использованный код подключения."
+          : response.status === 410
+            ? "Код подключения истёк. Нужно создать новый на компьютере."
+            : body.error || `Ошибка подключения ${response.status}`,
+        response.status,
+        body.error || "pairing_error",
+      );
+    return body.token;
+  } catch (error) {
+    if (error instanceof ProjectSyncError) throw error;
+    throw new ProjectSyncError("Не удалось подключиться к локальному компьютеру.", 0, "offline", error);
   } finally {
     window.clearTimeout(timeout);
   }

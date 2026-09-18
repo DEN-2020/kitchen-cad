@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $node = (Get-Command node -ErrorAction Stop).Source
 $environmentFile = Join-Path $repository ".env.local"
-$serverFile = Join-Path $PSScriptRoot "index.mjs"
+$serverFile = Join-Path $PSScriptRoot "agent.mjs"
 $dataDirectory = if ($env:LOCALAPPDATA) {
   Join-Path $env:LOCALAPPDATA "KitchenCAD"
 } else {

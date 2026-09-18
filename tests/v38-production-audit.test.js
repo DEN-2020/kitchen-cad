@@ -104,6 +104,36 @@ test("production gate blocks incomplete modules and missing purchase prices", ()
   assert.ok(codes.has("hardware-unpriced"));
 });
 
+test("production gate keeps every corner construction in draft status", () => {
+  for (const type of [
+    "cornerBase",
+    "cornerBaseBlind",
+    "cornerBaseDiagonal",
+    "cornerBaseL",
+    "cornerWall",
+    "cornerWallBlind",
+    "cornerWallDiagonal",
+    "cornerWallL",
+  ]) {
+    const project = projectWith(createModule(type));
+    const model = buildProject(project);
+    const audit = auditProductionReadiness(project, model, estimateProjectCost(project, model));
+    assert.ok(
+      audit.blockers.some((item) => item.code === "preliminary-corner"),
+      type,
+    );
+  }
+});
+
+test("a wide straight cabinet is blocked until a structural divider is modeled", () => {
+  const cabinet = createModule("base");
+  cabinet.width = 1000;
+  const project = projectWith(cabinet);
+  const model = buildProject(project);
+  const audit = auditProductionReadiness(project, model, estimateProjectCost(project, model));
+  assert.ok(audit.blockers.some((item) => item.code === "wide-span-unsupported"));
+});
+
 test("a complete basic cabinet can pass after purchase prices are supplied", () => {
   const project = projectWith(createModule("base"));
   project.costing = {

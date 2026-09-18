@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "kitchen-cad",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "KITCHEN_CAD_SYNC_REGISTRY",
+      "id": "88cf58a3ab0d4c4983f4dc830a84304b"
+    }
+  ],
+  "vars": {
+    "NODE_VERSION": "22.16.0"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

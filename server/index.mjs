@@ -89,10 +89,16 @@ export function createSyncServer({
   storage,
   token,
   allowedOrigins = parseAllowedOrigins(),
+  pairingCode = "",
+  pairingExpiresAt = 0,
+  onPairingConsumed = () => {},
 } = {}) {
   if (!storage) throw new Error("Project storage is required");
   if (!token || token.length < 32)
     throw new Error("KITCHEN_CAD_SYNC_TOKEN must contain at least 32 characters");
+
+  let pairingConsumed = false;
+  let pairingFailures = 0;
 
   return createServer(async (request, response) => {
     const origin = request.headers.origin?.replace(/\/$/, "");
@@ -119,6 +125,32 @@ export function createSyncServer({
     const url = new URL(request.url || "/", "http://localhost");
     if (request.method === "GET" && url.pathname === "/health") {
       json(response, 200, { ok: true, service: "kitchen-cad-sync" }, corsHeaders);
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/pair") {
+      try {
+        if (
+          !pairingCode ||
+          pairingConsumed ||
+          Date.now() >= pairingExpiresAt ||
+          pairingFailures >= 10
+        ) {
+          json(response, pairingFailures >= 10 ? 429 : 410, { error: "pairing_unavailable" }, corsHeaders);
+          return;
+        }
+        const body = await readJson(request);
+        if (!tokenMatches(pairingCode, String(body?.code || ""))) {
+          pairingFailures += 1;
+          json(response, 401, { error: "invalid_pairing_code" }, corsHeaders);
+          return;
+        }
+        pairingConsumed = true;
+        await onPairingConsumed();
+        json(response, 200, { token }, corsHeaders);
+      } catch (error) {
+        const status = Number(error?.status) || 500;
+        json(response, status, { error: status >= 500 ? "internal_error" : error.message }, corsHeaders);
+      }
       return;
     }
     if (!url.pathname.startsWith("/api/") || !tokenMatches(token, bearerToken(request))) {

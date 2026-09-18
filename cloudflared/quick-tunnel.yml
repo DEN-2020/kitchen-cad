@@ -1,0 +1,2 @@
+# Deliberately empty. Passing this project-local file prevents cloudflared from
+# loading another project's named-tunnel configuration from the user profile.

@@ -1,7 +1,8 @@
-import { isDisplayOnlyType, isWallMountedType } from '../catalog/materials.js';
+import { isCornerType, isDisplayOnlyType, isWallMountedType } from '../catalog/materials.js';
 
 const PRELIMINARY_CORNER_TYPES=new Set([
-  'cornerBase','cornerWall','cornerBaseDiagonal','cornerWallDiagonal','cornerBaseL','cornerWallL',
+  'cornerBase','cornerWall','cornerBaseBlind','cornerWallBlind',
+  'cornerBaseDiagonal','cornerWallDiagonal','cornerBaseL','cornerWallL',
 ]);
 const VISUAL_ONLY_FRONT_STYLES=new Set(['frame','glass','slatted','shaker','louvered']);
 const HARD_MODEL_ISSUES=new Set([
@@ -25,14 +26,17 @@ export function auditProductionReadiness(project={},model={},cost={}){
     if(PRELIMINARY_CORNER_TYPES.has(module.type))add('blocker','preliminary-corner','Корпус этого углового модуля пока является предварительным и не готов к напилу.',module.id);
     if(module.type==='drawer')add('blocker','drawer-boxes-missing','Короба и днища ящиков не входят в напил; рассчитаны только фасады и количество направляющих.',module.id);
     if(module.type==='tallOven')add('blocker','oven-niche-missing','Ниша пенала под духовку не формируется по паспорту выбранной техники.',module.id);
+    if(module.width>900&&!isCornerType(module.type))add('blocker','wide-span-unsupported','Ширина корпуса больше 900 мм, но центральная перегородка/усиление не сформированы в напиле.',module.id);
     if(VISUAL_ONLY_FRONT_STYLES.has(module.frontStyle))add('blocker','front-style-visual-only','Рамка, стекло или рейки показаны визуально, но не разложены на отдельные материалы и детали.',module.id);
     if(module.backMode==='none'&&(isWallMountedType(module.type)||['tall','tallOven'].includes(module.type)))add('blocker','structural-back-missing','У навесного шкафа или пенала не задан задник/диагональная жёсткость и система крепления.',module.id);
     else if(module.backMode==='none'&&!['sink','cornerBaseBlind'].includes(module.type))add('warning','back-missing','Задняя стенка не включена в деталировку и стоимость.',module.id);
     if(['cornerBaseBlind','cornerWallBlind'].includes(module.type))add('warning','blind-corner-drilling','Проверить карту сверления монтажной стойки и конкретную петлю глухого угла.',module.id);
+    if(['washer','dishwasher'].includes(module.applianceBay))add('warning','appliance-datasheet-required','Размеры проёма рассчитаны по введённым габаритам; перед распилом сверить точную модель техники и её монтажную схему.',module.id);
   }
   for(const warning of cost.stockWarnings||[])add('blocker','stock-unplaced',`Деталь ${warning.id||warning.name||''} не помещается в выбранный формат листа.`);
   for(const warning of cost.materialWarnings||[])add('blocker','material-thickness',`${warning.materialName}: толщина детали ${warning.partThickness} мм не совпадает с продуктом ${warning.productThickness} мм.`);
   if((model.parts||[]).some(part=>part.role==='front'&&part.hingeSide))add('warning','machining-maps-missing','Координаты чашек петель и присадки не сформированы: перед заказом сверления нужна карта выбранной системы фурнитуры.');
+  if((model.parts||[]).some(part=>part.role==='front'&&Number(part.u)>600))add('warning','wide-front-hinge-load','Есть фасад шире 600 мм. Количество и тип петель нужно проверить по массе, высоте и таблице производителя фурнитуры.');
   if(cost.countertopPriced===false)add('blocker','countertop-unpriced','Столешница имеет нулевую цену и не входит в денежный итог закупки.');
   if((project.fixtures||[]).length)add('warning','fixture-operations-unpriced','Вырезы, герметизация и монтаж раковины/варочной поверхности пока не имеют отдельной цены.');
   if((cost.unpricedHardware||[]).length){

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchRemoteProject,
   loadSyncConfig,
+  pairRemoteComputer,
   ProjectSyncError,
   projectFingerprint,
   putRemoteProject,
@@ -154,6 +155,30 @@ export function useProjectSync(project: any) {
     [applyError, runExclusive],
   );
 
+  const pair = useCallback(
+    (code: string) =>
+      runExclusive(async () => {
+        setState((current) => ({ ...current, status: "checking", message: "" }));
+        try {
+          const token = await pairRemoteComputer(configRef.current, code);
+          const next = {
+            ...configRef.current,
+            token,
+            autoSync: false,
+            revision: 0,
+            lastSyncedHash: "",
+            lastRemoteUpdatedAt: "",
+          };
+          commitConfig(next);
+          setState(statusFor(next));
+          return token;
+        } catch (error) {
+          return applyError(error);
+        }
+      }),
+    [applyError, commitConfig, runExclusive],
+  );
+
   const upload = useCallback(
     (options: { forceRevision?: number } = {}) =>
       runExclusive(async () => {
@@ -221,6 +246,7 @@ export function useProjectSync(project: any) {
     config,
     state,
     updateConfig,
+    pair,
     check,
     upload,
     download,
