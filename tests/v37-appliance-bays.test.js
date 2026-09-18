@@ -111,3 +111,44 @@ test("hob body depth is checked above an appliance", () => {
   const model = buildProject(project);
   assert.ok(model.issues.some((issue) => issue.type === "appliance-hob-clearance"));
 });
+
+test("hob appliance bay braces the lowered front rail up to the countertop", () => {
+  const project = createProject();
+  const module = createModule("base");
+  module.applianceBay = "dishwasher";
+  module.applianceWidth = 598;
+  module.applianceHeight = 815;
+  module.applianceDepth = 550;
+  module.applianceSideClearance = 20;
+  module.applianceSupportMode = "right";
+  module.width = 636;
+  module.height = 720;
+  module.feet = 160;
+  project.modules = [module];
+  project.countertop.elevation = 880;
+  project.countertop.thickness = 20;
+  project.countertop.depth = 620;
+  project.fixtures = [{
+    id: "fixture-hob-braced",
+    type: "hob",
+    targetModuleId: module.id,
+    width: 300,
+    depth: 520,
+    offsetX: 0,
+    offsetZ: 0,
+    installationHeight: 60,
+    rimHeight: 6,
+  }];
+
+  const model = buildProject(project);
+  const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
+  const leftBrace = model.parts.find((part) => part.id.endsWith("-FSL"));
+  const rightBrace = model.parts.find((part) => part.id.endsWith("-FSR"));
+  const rearRail = model.parts.find((part) => part.id.endsWith("-RS"));
+
+  assert.deepEqual(leftBrace.size, [18, 34, 100]);
+  assert.deepEqual(rightBrace.size, [18, 34, 100]);
+  assert.equal(leftBrace.center[1] - leftBrace.size[1] / 2, frontRail.center[1] + frontRail.size[1] / 2);
+  assert.equal(rightBrace.center[1] + rightBrace.size[1] / 2, rearRail.center[1] + rearRail.size[1] / 2);
+  assert.equal(model.issues.some((issue) => issue.type === "fixture-part-collision"), false);
+});

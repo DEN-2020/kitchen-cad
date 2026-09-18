@@ -78,6 +78,35 @@ test("corner filler adds a visible strip and a plinth return to the cut list", (
   assert.deepEqual([plinthReturn.u, plinthReturn.v], [105, 130]);
 });
 
+test("an appliance-bay corner filler receives its own floor-to-worktop support", () => {
+  const project = createProject();
+  const bay = createModule("base");
+  Object.assign(bay, {
+    width: 636,
+    feet: 160,
+    legStyle: "hidden",
+    applianceBay: "dishwasher",
+    applianceWidth: 598,
+    applianceHeight: 815,
+    applianceDepth: 550,
+    applianceSideClearance: 20,
+    applianceSupportMode: "right",
+    cornerFillerLeft: 51,
+  });
+  project.modules = [bay];
+
+  const model = buildProject(project);
+  const support = model.parts.find((part) => part.id.endsWith("-CSL"));
+
+  assert.deepEqual([support.u, support.v, support.size], [100, 880, [18, 880, 100]]);
+  assert.equal(
+    model.issues.some(
+      (issue) => issue.type === "appliance-support-missing" && issue.side === "left",
+    ),
+    false,
+  );
+});
+
 test("a hood mounted only 470 mm above the worktop is a production blocker", () => {
   const project = createProject();
   const cabinet = createModule("base");

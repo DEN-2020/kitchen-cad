@@ -56,11 +56,13 @@ export function buildProject(project){
    if(m.feet<=20)return;
    const plinthHeight=m.feet-10,plinthSetback=65,frontHeight=Math.max(100,h-2*m.gap);
    for(const [side,width] of [['L',Number(m.cornerFillerLeft)||0],['R',Number(m.cornerFillerRight)||0]]){
-    if(width<=0)continue;
+   if(width<=0)continue;
     const left=side==='L',frontX=left?-width/2:w+width/2,returnLength=width+plinthSetback,returnX=left?-returnLength/2:w+returnLength/2;
     add(`CF${side}`,`${left?'Левый':'Правый'} угловой добор фасада`,width,frontHeight,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[width,frontHeight,m.frontThickness],[frontX,h/2,d+2+m.frontThickness/2],'front');
     if(m.legStyle==='hidden')add(`CP${side}`,`${left?'Левое':'Правое'} продолжение цоколя в угол`,returnLength,plinthHeight,t,[0,0,0,m.bodyEdge],[returnLength,plinthHeight,t],[returnX,-plinthHeight/2,d-plinthSetback]);
-    warnings.push(`${id}: ${left?'левый':'правый'} угловой добор ${round(width)} мм и возврат цоколя ${round(returnLength)} мм включены в деталировку; крепёж добора проверить по месту.`);
+    const missingApplianceSupport=fullApplianceBay&&(left?!appliance.leftSupport:!appliance.rightSupport);
+    if(missingApplianceSupport){const supportHeight=h+m.feet,supportCenterY=supportHeight/2-m.feet;add(`CS${side}`,`${left?'Левая':'Правая'} опорная стойка углового добора`,100,supportHeight,t,[0,m.bodyEdge,0,m.bodyEdge],[t,supportHeight,100],[left?-t/2:w+t/2,supportCenterY,d-50]);}
+    warnings.push(`${id}: ${left?'левый':'правый'} угловой добор ${round(width)} мм и возврат цоколя ${round(returnLength)} мм включены в деталировку${missingApplianceSupport?`; за добором добавлена несущая стойка 100×${round(h+m.feet)} мм от пола до столешницы`:''}; крепёж добора проверить по месту.`);
    }
   };
   addCornerFillers();
@@ -70,10 +72,14 @@ export function buildProject(project){
    if(appliance.rightSupport)add('SR','Несущая боковина ниши правая',bodyDepth,fullSideHeight,t,[0,m.bodyEdge,0,m.bodyEdge],[t,fullSideHeight,bodyDepth],[w-t/2,sideCenterY,(backOverlay?b:0)+bodyDepth/2]);
    const openingStart=appliance.leftSupport?t:0,openingCenter=openingStart+opening/2,frontRailDrop=worktopFixture?.type==='hob'?Math.max(0,(Number(worktopFixture.installationHeight)||51)-(Number(worktopFixture.rimHeight)||6)-(Number(project.countertop?.thickness)||20)):0;
    add('FS','Передняя верхняя планка ниши (горизонтальная)',opening,100,t,[0,0,0,m.bodyEdge],[opening,t,100],[openingCenter,h-frontRailDrop-t/2,d-50]);
+   if(frontRailDrop>0){
+    add('FSL','Левая проставка передней планки до столешницы',100,frontRailDrop,t,[0,0,0,m.bodyEdge],[t,frontRailDrop,100],[openingStart+t/2,h-frontRailDrop/2,d-50]);
+    add('FSR','Правая проставка передней планки до столешницы',100,frontRailDrop,t,[0,0,0,m.bodyEdge],[t,frontRailDrop,100],[openingStart+opening-t/2,h-frontRailDrop/2,d-50]);
+   }
    add('RS','Задняя верхняя планка ниши',opening,100,t,[0,m.bodyEdge,0,0],[opening,100,t],[openingCenter,h-50,(backOverlay?b:0)+t/2]);
    embeddedApplianceGeometry(m,id,objects,(appliance.leftSupport?t:0)+(opening-aw)/2,Math.max(0,appliance.availableDepth-ad),!fits);
    if(!fits){const message=`${id}: техника ${aw}×${ah}×${ad} мм с боковым люфтом ${appliance.sideClearance} мм не помещается в чистый проём ${opening}×${appliance.availableHeight}×${appliance.availableDepth} мм: требуется ${appliance.requiredOpeningWidth} мм по ширине и ${ah+appliance.topClearance} мм по высоте.`;issues.push({type:'appliance-bay-fit',moduleId:m.id,message,required:{width:appliance.requiredOpeningWidth,height:ah+appliance.topClearance,depth:ad},available:{width:opening,height:appliance.availableHeight,depth:appliance.availableDepth}});warnings.push(message)}
-   else warnings.push(`${id}: ниша ${opening} мм под ${m.applianceBay==='washer'?'стиральную':'посудомоечную'} машину; собственные опоры: ${appliance.leftSupport?'левая':''}${appliance.leftSupport&&appliance.rightSupport?' и ':''}${appliance.rightSupport?'правая':''}${!appliance.supportCount?'нет':''}. Дно, полки, фасад, цоколь и ножки в проёме отсутствуют; отсутствующие стороны должны опираться на соседний корпус. Передняя планка ${opening}×100 мм лежит горизонтально${frontRailDrop?` и опущена на ${round(frontRailDrop)} мм под корпус варочной поверхности`:''}, задняя ${opening}×100 мм установлена вертикально.`);
+   else warnings.push(`${id}: ниша ${opening} мм под ${m.applianceBay==='washer'?'стиральную':'посудомоечную'} машину; собственные опоры: ${appliance.leftSupport?'левая':''}${appliance.leftSupport&&appliance.rightSupport?' и ':''}${appliance.rightSupport?'правая':''}${!appliance.supportCount?'нет':''}. Дно, полки, фасад, цоколь и ножки в проёме отсутствуют; отсутствующие стороны должны опираться на соседний корпус. Передняя планка ${opening}×100 мм лежит горизонтально${frontRailDrop?` и опущена на ${round(frontRailDrop)} мм под корпус варочной поверхности; две торцевые проставки 100×${round(frontRailDrop)} мм доводят её опору до низа столешницы`:''}, задняя ${opening}×100 мм установлена вертикально.`);
    const fixture=worktopFixture;if(fixture?.type==='sink'){issues.push({type:'appliance-fixture-conflict',moduleId:m.id,fixtureId:fixture.id});warnings.push(`${id}: раковину нельзя размещать над стиральной или посудомоечной машиной в том же проёме.`)}else if(fixture?.type==='hob'){const hobDrop=Math.max(0,(Number(fixture.installationHeight)||51)-(Number(project.countertop?.thickness)||20)),clearance=appliance.availableHeight-ah-hobDrop;if(clearance<appliance.topClearance){issues.push({type:'appliance-hob-clearance',moduleId:m.id,fixtureId:fixture.id,clearance,required:appliance.topClearance});warnings.push(`${id}: корпус варочной поверхности выступает ниже столешницы на ${round(hobDrop)} мм; над техникой остаётся ${round(clearance)} мм вместо требуемых ${appliance.topClearance} мм.`)}else{const message=`${id}: геометрический зазор над техникой достаточен, но сочетание варочной поверхности и ${m.applianceBay==='dishwasher'?'посудомоечной':'стиральной'} машины нельзя выпускать в производство без паспортов обеих моделей${m.applianceBay==='dishwasher'?' и указанной производителем промежуточной защиты':''}.`;issues.push({type:'appliance-hob-compatibility',moduleId:m.id,fixtureId:fixture.id,applianceType:m.applianceBay,message});warnings.push(message)}};
    return;
   }
@@ -125,6 +131,8 @@ export function buildProject(project){
    for(const side of ['left','right']){
     const ownSupport=side==='left'?measurements.leftSupport:measurements.rightSupport;
     if(ownSupport)continue;
+    const fillerSupport=Number(side==='left'?module.cornerFillerLeft:module.cornerFillerRight)>0&&Number(module.feet)>20;
+    if(fillerSupport){warnings.push(`${module.id}: ${side==='left'?'левая':'правая'} сторона ниши опирается на скрытую полноразмерную стойку углового добора; стойку и верхние планки связать конфирматами или уголками.`);continue}
     if(sharedSupportAt(module,side))warnings.push(`${module.id}: ${side==='left'?'левая':'правая'} сторона ниши использует полноразмерную боковину соседнего корпуса как опору столешницы.`);
     else{const message=`${module.id}: у ${side==='left'?'левой':'правой'} стороны ниши нет ни собственной несущей боковины, ни примыкающего корпуса до столешницы.`;issues.push({type:'appliance-support-missing',moduleId:module.id,side,message});warnings.push(message)}
    }
