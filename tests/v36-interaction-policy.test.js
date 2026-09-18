@@ -47,6 +47,18 @@ test('neighbor snapping only uses modules from the same placement layer',()=>{
  assert.equal(wall.centerX,1250);
 });
 
+test('wall snapping still abuts a nearby cabinet instead of leaving an overlap',()=>{
+ const pose=resolvePlacementPose({
+  roomWidth:1850,roomDepth:4200,moduleWidth:600,moduleDepth:600,
+  rotationY:0,centerX:400,centerZ:300,autoRotate:true,snapToWall:true,
+  wallThreshold:180,grid:50,layer:'floor',
+  neighbors:[{width:1200,depth:560,rotationY:0,centerX:1250,centerZ:280,layer:'floor'}],
+ });
+ assert.equal(pose.rotationY,0);
+ assert.equal(pose.centerZ,300);
+ assert.equal(pose.centerX,350);
+});
+
 test('door hinge frame pivots on the chosen edge and keeps attachments with it',()=>{
  const left={hingeSide:'left',size:[600,700,18],localCenter:[300,360,570],rotationY:0};
  const frame=doorHingeFrame(left);

@@ -40,13 +40,19 @@ test("sheet layout produces real, non-overlapping stock guidance", () => {
       }
 });
 
-test("wood grain locks orientation while solid decor may rotate", () => {
+test("wood grain and stone veining lock orientation while solid decor may rotate", () => {
   const wood = part("wood", 1400, 500, {
     grain: "v",
     appearance: { pattern: "wood" },
   });
   const locked = planSheetLayout([wood], product, { trim: 0, kerf: 0 });
   assert.equal(locked.unplaced.length, 1);
+  const stone = part("stone", 1400, 500, {
+    grain: "v",
+    appearance: { pattern: "stone" },
+  });
+  const stoneLocked = planSheetLayout([stone], product, { trim: 0, kerf: 0 });
+  assert.equal(stoneLocked.unplaced.length, 1);
   const rotatable = planSheetLayout(
     [part("solid", 1400, 500)],
     product,
@@ -65,4 +71,24 @@ test("minimum sheet reserve and offcut capacity are explicit", () => {
   assert.equal(plan.sheetCount, 2);
   const free = plan.sheets.flatMap((sheet) => sheet.usefulOffcuts);
   assert.ok(countPartsInOffcuts(free, 300, 300) > 0);
+});
+
+test("multi-strategy nesting avoids a nearly empty fourth carcass sheet", () => {
+  const dimensions = [
+    [1200, 129.2], [1164, 559.2], [1164, 100], [1164, 99.2],
+    ...Array.from({ length: 4 }, () => [559.2, 720]),
+    [68.4, 714.4], [600, 129.2],
+    ...Array.from({ length: 6 }, () => [319.2, 720]),
+    [630.4, 714.4], [564, 559.2],
+    ...Array.from({ length: 6 }, () => [564, 319.2]),
+    [564, 100], [564, 99.2],
+    ...Array.from({ length: 3 }, () => [562, 299.2]),
+  ];
+  const plan = planSheetLayout(
+    dimensions.map(([u, v], index) => part(`cabinet-${index + 1}`, u, v)),
+    product,
+    { trim: 10, kerf: 4 },
+  );
+  assert.equal(plan.unplaced.length, 0);
+  assert.equal(plan.sheetCount, 3);
 });

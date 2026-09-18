@@ -29,13 +29,14 @@ function snapValue(value,candidates,distance=60,grid=50){
 
 /** One placement policy for floor, wall-mounted, appliance and room modules. */
 export function resolvePlacementPose({roomWidth,roomDepth,moduleWidth,moduleDepth,rotationY=0,centerX,centerZ,autoRotate=true,snapToWall=true,wallThreshold=180,grid=50,layer='floor',neighbors=[]}){
+ let normalized=normalizeRotation(rotationY),workingCenterX=centerX,workingCenterZ=centerZ;
  if(autoRotate&&snapToWall){
   const wallPose=wallSnapPose({roomWidth,roomDepth,moduleWidth,moduleDepth,centerX,centerZ,threshold:wallThreshold,grid});
-  if(wallPose)return wallPose;
+  if(wallPose){normalized=wallPose.rotationY;workingCenterX=wallPose.centerX;workingCenterZ=wallPose.centerZ}
  }
- const normalized=normalizeRotation(rotationY),footprint=rotatedFootprint(moduleWidth,moduleDepth,normalized),halfW=footprint.width/2,halfD=footprint.depth/2;
+ const footprint=rotatedFootprint(moduleWidth,moduleDepth,normalized),halfW=footprint.width/2,halfD=footprint.depth/2;
  const xCandidates=[halfW,roomWidth-halfW],zCandidates=[halfD,roomDepth-halfD];
- const proposed={left:centerX-halfW,right:centerX+halfW,back:centerZ-halfD,front:centerZ+halfD};
+ const proposed={left:workingCenterX-halfW,right:workingCenterX+halfW,back:workingCenterZ-halfD,front:workingCenterZ+halfD};
  for(const neighbor of neighbors){
   if(neighbor.layer&&neighbor.layer!==layer)continue;
   const nfp=rotatedFootprint(neighbor.width,neighbor.depth,neighbor.rotationY),ncx=neighbor.centerX,ncz=neighbor.centerZ,nHalfW=nfp.width/2,nHalfD=nfp.depth/2;
@@ -43,5 +44,5 @@ export function resolvePlacementPose({roomWidth,roomDepth,moduleWidth,moduleDept
   if(proposed.back<nb.front+80&&proposed.front>nb.back-80)xCandidates.push(nb.left-halfW,nb.right+halfW,ncx);
   if(proposed.left<nb.right+80&&proposed.right>nb.left-80)zCandidates.push(nb.back-halfD,nb.front+halfD,ncz);
  }
- return clampPoseToRoom({roomWidth,roomDepth,moduleWidth,moduleDepth,rotationY:normalized,centerX:snapValue(centerX,xCandidates,60,grid),centerZ:snapValue(centerZ,zCandidates,60,grid),grid:1});
+ return clampPoseToRoom({roomWidth,roomDepth,moduleWidth,moduleDepth,rotationY:normalized,centerX:snapValue(workingCenterX,xCandidates,60,grid),centerZ:snapValue(workingCenterZ,zCandidates,60,grid),grid:1});
 }

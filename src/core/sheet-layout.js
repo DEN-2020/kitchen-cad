@@ -27,10 +27,10 @@ function removeContained(rects) {
 function orientations(part) {
   const u = Math.max(0, finite(part.blankU, finite(part.u, 0)));
   const v = Math.max(0, finite(part.blankV, finite(part.v, 0)));
-  const wood = part.appearance?.pattern === "wood";
-  if (wood) {
-    // The stock grain runs along sheetHeight. Keep the requested part grain
-    // aligned with it; rotating a wood part is not a free optimization.
+  const directional = ["wood", "stone"].includes(part.appearance?.pattern);
+  if (directional) {
+    // The stock pattern runs along sheetHeight. Wood grain and stone veining
+    // must stay aligned across neighbouring fronts; rotation is not free.
     return part.grain === "u"
       ? [{ width: v, height: u, rotated: true }]
       : [{ width: u, height: v, rotated: false }];
@@ -130,29 +130,34 @@ function splitFreeRect(sheet, rectIndex, width, height, kerf) {
   sheet.freeRects = removeContained(sheet.freeRects);
 }
 
-/**
- * Deterministic preliminary sheet nesting. This is purchasing guidance, not a
- * CNC cutting program: the workshop still decides cut order, clamps and trims.
- */
-export function planSheetLayout(parts = [], product = {}, options = {}) {
-  const sheetWidth = Math.max(1, finite(product.sheetWidth, 2440));
-  const sheetHeight = Math.max(1, finite(product.sheetHeight, 1220));
-  const kerf = Math.max(0, finite(options.kerf, 4));
-  const trim = Math.max(0, finite(options.trim, 10));
-  const minimumSheets = Math.max(0, Math.ceil(finite(options.minimumSheets, 0)));
+const partMetrics = (part) => {
+  const size = orientations(part)[0];
+  return {
+    width: size.width,
+    height: size.height,
+    long: Math.max(size.width, size.height),
+    short: Math.min(size.width, size.height),
+    area: size.width * size.height,
+  };
+};
+
+const compareId = (a, b) => String(a.id || "").localeCompare(String(b.id || ""));
+
+const SORTERS = [
+  (a, b) => b.long - a.long || b.area - a.area,
+  (a, b) => b.area - a.area || b.long - a.long,
+  (a, b) => b.short - a.short || b.long - a.long,
+  (a, b) => b.width - a.width || b.height - a.height,
+  (a, b) => b.height - a.height || b.width - a.width,
+];
+
+function packParts(parts, sorter, sheetWidth, sheetHeight, trim, kerf) {
   const sheets = [];
   const unplaced = [];
-  const sortedParts = [...parts]
-    .filter((part) => orientations(part)[0]?.width > 0 && orientations(part)[0]?.height > 0)
-    .sort((a, b) => {
-      const aSize = orientations(a)[0];
-      const bSize = orientations(b)[0];
-      return (
-        Math.max(bSize.width, bSize.height) - Math.max(aSize.width, aSize.height) ||
-        bSize.width * bSize.height - aSize.width * aSize.height ||
-        String(a.id || "").localeCompare(String(b.id || ""))
-      );
-    });
+  const sortedParts = parts
+    .map((part) => ({ part, metrics: partMetrics(part) }))
+    .sort((a, b) => sorter(a.metrics, b.metrics) || compareId(a.part, b.part))
+    .map((entry) => entry.part);
 
   for (const part of sortedParts) {
     let placement = bestPlacement(sheets, part);
@@ -183,10 +188,36 @@ export function planSheetLayout(parts = [], product = {}, options = {}) {
       width: round(orientation.width),
       height: round(orientation.height),
       rotated: orientation.rotated,
-      grainLocked: part.appearance?.pattern === "wood",
+      grainLocked: ["wood", "stone"].includes(part.appearance?.pattern),
     });
     splitFreeRect(sheet, rectIndex, orientation.width, orientation.height, kerf);
   }
+  return { sheets, unplaced };
+}
+
+/**
+ * Deterministic preliminary sheet nesting. This is purchasing guidance, not a
+ * CNC cutting program: the workshop still decides cut order, clamps and trims.
+ */
+export function planSheetLayout(parts = [], product = {}, options = {}) {
+  const sheetWidth = Math.max(1, finite(product.sheetWidth, 2440));
+  const sheetHeight = Math.max(1, finite(product.sheetHeight, 1220));
+  const kerf = Math.max(0, finite(options.kerf, 4));
+  const trim = Math.max(0, finite(options.trim, 10));
+  const minimumSheets = Math.max(0, Math.ceil(finite(options.minimumSheets, 0)));
+  const validParts = [...parts].filter(
+    (part) => orientations(part)[0]?.width > 0 && orientations(part)[0]?.height > 0,
+  );
+  const candidates = SORTERS.map((sorter) =>
+    packParts(validParts, sorter, sheetWidth, sheetHeight, trim, kerf),
+  );
+  candidates.sort(
+    (a, b) =>
+      a.unplaced.length - b.unplaced.length ||
+      a.sheets.length - b.sheets.length ||
+      b.sheets.at(-1)?.placements.length - a.sheets.at(-1)?.placements.length,
+  );
+  const { sheets, unplaced } = candidates[0];
 
   while (sheets.length < minimumSheets)
     sheets.push(createSheet(sheets.length + 1, sheetWidth, sheetHeight, trim));
