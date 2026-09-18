@@ -46,7 +46,7 @@ const clone = <T>(v: T): T => structuredClone(v);
 function defaultStyle() {
   return {
     ...DEFAULT_MODULE_STYLE,
-    washerClearance: 15,
+    washerClearance: 10,
   };
 }
 export function createEditorProject() {
@@ -247,7 +247,7 @@ export function deriveModel(project: any) {
   }
   const requiredWasherClearance = Math.max(
     5,
-    Math.min(60, Number(p.defaults?.washerClearance) || 15),
+    Math.min(60, Number(p.defaults?.washerClearance) || 10),
   );
   for (const washer of model.modules.filter((m: any) => m.type === "washer")) {
     const segment = countertopSegmentForModule(segments, washer.id);

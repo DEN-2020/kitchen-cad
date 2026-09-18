@@ -11,7 +11,7 @@ test("a one-sided washer bay can share the adjacent cabinet side as its second w
     width: 638,
     applianceBay: "washer",
     applianceWidth: 600,
-    applianceHeight: 840,
+    applianceHeight: 850,
     applianceDepth: 550,
     applianceSideClearance: 20,
     applianceSupportMode: "left",
@@ -21,9 +21,19 @@ test("a one-sided washer bay can share the adjacent cabinet side as its second w
   const model = buildProject(project);
   const parts = model.parts.filter((part) => part.moduleId === bay.id);
   assert.ok(parts.some((part) => part.id.endsWith("-SL")));
+  assert.deepEqual(
+    parts
+      .filter((part) => part.id.endsWith("-RS"))
+      .map((part) => [part.u, part.v, part.thickness]),
+    [[620, 100, 18]],
+  );
   assert.equal(parts.some((part) => part.id.endsWith("-SR")), false);
   assert.equal(
     model.issues.some((issue) => issue.type === "appliance-support-missing"),
+    false,
+  );
+  assert.equal(
+    model.issues.some((issue) => issue.type === "appliance-bay-fit"),
     false,
   );
 });

@@ -4,7 +4,7 @@ export const APPLIANCE_BAY_DEFAULTS = Object.freeze({
     height: 850,
     depth: 590,
     sideClearance: 20,
-    topClearance: 15,
+    topClearance: 10,
   }),
   dishwasher: Object.freeze({
     width: 598,

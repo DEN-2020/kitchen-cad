@@ -2341,7 +2341,7 @@ export function App() {
                           ? "خلوص فوق الغسالة"
                           : "Washer top clearance"
                     }
-                    value={project.defaults?.washerClearance || 15}
+                    value={project.defaults?.washerClearance || 10}
                     min={5}
                     max={60}
                     onCommit={(n) =>
