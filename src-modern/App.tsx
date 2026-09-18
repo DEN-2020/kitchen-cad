@@ -105,6 +105,21 @@ type SaveStatus = "saving" | "saved" | "error";
 type ModuleTab = "geometry" | "construction" | "facade" | "materials" | "equipment";
 type ImportNotice = { kind: "success" | "error"; message: string } | null;
 const sizeText = (m: any) => `${m.width} × ${m.height} × ${m.depth} мм`;
+const moduleDisplayLabel = (lang: Lang, module: any) => {
+  if (module?.applianceBay === "washer")
+    return lang === "ru"
+      ? "Ниша под стиральную машину"
+      : lang === "ar"
+        ? "فتحة غسالة ملابس"
+        : "Washing machine bay";
+  if (module?.applianceBay === "dishwasher")
+    return lang === "ru"
+      ? "Ниша под посудомоечную машину"
+      : lang === "ar"
+        ? "فتحة غسالة صحون"
+        : "Dishwasher bay";
+  return moduleLabel(lang, module?.type);
+};
 const fixtureTargetTypes = new Set([
   "base",
   "drawer",
@@ -597,7 +612,7 @@ export function App() {
         : selectedPart
           ? selectedPart.name
           : selectedModule
-            ? moduleLabel(lang, selectedModule.type)
+            ? moduleDisplayLabel(lang, selectedModule)
             : lang === "ru"
               ? "Объект"
               : "Object",
@@ -824,7 +839,7 @@ export function App() {
         </div>
         {focusId && selectedModule && (
           <div className="focusTitle">
-            <b>{moduleLabel(lang, selectedModule.type)}</b>
+            <b>{moduleDisplayLabel(lang, selectedModule)}</b>
             <span>{sizeText(selectedModule)}</span>
           </div>
         )}
@@ -2804,7 +2819,7 @@ export function App() {
                   >
                     {floorTargets.map((m: any) => (
                       <option key={m.id} value={m.id}>
-                        {moduleLabel(lang, m.type)} · {Math.round(m.x)}…
+                        {moduleDisplayLabel(lang, m)} · {Math.round(m.x)}…
                         {Math.round(m.x + m.width)} мм
                       </option>
                     ))}
@@ -2865,7 +2880,7 @@ export function App() {
                       >
                         {floorTargets.map((m: any) => (
                           <option key={m.id} value={m.id}>
-                            {moduleLabel(lang, m.type)}
+                            {moduleDisplayLabel(lang, m)}
                           </option>
                         ))}
                       </select>
@@ -3898,8 +3913,8 @@ export function App() {
                   </section>
                   {applianceBayEligible && (
                     <section className={moduleTab === "equipment" ? "equipmentSection" : "moduleTabHidden"}>
-                      <h3>{lang === "ru" ? "Проём под технику" : "Appliance bay"}</h3>
-                      <div className="segmented applianceSelector" role="group" aria-label={lang === "ru" ? "Техника в модуле" : "Appliance in module"}>
+                      <h3>{lang === "ru" ? "Конструкция модуля" : "Module construction"}</h3>
+                      <div className="segmented applianceSelector" role="group" aria-label={lang === "ru" ? "Конструкция модуля" : "Module construction"}>
                         {(["none", "washer", "dishwasher"] as const).map((type) => (
                           <button
                             type="button"
@@ -3909,10 +3924,10 @@ export function App() {
                             onClick={() => patchModule({ applianceBay: type })}
                           >
                             {type === "none"
-                              ? lang === "ru" ? "Шкаф" : "Cabinet"
+                              ? lang === "ru" ? "Шкаф с дном" : "Cabinet with bottom"
                               : type === "washer"
-                                ? lang === "ru" ? "Стиралка" : "Washer"
-                                : lang === "ru" ? "Посудомойка" : "Dishwasher"}
+                                ? lang === "ru" ? "Ниша стиралки" : "Washer bay"
+                                : lang === "ru" ? "Ниша ПММ" : "Dishwasher bay"}
                           </button>
                         ))}
                       </div>
@@ -3983,7 +3998,7 @@ export function App() {
                       ) : (
                         <p className="note equipmentExplanation">
                           {lang === "ru"
-                            ? "В режиме «Шкаф» сохраняются корпус, фасад, полки и опоры. Выбор техники создаёт физический проём и сразу меняет деталировку и смету."
+                            ? "Сейчас выбран обычный шкаф: поэтому остаются дно и цоколь. Для открытого проёма с боковинами и верхней связующей планкой выберите «Ниша стиралки» или «Ниша ПММ»."
                             : "Cabinet mode keeps the carcass, front, shelves and supports. Selecting an appliance creates a real opening and updates parts and cost."}
                         </p>
                       )}
