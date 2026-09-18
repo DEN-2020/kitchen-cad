@@ -558,7 +558,7 @@ function ModuleVisual({
     </group>
   );
 }
-function CountertopJointVisual({ joint }: { joint: any }) {
+function CountertopJointVisual({ joint, unitLabel }: { joint: any; unitLabel: string }) {
   const pts = jointLinePoints(joint).map(
     (p: any) => p.map(mm) as [number, number, number],
   );
@@ -578,7 +578,7 @@ function CountertopJointVisual({ joint }: { joint: any }) {
             : joint.type === "euro"
               ? "EURO"
               : "90°"}{" "}
-          · {joint.gap} мм
+          · {joint.gap} {unitLabel}
         </span>
       </Html>
     </group>
@@ -746,7 +746,7 @@ function Dimension({
     </>
   );
 }
-function RoomDimensions({ room }: { room: any }) {
+function RoomDimensions({ room, unitLabel }: { room: any; unitLabel: string }) {
   const w = mm(room.width),
     h = mm(room.height),
     d = mm(room.depth);
@@ -755,17 +755,17 @@ function RoomDimensions({ room }: { room: any }) {
       <Dimension
         a={[0, h + 0.08, 0]}
         b={[w, h + 0.08, 0]}
-        label={`${room.width} мм`}
+        label={`${room.width} ${unitLabel}`}
       />
       <Dimension
         a={[w + 0.08, 0, 0]}
         b={[w + 0.08, h, 0]}
-        label={`${room.height} мм`}
+        label={`${room.height} ${unitLabel}`}
       />
       <Dimension
         a={[w + 0.12, 0.03, 0]}
         b={[w + 0.12, 0.03, d]}
-        label={`${room.depth} мм`}
+        label={`${room.depth} ${unitLabel}`}
       />
     </>
   );
@@ -886,9 +886,11 @@ function PartCallouts({
 function Dimensions({
   model,
   selection,
+  unitLabel,
 }: {
   model: any;
   selection: Selection;
+  unitLabel: string;
 }) {
   if (!selection) return null;
   if (selection.kind === "countertop") {
@@ -901,12 +903,12 @@ function Dimensions({
         <Dimension
           a={[x - w / 2, y + h / 2 + 0.04, z + d / 2]}
           b={[x + w / 2, y + h / 2 + 0.04, z + d / 2]}
-          label={`${Math.round(o.size[0])} мм`}
+          label={`${Math.round(o.size[0])} ${unitLabel}`}
         />
         <Dimension
           a={[x + w / 2 + 0.04, y, z - d / 2]}
           b={[x + w / 2 + 0.04, y, z + d / 2]}
-          label={`${Math.round(o.size[2])} мм`}
+          label={`${Math.round(o.size[2])} ${unitLabel}`}
         />
       </>
     );
@@ -935,17 +937,17 @@ function Dimensions({
       <Dimension
         a={p(-w / 2, h + up, d / 2 + 0.035)}
         b={p(w / 2, h + up, d / 2 + 0.035)}
-        label={`${m.width} мм`}
+        label={`${m.width} ${unitLabel}`}
       />
       <Dimension
         a={p(w / 2 + 0.045, 0, d / 2 + 0.035)}
         b={p(w / 2 + 0.045, h, d / 2 + 0.035)}
-        label={`${m.height} мм`}
+        label={`${m.height} ${unitLabel}`}
       />
       <Dimension
         a={p(w / 2 + 0.075, 0.03, -d / 2)}
         b={p(w / 2 + 0.075, 0.03, d / 2)}
-        label={`${m.depth} мм`}
+        label={`${m.depth} ${unitLabel}`}
       />
     </>
   );
@@ -1209,6 +1211,7 @@ function SceneContent(props: any) {
       focusId,
       detail,
       view,
+      unitLabel = "мм",
       cameraResetKey,
       ghostEmbeddedAppliance,
       onMoveModule,
@@ -1414,9 +1417,9 @@ function SceneContent(props: any) {
           ))}
       {!focusId &&
         (model.countertopJoints || []).map((joint: any) => (
-          <CountertopJointVisual key={joint.id} joint={joint} />
+          <CountertopJointVisual key={joint.id} joint={joint} unitLabel={unitLabel} />
         ))}
-      {detail === "none" && <Dimensions model={model} selection={selection} />}
+      {detail === "none" && <Dimensions model={model} selection={selection} unitLabel={unitLabel} />}
       {focusId && detail !== "none" && focusModule && (
         <PartCallouts
           parts={focusParts}
@@ -1425,7 +1428,7 @@ function SceneContent(props: any) {
         />
       )}{" "}
       {!focusId && project.ui?.showRoomDimensions !== false && (
-        <RoomDimensions room={project.room} />
+        <RoomDimensions room={project.room} unitLabel={unitLabel} />
       )}{" "}
       {!focusId && project.ui?.showAllModuleDimensions && (
         <ModuleDimensionLabels model={model} selectedId={selectedModuleId} />

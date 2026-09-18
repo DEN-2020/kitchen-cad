@@ -69,14 +69,19 @@ export function materialSelectionPatch(role,productId){
 }
 
 export const DECORS = Object.freeze({
-  white: { name: 'Тёплый белый', color: '#eeeae0', pattern: 'solid' },
-  olive: { name: 'Шалфей', color: '#899782', pattern: 'solid' },
-  graphite: { name: 'Графит', color: '#424d54', pattern: 'solid' },
-  oak: { name: 'Дуб', color: '#c29764', pattern: 'wood' },
-  walnut: { name: 'Орех', color: '#815b3f', pattern: 'wood' },
-  marble: { name: 'Светлый камень', color: '#e7e5dd', pattern: 'stone' },
-  concrete: { name: 'Бетон', color: '#a7aaa6', pattern: 'speckle' },
+  white: { name: 'Тёплый белый', nameEn: 'Warm white', nameAr: 'أبيض دافئ', color: '#eeeae0', pattern: 'solid' },
+  olive: { name: 'Шалфей', nameEn: 'Sage', nameAr: 'أخضر مريمي', color: '#899782', pattern: 'solid' },
+  graphite: { name: 'Графит', nameEn: 'Graphite', nameAr: 'جرافيت', color: '#424d54', pattern: 'solid' },
+  oak: { name: 'Дуб', nameEn: 'Oak', nameAr: 'بلوط', color: '#c29764', pattern: 'wood' },
+  walnut: { name: 'Орех', nameEn: 'Walnut', nameAr: 'جوز', color: '#815b3f', pattern: 'wood' },
+  marble: { name: 'Светлый камень', nameEn: 'Light stone', nameAr: 'حجر فاتح', color: '#e7e5dd', pattern: 'stone' },
+  concrete: { name: 'Бетон', nameEn: 'Concrete', nameAr: 'خرسانة', color: '#a7aaa6', pattern: 'speckle' },
 });
+
+export function decorLabel(decor,lang='ru'){
+  if(!decor)return '';
+  return lang==='ar'?decor.nameAr:lang==='en'?decor.nameEn:decor.name;
+}
 
 export const MODULE_TYPES = Object.freeze({
   base: 'Нижний шкаф',

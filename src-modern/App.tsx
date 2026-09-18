@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KitchenScene } from "./scene/KitchenScene";
-import { NumberField } from "./ui/NumberField";
+import { NumberField as BaseNumberField } from "./ui/NumberField";
 import { useViewport } from "./ui/useViewport";
 import {
   BackIcon,
@@ -47,6 +47,7 @@ import {
   MATERIAL_PRODUCTS,
   isDisplayOnlyType,
   isWallMountedType,
+  decorLabel,
   materialProductLabel,
   materialProductsForRole,
 } from "../src/catalog/materials.js";
@@ -104,7 +105,11 @@ type Panel =
 type SaveStatus = "saving" | "saved" | "error";
 type ModuleTab = "geometry" | "construction" | "facade" | "materials" | "equipment";
 type ImportNotice = { kind: "success" | "error"; message: string } | null;
-const sizeText = (m: any) => `${m.width} × ${m.height} × ${m.depth} мм`;
+const localized = (lang: Lang, ru: string, en: string, ar: string) =>
+  lang === "ru" ? ru : lang === "ar" ? ar : en;
+const mmUnit = (lang: Lang) => localized(lang, "мм", "mm", "مم");
+const sizeText = (m: any, lang: Lang) =>
+  `${m.width} × ${m.height} × ${m.depth} ${mmUnit(lang)}`;
 const moduleDisplayLabel = (lang: Lang, module: any) => {
   if (module?.applianceBay === "washer")
     return lang === "ru"
@@ -185,7 +190,8 @@ function DecorPicker({
   onColorChange: (color: string) => void;
 }) {
   const railRef = useRef<HTMLDivElement>(null),
-    selectedDecor = (DECORS as any)[value] || Object.values(DECORS)[0];
+    selectedDecor = (DECORS as any)[value] || Object.values(DECORS)[0],
+    selectedDecorName = decorLabel(selectedDecor, lang);
   useEffect(() => {
     railRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
@@ -196,7 +202,7 @@ function DecorPicker({
       <div className="decorPickerHead">
         <span>{label}</span>
         <strong>
-          {selectedDecor.name} · {decorPatternLabel(lang, selectedDecor.pattern)}
+          {selectedDecorName} · {decorPatternLabel(lang, selectedDecor.pattern)}
         </strong>
       </div>
       <div
@@ -212,8 +218,8 @@ function DecorPicker({
             role="option"
             aria-selected={value === key}
             className={value === key ? "active" : ""}
-            aria-label={`${decor.name}, ${decorPatternLabel(lang, decor.pattern)}`}
-            title={`${decor.name} · ${decorPatternLabel(lang, decor.pattern)}`}
+            aria-label={`${decorLabel(decor, lang)}, ${decorPatternLabel(lang, decor.pattern)}`}
+            title={`${decorLabel(decor, lang)} · ${decorPatternLabel(lang, decor.pattern)}`}
             data-pattern={decor.pattern}
             onClick={() => onChange(key)}
           >
@@ -221,7 +227,7 @@ function DecorPicker({
               className="decorSample"
               style={{ backgroundColor: decor.color }}
             />
-            <small>{decor.name}</small>
+            <small>{decorLabel(decor, lang)}</small>
           </button>
         ))}
       </div>
@@ -233,7 +239,7 @@ function DecorPicker({
           <input
             type="color"
             value={color}
-            aria-label={`${label}: ${lang === "ru" ? "оттенок" : "tint"}`}
+            aria-label={`${label}: ${localized(lang, "оттенок", "tint", "درجة اللون")}`}
             onChange={(event) => onColorChange(event.target.value)}
           />
           <code>{color.toUpperCase()}</code>
@@ -241,11 +247,14 @@ function DecorPicker({
             type="button"
             disabled={color.toLowerCase() === selectedDecor.color.toLowerCase()}
             aria-label={
-              lang === "ru"
-                ? `Вернуть исходный цвет ${selectedDecor.name}`
-                : `Reset ${selectedDecor.name} color`
+              localized(
+                lang,
+                `Вернуть исходный цвет ${selectedDecorName}`,
+                `Reset ${selectedDecorName} color`,
+                `استعادة لون ${selectedDecorName}`,
+              )
             }
-            title={lang === "ru" ? "Вернуть цвет образца" : "Reset swatch color"}
+            title={localized(lang, "Вернуть цвет образца", "Reset swatch color", "استعادة لون العينة")}
             onClick={() => onColorChange(selectedDecor.color)}
           >
             <ResetIcon size={16} />
@@ -282,14 +291,10 @@ function MaterialProductSelect({
       </select>
       {product && (
         <small>
-          {product.sheetWidth}×{product.sheetHeight}×{product.thickness} мм ·{" "}
+          {product.sheetWidth}×{product.sheetHeight}×{product.thickness} {mmUnit(lang)} ·{" "}
           {product.finish === "gloss"
-            ? lang === "ru"
-              ? "глянец"
-              : "gloss"
-            : lang === "ru"
-              ? "матовый"
-              : "matte"}
+            ? localized(lang, "глянец", "gloss", "لامع")
+            : localized(lang, "матовый", "matte", "مطفي")}
         </small>
       )}
     </label>
@@ -319,24 +324,24 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
         <span className="sheetPlanTitle">
           <b>{role} · {batch.materialName}</b>
           <small>
-            {(DECORS as any)[batch.decor]?.name || batch.decor} · {batch.thickness} мм · {batch.sheetWidth}×{batch.sheetHeight}
+            {decorLabel((DECORS as any)[batch.decor], lang) || batch.decor} · {batch.thickness} {mmUnit(lang)} · {batch.sheetWidth}×{batch.sheetHeight}
           </small>
         </span>
-        <strong>{batch.sheets} {lang === "ru" ? "л." : "sheets"}</strong>
+        <strong>{batch.sheets} {localized(lang, "л.", "sheets", "ألواح")}</strong>
       </summary>
       <div className="sheetMetrics">
-        <span><b>{plan.usedArea.toFixed(2)} м²</b>{lang === "ru" ? "детали" : "parts"}</span>
-        <span><b>{plan.reusableArea.toFixed(2)} м²</b>{lang === "ru" ? "полезный остаток" : "usable offcut"}</span>
-        <span><b>{Math.round(plan.utilization * 100)}%</b>{lang === "ru" ? "использовано" : "utilized"}</span>
+        <span><b>{plan.usedArea.toFixed(2)} m²</b>{localized(lang, "детали", "parts", "قطع")}</span>
+        <span><b>{plan.reusableArea.toFixed(2)} m²</b>{localized(lang, "полезный остаток", "usable offcut", "بقايا قابلة للاستخدام")}</span>
+        <span><b>{Math.round(plan.utilization * 100)}%</b>{localized(lang, "использовано", "utilized", "مستخدم")}</span>
       </div>
       <div className="sheetMaps">
         {plan.sheets.map((sheet: any) => (
           <div className="sheetMapCard" key={sheet.index}>
-            <div><b>{lang === "ru" ? "Лист" : "Sheet"} {sheet.index}</b><small>{Math.round(sheet.utilization * 100)}%</small></div>
+            <div><b>{localized(lang, "Лист", "Sheet", "لوح")} {sheet.index}</b><small>{Math.round(sheet.utilization * 100)}%</small></div>
             <svg
               viewBox={`0 0 ${sheet.width} ${sheet.height}`}
               role="img"
-              aria-label={`${lang === "ru" ? "Раскрой листа" : "Sheet layout"} ${sheet.index}`}
+              aria-label={`${localized(lang, "Раскрой листа", "Sheet layout", "مخطط قص اللوح")} ${sheet.index}`}
             >
               <rect x="0" y="0" width={sheet.width} height={sheet.height} className="sheetStock" />
               {sheet.placements.map((item: any, index: number) => (
@@ -350,18 +355,18 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
             </svg>
             <small>
               {sheet.usefulOffcuts?.length
-                ? `${lang === "ru" ? "Остатки" : "Offcuts"}: ${sheet.usefulOffcuts.slice(0, 3).map((rect: any) => `${Math.round(rect.width)}×${Math.round(rect.height)}`).join(", ")}${sheet.usefulOffcuts.length > 3 ? "…" : ""}`
-                : lang === "ru" ? "Полезных остатков нет" : "No useful offcuts"}
+                ? `${localized(lang, "Остатки", "Offcuts", "البقايا")}: ${sheet.usefulOffcuts.slice(0, 3).map((rect: any) => `${Math.round(rect.width)}×${Math.round(rect.height)}`).join(", ")}${sheet.usefulOffcuts.length > 3 ? "…" : ""}`
+                : localized(lang, "Полезных остатков нет", "No useful offcuts", "لا توجد بقايا قابلة للاستخدام")}
             </small>
           </div>
         ))}
       </div>
       <div className="offcutFit">
-        <span>{lang === "ru" ? "Что ещё войдёт в остатки" : "What still fits"}</span>
-        <label><input type="number" min="1" value={sampleWidth} onChange={(event) => setSampleWidth(Math.max(1, Number(event.target.value) || 1))} /><small>мм</small></label>
+        <span>{localized(lang, "Что ещё войдёт в остатки", "What still fits", "ما الذي يمكن قصه من البقايا")}</span>
+        <label><input type="number" min="1" value={sampleWidth} onChange={(event) => setSampleWidth(Math.max(1, Number(event.target.value) || 1))} /><small>{mmUnit(lang)}</small></label>
         <span>×</span>
-        <label><input type="number" min="1" value={sampleHeight} onChange={(event) => setSampleHeight(Math.max(1, Number(event.target.value) || 1))} /><small>мм</small></label>
-        <strong>≈ {fitCount} шт.</strong>
+        <label><input type="number" min="1" value={sampleHeight} onChange={(event) => setSampleHeight(Math.max(1, Number(event.target.value) || 1))} /><small>{mmUnit(lang)}</small></label>
+        <strong>≈ {fitCount} {localized(lang, "шт.", "pcs", "قطعة")}</strong>
       </div>
       <p className="note">
         {lang === "ru"
@@ -527,6 +532,12 @@ export function App() {
               : 1
     : 0,
     selectedFrontParts = parts.filter((part: any) => part.role === "front");
+  const NumberField = (props: any) => (
+    <BaseNumberField
+      {...props}
+      unit={props.unit === undefined ? mmUnit(lang) : props.unit}
+    />
+  );
   useEffect(() => setModuleTab("geometry"), [selectedModuleId]);
   useEffect(() => {
     setSaveStatus("saving");
@@ -619,11 +630,11 @@ export function App() {
               : "Object",
     selectionSize =
       selection?.kind === "countertop"
-        ? `${model.countertopSegments?.length || 0} сегм. · ${countertopLength} мм`
+        ? `${model.countertopSegments?.length || 0} ${localized(lang, "сегм.", "segments", "مقاطع")} · ${countertopLength} ${mmUnit(lang)}`
         : selectedPart
-          ? `${selectedPart.u} × ${selectedPart.v} × ${selectedPart.thickness} мм`
+          ? `${selectedPart.u} × ${selectedPart.v} × ${selectedPart.thickness} ${mmUnit(lang)}`
           : selectedModule
-            ? sizeText(selectedModule)
+            ? sizeText(selectedModule, lang)
             : "";
   const openPanel = (p: Panel) => setPanel((cur) => (cur === p ? null : p)),
     enterFocus = () => {
@@ -842,7 +853,7 @@ export function App() {
         {focusId && selectedModule && (
           <div className="focusTitle">
             <b>{moduleDisplayLabel(lang, selectedModule)}</b>
-            <span>{sizeText(selectedModule)}</span>
+            <span>{sizeText(selectedModule, lang)}</span>
           </div>
         )}
         <div className="topbarTools">
@@ -908,6 +919,7 @@ export function App() {
             focusId={focusId}
             detail={detail}
             view={view}
+            unitLabel={mmUnit(lang)}
             cameraResetKey={cameraResetKey}
             ghostEmbeddedAppliance={
               !!focusId && detail === "none" && moduleTab !== "equipment"
@@ -964,11 +976,15 @@ export function App() {
                   ? project.ui?.doorsOpen
                     ? "Закрыть все дверцы"
                     : "Открыть все дверцы"
-                  : project.ui?.doorsOpen
-                    ? "Close all doors"
-                    : "Open all doors"
+                  : lang === "ar"
+                    ? project.ui?.doorsOpen
+                      ? "إغلاق كل الأبواب"
+                      : "فتح كل الأبواب"
+                    : project.ui?.doorsOpen
+                      ? "Close all doors"
+                      : "Open all doors"
               }
-              title={lang === "ru" ? "Все дверцы" : "All doors"}
+              title={localized(lang, "Все дверцы", "All doors", "كل الأبواب")}
               aria-pressed={!!project.ui?.doorsOpen}
               onClick={() => patchUi({ doorsOpen: !project.ui?.doorsOpen })}
             >
@@ -978,11 +994,14 @@ export function App() {
               type="button"
               className={project.ui?.autoOrbit ? "active" : ""}
               aria-label={
-                lang === "ru"
-                  ? "Плавное вращение камеры"
-                  : "Smooth camera rotation"
+                localized(
+                  lang,
+                  "Плавное вращение камеры",
+                  "Smooth camera rotation",
+                  "تدوير سلس للكاميرا",
+                )
               }
-              title={lang === "ru" ? "Режим стенда" : "Showroom mode"}
+              title={localized(lang, "Режим стенда", "Showroom mode", "وضع العرض")}
               aria-pressed={!!project.ui?.autoOrbit}
               onClick={() =>
                 patchUi({ autoOrbit: !project.ui?.autoOrbit, view: "3d" })
@@ -1503,7 +1522,7 @@ export function App() {
                     compact
                     label={lang === "ru" ? "Пропил пилы" : "Saw kerf"}
                     value={cost.settings.sawKerf}
-                    unit="мм"
+                    unit={mmUnit(lang)}
                     min={0}
                     max={20}
                     onCommit={(n) => patchCost({ sawKerf: n })}
@@ -1512,7 +1531,7 @@ export function App() {
                     compact
                     label={lang === "ru" ? "Обрезка края" : "Edge trim"}
                     value={cost.settings.sheetEdgeTrim}
-                    unit="мм"
+                    unit={mmUnit(lang)}
                     min={0}
                     max={50}
                     onCommit={(n) => patchCost({ sheetEdgeTrim: n })}
@@ -2315,7 +2334,7 @@ export function App() {
           ) : panel === "settings" ? (
             <div className="inspectorBody">
               <section>
-                <h3>{lang === "ru" ? "Интерфейс" : "Interface"}</h3>
+                <h3>{localized(lang, "Интерфейс", "Interface", "الواجهة")}</h3>
                 <div className="settingsList">
                   <button
                     onClick={() => patchUi({ theme: dark ? "light" : "dark" })}
@@ -2410,16 +2429,20 @@ export function App() {
                 <h3>
                   {lang === "ru"
                     ? "Стиль кухни"
-                    : "Kitchen style"}
+                    : lang === "ar"
+                      ? "نمط المطبخ"
+                      : "Kitchen style"}
                 </h3>
                 <p className="note materialHelp">
                   {lang === "ru"
                     ? "Эти значения используются для новых шкафов. Каждый модуль после этого можно настроить отдельно."
-                    : "These values are used for new cabinets. Every module can still be customized separately."}
+                    : lang === "ar"
+                      ? "تُستخدم هذه القيم للخزائن الجديدة، ويمكن تخصيص كل وحدة بشكل مستقل."
+                      : "These values are used for new cabinets. Every module can still be customized separately."}
                 </p>
                 <div className="materialRoleGrid">
                   <MaterialProductSelect
-                    label={lang === "ru" ? "Материал корпуса" : "Carcass material"}
+                    label={localized(lang, "Материал корпуса", "Carcass material", "خامة الهيكل")}
                     role="body"
                     value={project.defaults?.bodyMaterialId || "mfc18"}
                     lang={lang}
@@ -2430,7 +2453,7 @@ export function App() {
                     }
                   />
                   <MaterialProductSelect
-                    label={lang === "ru" ? "Материал дверок" : "Door material"}
+                    label={localized(lang, "Материал дверок", "Door material", "خامة الأبواب")}
                     role="front"
                     value={
                       project.defaults?.frontMaterialId ||
@@ -2445,7 +2468,7 @@ export function App() {
                   />
                 </div>
                 <DecorPicker
-                  label={lang === "ru" ? "Фасады кухни" : "Kitchen fronts"}
+                  label={localized(lang, "Фасады кухни", "Kitchen fronts", "واجهات المطبخ")}
                   value={project.defaults?.frontDecor || "olive"}
                   color={
                     project.defaults?.frontColor ||
@@ -2467,7 +2490,7 @@ export function App() {
                   }
                 />
                 <DecorPicker
-                  label={lang === "ru" ? "Корпуса кухни" : "Kitchen bodies"}
+                  label={localized(lang, "Корпуса кухни", "Kitchen bodies", "هياكل المطبخ")}
                   value={project.defaults?.bodyDecor || "white"}
                   color={
                     project.defaults?.bodyColor ||
@@ -2491,7 +2514,7 @@ export function App() {
                 <div
                   className="segmented finishSelector"
                   role="group"
-                  aria-label={lang === "ru" ? "Покрытие кухни" : "Kitchen finish"}
+                  aria-label={localized(lang, "Покрытие кухни", "Kitchen finish", "تشطيب المطبخ")}
                 >
                   <button
                     type="button"
@@ -2503,7 +2526,7 @@ export function App() {
                       )
                     }
                   >
-                    {lang === "ru" ? "Матовый" : "Matte"}
+                    {localized(lang, "Матовый", "Matte", "مطفي")}
                   </button>
                   <button
                     type="button"
@@ -2515,7 +2538,7 @@ export function App() {
                       )
                     }
                   >
-                    {lang === "ru" ? "Глянцевый" : "Gloss"}
+                    {localized(lang, "Глянцевый", "Gloss", "لامع")}
                   </button>
                 </div>
                 <button
@@ -2527,12 +2550,16 @@ export function App() {
                 >
                   {lang === "ru"
                     ? `Применить ко всей мебели (${furnitureModuleCount})`
-                    : `Apply to all furniture (${furnitureModuleCount})`}
+                    : lang === "ar"
+                      ? `تطبيق على كل الخزائن (${furnitureModuleCount})`
+                      : `Apply to all furniture (${furnitureModuleCount})`}
                 </button>
                 <p className="note">
                   {lang === "ru"
                     ? "Команда применяет материалы, декор, оттенок и финиш. Размеры, ножки, ручки и петли сохраняются; действие можно отменить."
-                    : "Materials, decor, tint and finish are applied. Sizes, legs, handles and hinges stay intact; the action can be undone."}
+                    : lang === "ar"
+                      ? "سيتم تطبيق الخامات والديكور واللون والتشطيب. تبقى المقاسات والأرجل والمقابض والمفصلات دون تغيير، ويمكن التراجع عن العملية."
+                      : "Materials, decor, tint and finish are applied. Sizes, legs, handles and hinges stay intact; the action can be undone."}
                 </p>
               </section>
             </div>
@@ -2552,7 +2579,7 @@ export function App() {
                         value={project.ui?.explode || 0}
                         onChange={(e) => patchUi({ explode: +e.target.value })}
                       />
-                      <output>{project.ui?.explode || 0} мм</output>
+                      <output>{project.ui?.explode || 0} {mmUnit(lang)}</output>
                     </div>
                     <p className="note">
                       {lang === "ru"
@@ -2629,7 +2656,7 @@ export function App() {
                         <span className="partName">
                           <b>{p.name}</b>
                           <small>
-                            {p.u} × {p.v} × {p.thickness} мм · {p.substrate} ·{" "}
+                            {p.u} × {p.v} × {p.thickness} {mmUnit(lang)} · {p.substrate} ·{" "}
                             {p.edgeType || ""} · L/R/T/B{" "}
                             {p.edges?.join("/") || "0/0/0/0"} · {p.id}
                           </small>
@@ -2658,7 +2685,7 @@ export function App() {
                         value={project.ui?.explode || 0}
                         onChange={(e) => patchUi({ explode: +e.target.value })}
                       />
-                      <output>{project.ui?.explode || 0} мм</output>
+                      <output>{project.ui?.explode || 0} {mmUnit(lang)}</output>
                     </div>
                     <p className="note">
                       {lang === "ru"
@@ -2836,7 +2863,7 @@ export function App() {
                     {floorTargets.map((m: any) => (
                       <option key={m.id} value={m.id}>
                         {moduleDisplayLabel(lang, m)} · {Math.round(m.x)}…
-                        {Math.round(m.x + m.width)} мм
+                        {Math.round(m.x + m.width)} {mmUnit(lang)}
                       </option>
                     ))}
                   </select>
@@ -2945,27 +2972,27 @@ export function App() {
             </div>
           ) : selectedModule ? (
             <div className="inspectorBody">
-              <nav className="moduleTabs" aria-label={lang === "ru" ? "Раздел настроек модуля" : "Module settings section"}>
+              <nav className="moduleTabs" aria-label={localized(lang, "Раздел настроек модуля", "Module settings section", "أقسام إعدادات الوحدة")}>
                 <button type="button" className={moduleTab === "geometry" ? "active" : ""} aria-selected={moduleTab === "geometry"} onClick={() => setModuleTab("geometry")}>
-                  <ModuleDimensionsIcon size={18} /><span>{lang === "ru" ? "Размер" : "Size"}</span>
+                  <ModuleDimensionsIcon size={18} /><span>{localized(lang, "Размер", "Size", "المقاس")}</span>
                 </button>
                 {selectedFurniture && <>
                   <button type="button" className={moduleTab === "construction" ? "active" : ""} aria-selected={moduleTab === "construction"} onClick={() => setModuleTab("construction")}>
-                    <ConstructionIcon size={18} /><span>{lang === "ru" ? "Корпус" : "Build"}</span>
+                    <ConstructionIcon size={18} /><span>{localized(lang, "Корпус", "Build", "الهيكل")}</span>
                   </button>
                   <button type="button" className={moduleTab === "facade" ? "active" : ""} aria-selected={moduleTab === "facade"} onClick={() => setModuleTab("facade")}>
-                    <DoorsIcon size={18} /><span>{lang === "ru" ? "Фасад" : "Front"}</span>
+                    <DoorsIcon size={18} /><span>{localized(lang, "Фасад", "Front", "الواجهة")}</span>
                   </button>
                   <button type="button" className={moduleTab === "materials" ? "active" : ""} aria-selected={moduleTab === "materials"} onClick={() => setModuleTab("materials")}>
-                    <MaterialIcon size={18} /><span>{lang === "ru" ? "Цвет" : "Finish"}</span>
+                    <MaterialIcon size={18} /><span>{localized(lang, "Цвет", "Finish", "التشطيب")}</span>
                   </button>
                   {applianceBayEligible && <button type="button" className={moduleTab === "equipment" ? "active" : ""} aria-selected={moduleTab === "equipment"} onClick={() => setModuleTab("equipment")}>
-                    <ApplianceIcon size={18} /><span>{lang === "ru" ? "Техника" : "Appliance"}</span>
+                    <ApplianceIcon size={18} /><span>{localized(lang, "Техника", "Appliance", "الأجهزة")}</span>
                   </button>}
                 </>}
               </nav>
               <section className={moduleTab === "geometry" ? "" : "moduleTabHidden"}>
-                <h3>{lang === "ru" ? "Габариты" : "Dimensions"}</h3>
+                <h3>{localized(lang, "Габариты", "Dimensions", "الأبعاد")}</h3>
                 <div className="dimensionGrid">
                   <NumberField
                     compact
@@ -3074,11 +3101,11 @@ export function App() {
               {selectedFurniture && (
                 <>
                   <section className={moduleTab === "construction" ? "" : "moduleTabHidden"}>
-                    <h3>{lang === "ru" ? "Конструкция" : "Construction"}</h3>
+                    <h3>{localized(lang, "Конструкция", "Construction", "التركيب")}</h3>
                     <div className="dimensionGrid">
                       <NumberField
                         compact
-                        label={lang === "ru" ? "Корпус" : "Board"}
+                        label={localized(lang, "Корпус", "Board", "لوح الهيكل")}
                         value={selectedModule.board}
                         min={12}
                         max={30}
@@ -3086,7 +3113,7 @@ export function App() {
                       />
                       {frontsEnabled && <NumberField
                         compact
-                        label={lang === "ru" ? "Фасад" : "Front"}
+                        label={localized(lang, "Фасад", "Front", "الواجهة")}
                         value={selectedModule.frontThickness}
                         min={12}
                         max={30}
@@ -3126,7 +3153,7 @@ export function App() {
                         <>
                           <NumberField
                             compact
-                            label={lang === "ru" ? "Добор слева" : "Left corner filler"}
+                            label={localized(lang, "Добор слева", "Left corner filler", "حشوة زاوية يسار")}
                             value={selectedModule.cornerFillerLeft || 0}
                             min={0}
                             max={200}
@@ -3134,7 +3161,7 @@ export function App() {
                           />
                           <NumberField
                             compact
-                            label={lang === "ru" ? "Добор справа" : "Right corner filler"}
+                            label={localized(lang, "Добор справа", "Right corner filler", "حشوة زاوية يمين")}
                             value={selectedModule.cornerFillerRight || 0}
                             min={0}
                             max={200}
@@ -3192,7 +3219,7 @@ export function App() {
                     </div>
                     <div className="optionGrid">
                       <label className="field">
-                        {lang === "ru" ? "Дно" : "Bottom"}
+                        {localized(lang, "Дно", "Bottom", "القاع")}
                         <select
                           value={selectedModule.bottomMode}
                           onChange={(e) =>
@@ -3200,17 +3227,15 @@ export function App() {
                           }
                         >
                           <option value="between">
-                            {lang === "ru"
-                              ? "Между боковинами"
-                              : "Between sides"}
+                            {localized(lang, "Между боковинами", "Between sides", "بين الجانبين")}
                           </option>
                           <option value="under">
-                            {lang === "ru" ? "Под боковинами" : "Under sides"}
+                            {localized(lang, "Под боковинами", "Under sides", "أسفل الجانبين")}
                           </option>
                         </select>
                       </label>
                       <label className="field">
-                        {lang === "ru" ? "Задняя стенка" : "Back"}
+                        {localized(lang, "Задняя стенка", "Back", "الظهر")}
                         <select
                           value={selectedModule.backMode}
                           onChange={(e) =>
@@ -3243,7 +3268,7 @@ export function App() {
                       {isWallMountedType(selectedModule.type) &&
                         !isDisplayOnlyType(selectedModule.type) && (
                         <label className="field">
-                          {lang === "ru" ? "Верх" : "Top"}
+                          {localized(lang, "Верх", "Top", "الجزء العلوي")}
                           <select
                             value={selectedModule.topMode}
                             onChange={(e) =>
@@ -3251,12 +3276,10 @@ export function App() {
                             }
                           >
                             <option value="between">
-                              {lang === "ru"
-                                ? "Между боковинами"
-                                : "Between sides"}
+                              {localized(lang, "Между боковинами", "Between sides", "بين الجانبين")}
                             </option>
                             <option value="overlay">
-                              {lang === "ru" ? "Крышка сверху" : "Overlay top"}
+                              {localized(lang, "Крышка сверху", "Overlay top", "غطاء علوي")}
                             </option>
                           </select>
                         </label>
@@ -3268,12 +3291,12 @@ export function App() {
                     ].includes(selectedModule.type) && (
                       <div className="cornerConstructionNote">
                         <span className="fieldCaption">
-                          {lang === "ru" ? "Статус конструкции" : "Construction status"}
+                          {localized(lang, "Статус конструкции", "Construction status", "حالة التركيب")}
                         </span>
                         <div
                           className="segmented cornerSideSelector"
                           role="group"
-                          aria-label={lang === "ru" ? "Утверждение конструкции угла" : "Corner construction approval"}
+                          aria-label={localized(lang, "Утверждение конструкции угла", "Corner construction approval", "اعتماد تركيب الزاوية")}
                         >
                           <button
                             type="button"
@@ -3289,7 +3312,7 @@ export function App() {
                             }
                             onClick={() => patchModule({ cornerProductionApproval: null })}
                           >
-                            {lang === "ru" ? "Черновик" : "Draft"}
+                            {localized(lang, "Черновик", "Draft", "مسودة")}
                           </button>
                           <button
                             type="button"
@@ -3310,20 +3333,24 @@ export function App() {
                               })
                             }
                           >
-                            {lang === "ru" ? "Утверждено" : "Approved"}
+                            {localized(lang, "Утверждено", "Approved", "معتمد")}
                           </button>
                         </div>
                         <span>
                           {lang === "ru"
                             ? "Утверждение относится только к текущим размерам, проёму и монтажной стойке. После изменения геометрии корпус снова станет черновым."
-                            : "Approval is tied to the current dimensions, opening and hinge partition; geometry changes require approval again."}
+                            : lang === "ar"
+                              ? "يرتبط الاعتماد بالأبعاد والفتحة وقاطع المفصلات الحالي؛ ويتطلب أي تغيير هندسي اعتماداً جديداً."
+                              : "Approval is tied to the current dimensions, opening and hinge partition; geometry changes require approval again."}
                         </span>
                         <span className="fieldCaption">
                           {lang === "ru"
                             ? frontsEnabled
                               ? "Сторона проёма и фасада"
                               : "Сторона проёма"
-                            : "Door and opening side"}
+                            : lang === "ar"
+                              ? "جهة الفتحة والواجهة"
+                              : "Door and opening side"}
                         </span>
                         <div
                           className="segmented cornerSideSelector"
@@ -3333,7 +3360,9 @@ export function App() {
                               ? frontsEnabled
                                 ? "Сторона фасада глухого углового модуля"
                                 : "Сторона проёма глухого углового модуля"
-                              : "Blind-corner door side"
+                              : lang === "ar"
+                                ? "جهة باب الزاوية العمياء"
+                                : "Blind-corner door side"
                           }
                         >
                           {(["left", "right"] as const).map((side) => (
@@ -3359,13 +3388,15 @@ export function App() {
                             >
                               {lang === "ru"
                                 ? `${frontsEnabled ? "Фасад" : "Проём"} ${side === "left" ? "слева" : "справа"}`
-                                : `${frontsEnabled ? "Front" : "Opening"} ${side}`}
+                                : lang === "ar"
+                                  ? `${frontsEnabled ? "الواجهة" : "الفتحة"} ${side === "left" ? "يسار" : "يمين"}`
+                                  : `${frontsEnabled ? "Front" : "Opening"} ${side}`}
                             </button>
                           ))}
                         </div>
                         <NumberField
                           compact
-                          label={lang === "ru" ? "Глубина стойки петель" : "Hinge partition depth"}
+                          label={localized(lang, "Глубина стойки петель", "Hinge partition depth", "عمق قاطع المفصلات")}
                           value={selectedModule.cornerMuntinWidth || 70}
                           min={28}
                           max={150}
@@ -3376,7 +3407,9 @@ export function App() {
                         <b>
                           {lang === "ru"
                             ? "Как устроен глухой угол"
-                            : "How the blind corner works"}
+                            : lang === "ar"
+                              ? "طريقة عمل الزاوية العمياء"
+                              : "How the blind corner works"}
                         </b>
                         <span>
                           {lang === "ru"
@@ -3431,7 +3464,7 @@ export function App() {
                       <div className="twoGrid">
                         <NumberField
                           compact
-                          label={lang === "ru" ? "Ящиков" : "Drawers"}
+                          label={localized(lang, "Ящиков", "Drawers", "الأدراج")}
                           unit=""
                           value={selectedModule.drawerCount || 3}
                           min={1}
@@ -3445,7 +3478,7 @@ export function App() {
                       <div className="twoGrid">
                         <NumberField
                           compact
-                          label={lang === "ru" ? "Полок" : "Shelves"}
+                          label={localized(lang, "Полок", "Shelves", "الرفوف")}
                           unit=""
                           value={selectedModule.shelfCount || 0}
                           min={0}
@@ -3456,7 +3489,7 @@ export function App() {
                         />
                         {frontsEnabled && <NumberField
                           compact
-                          label={lang === "ru" ? "Зазор фасада" : "Front gap"}
+                          label={localized(lang, "Зазор фасада", "Front gap", "فاصل الواجهة")}
                           value={selectedModule.gap}
                           min={1}
                           max={8}
@@ -3980,8 +4013,8 @@ export function App() {
                   </section>
                   {applianceBayEligible && (
                     <section className={moduleTab === "equipment" ? "equipmentSection" : "moduleTabHidden"}>
-                      <h3>{lang === "ru" ? "Конструкция модуля" : "Module construction"}</h3>
-                      <div className="segmented applianceSelector" role="group" aria-label={lang === "ru" ? "Конструкция модуля" : "Module construction"}>
+                      <h3>{localized(lang, "Конструкция модуля", "Module construction", "تركيب الوحدة")}</h3>
+                      <div className="segmented applianceSelector" role="group" aria-label={localized(lang, "Конструкция модуля", "Module construction", "تركيب الوحدة")}>
                         {(["none", "washer", "dishwasher"] as const).map((type) => (
                           <button
                             type="button"
@@ -3991,10 +4024,10 @@ export function App() {
                             onClick={() => patchModule({ applianceBay: type })}
                           >
                             {type === "none"
-                              ? lang === "ru" ? "Шкаф с дном" : "Cabinet with bottom"
+                              ? localized(lang, "Шкаф с дном", "Cabinet with bottom", "خزانة بقاع")
                               : type === "washer"
-                                ? lang === "ru" ? "Ниша стиралки" : "Washer bay"
-                                : lang === "ru" ? "Ниша ПММ" : "Dishwasher bay"}
+                                ? localized(lang, "Ниша стиралки", "Washer bay", "فتحة غسالة ملابس")
+                                : localized(lang, "Ниша ПММ", "Dishwasher bay", "فتحة غسالة أطباق")}
                           </button>
                         ))}
                       </div>
@@ -4005,21 +4038,25 @@ export function App() {
                               ? selectedModule.type === "cornerBaseBlind"
                                 ? "Доступная часть углового модуля становится проёмом под технику. Дно, полки, фасад, цоколь и опоры убираются только из проёма; глухая секция остаётся с дном и полками."
                                 : "Чистый проём задаётся по фактическому размеру техники и монтажному люфту. Можно оставить две собственные боковины либо одну, используя полноразмерную боковину соседнего шкафа как вторую опору. Дна, полок, фасада, цоколя и ножек внутри проёма нет."
-                              : selectedModule.type === "cornerBaseBlind"
-                                ? "The accessible corner section becomes an appliance bay; the blind storage section keeps its bottom and shelves."
-                                : "The bay may use two own side panels or share one full-height side with an adjacent cabinet."}
+                              : lang === "ar"
+                                ? selectedModule.type === "cornerBaseBlind"
+                                  ? "تتحول الجهة المتاحة من وحدة الزاوية إلى فتحة للجهاز، بينما يحتفظ القسم العمياء بالقاع والرفوف."
+                                  : "يمكن للفتحة استخدام جانبيها الخاصين أو مشاركة جانب كامل الارتفاع مع الخزانة المجاورة."
+                                : selectedModule.type === "cornerBaseBlind"
+                                  ? "The accessible corner section becomes an appliance bay; the blind storage section keeps its bottom and shelves."
+                                  : "The bay may use two own side panels or share one full-height side with an adjacent cabinet."}
                           </p>
                           {selectedModule.type !== "cornerBaseBlind" && (
                             <label className="field">
-                              {lang === "ru" ? "Собственные опоры ниши" : "Bay support panels"}
+                              {localized(lang, "Собственные опоры ниши", "Bay support panels", "ألواح دعم الفتحة")}
                               <select
                                 value={selectedModule.applianceSupportMode || "both"}
                                 onChange={(e) => patchModule({ applianceSupportMode: e.target.value })}
                               >
-                                <option value="both">{lang === "ru" ? "Слева и справа" : "Left and right"}</option>
-                                <option value="left">{lang === "ru" ? "Только слева; справа соседний шкаф" : "Left only; share right"}</option>
-                                <option value="right">{lang === "ru" ? "Только справа; слева соседний шкаф" : "Right only; share left"}</option>
-                                <option value="none">{lang === "ru" ? "Нет; опоры с обеих сторон соседние" : "None; share both sides"}</option>
+                                <option value="both">{localized(lang, "Слева и справа", "Left and right", "يسار ويمين")}</option>
+                                <option value="left">{localized(lang, "Только слева; справа соседний шкаф", "Left only; share right", "يسار فقط؛ مشاركة الجانب الأيمن")}</option>
+                                <option value="right">{localized(lang, "Только справа; слева соседний шкаф", "Right only; share left", "يمين فقط؛ مشاركة الجانب الأيسر")}</option>
+                                <option value="none">{localized(lang, "Нет; опоры с обеих сторон соседние", "None; share both sides", "بدون؛ مشاركة الجانبين")}</option>
                               </select>
                             </label>
                           )}
@@ -4027,12 +4064,12 @@ export function App() {
                             <NumberField compact label={t("width")} value={selectedModule.applianceWidth || (selectedModule.applianceBay === "washer" ? 600 : 598)} min={400} max={1200} onCommit={(n) => patchModule({ applianceWidth: n })} />
                             <NumberField compact label={t("height")} value={selectedModule.applianceHeight || (selectedModule.applianceBay === "washer" ? 850 : 815)} min={500} max={1000} onCommit={(n) => patchModule({ applianceHeight: n })} />
                             <NumberField compact label={t("depth")} value={selectedModule.applianceDepth || (selectedModule.applianceBay === "washer" ? 590 : 550)} min={400} max={900} onCommit={(n) => patchModule({ applianceDepth: n })} />
-                            <NumberField compact label={lang === "ru" ? "Боковой люфт, всего" : "Total side clearance"} value={selectedModule.applianceSideClearance ?? (selectedModule.applianceBay === "washer" ? 20 : 2)} min={0} max={100} onCommit={(n) => patchModule({ applianceSideClearance: n })} />
+                            <NumberField compact label={localized(lang, "Боковой люфт, всего", "Total side clearance", "الخلوص الجانبي الإجمالي")} value={selectedModule.applianceSideClearance ?? (selectedModule.applianceBay === "washer" ? 20 : 2)} min={0} max={100} onCommit={(n) => patchModule({ applianceSideClearance: n })} />
                           </div>
                           <div className={applianceFits ? "fitStatus ok" : "fitStatus bad"}>
-                            <b>{applianceFits ? (lang === "ru" ? "Помещается" : "Fits") : (lang === "ru" ? "Не помещается" : "Does not fit")}</b>
+                            <b>{applianceFits ? localized(lang, "Помещается", "Fits", "مناسب") : localized(lang, "Не помещается", "Does not fit", "غير مناسب")}</b>
                             <span>
-                              {lang === "ru" ? "Чистый проём" : "Clear opening"}: {applianceAvailableWidth}×{applianceAvailableHeight}×{applianceAvailableDepth} мм · {lang === "ru" ? "нужно по ширине" : "required width"} {applianceMeasurements?.requiredOpeningWidth || 0} мм · {lang === "ru" ? "верхний зазор" : "top clearance"} {applianceRequiredClearance} мм{applianceWorktopDrop > 0 ? ` · ${lang === "ru" ? "корпус варочной ниже столешницы" : "hob drop below worktop"} ${applianceWorktopDrop} мм` : ""}
+                              {localized(lang, "Чистый проём", "Clear opening", "الفتحة الصافية")}: {applianceAvailableWidth}×{applianceAvailableHeight}×{applianceAvailableDepth} {mmUnit(lang)} · {localized(lang, "нужно по ширине", "required width", "العرض المطلوب")} {applianceMeasurements?.requiredOpeningWidth || 0} {mmUnit(lang)} · {localized(lang, "верхний зазор", "top clearance", "الخلوص العلوي")} {applianceRequiredClearance} {mmUnit(lang)}{applianceWorktopDrop > 0 ? ` · ${localized(lang, "корпус варочной ниже столешницы", "hob drop below worktop", "هبوط جسم الموقد أسفل السطح")} ${applianceWorktopDrop} ${mmUnit(lang)}` : ""}
                             </span>
                           </div>
                           {selectedModule.type !== "cornerBaseBlind" &&
@@ -4043,9 +4080,12 @@ export function App() {
                                 className="fitModuleBtn"
                                 onClick={() => patchModule({ width: applianceMeasurements.requiredOuterWidth })}
                               >
-                                {lang === "ru"
-                                  ? `Расширить модуль до ${applianceMeasurements.requiredOuterWidth} мм`
-                                  : `Resize module to ${applianceMeasurements.requiredOuterWidth} mm`}
+                                {localized(
+                                  lang,
+                                  `Расширить модуль до ${applianceMeasurements.requiredOuterWidth} мм`,
+                                  `Resize module to ${applianceMeasurements.requiredOuterWidth} mm`,
+                                  `توسيع الوحدة إلى ${applianceMeasurements.requiredOuterWidth} مم`,
+                                )}
                               </button>
                             )}
                           {selectedModule.type === "cornerBaseBlind" &&
@@ -4056,9 +4096,12 @@ export function App() {
                                 className="fitModuleBtn"
                                 onClick={() => patchModule({ cornerOpening: applianceMeasurements.requiredOpeningWidth })}
                               >
-                                {lang === "ru"
-                                  ? `Увеличить проём до ${applianceMeasurements.requiredOpeningWidth} мм`
-                                  : `Resize opening to ${applianceMeasurements.requiredOpeningWidth} mm`}
+                                {localized(
+                                  lang,
+                                  `Увеличить проём до ${applianceMeasurements.requiredOpeningWidth} мм`,
+                                  `Resize opening to ${applianceMeasurements.requiredOpeningWidth} mm`,
+                                  `توسيع الفتحة إلى ${applianceMeasurements.requiredOpeningWidth} مم`,
+                                )}
                               </button>
                             )}
                         </>
@@ -4066,12 +4109,14 @@ export function App() {
                         <p className="note equipmentExplanation">
                           {lang === "ru"
                             ? "Сейчас выбран обычный шкаф: поэтому остаются дно и цоколь. Для открытого проёма с боковинами и верхней связующей планкой выберите «Ниша стиралки» или «Ниша ПММ»."
-                            : "Cabinet mode keeps the carcass, front, shelves and supports. Selecting an appliance creates a real opening and updates parts and cost."}
+                            : lang === "ar"
+                              ? "وضع الخزانة يحتفظ بالهيكل والواجهة والرفوف والدعامات. اختيار جهاز ينشئ فتحة فعلية ويحدّث القطع والتكلفة."
+                              : "Cabinet mode keeps the carcass, front, shelves and supports. Selecting an appliance creates a real opening and updates parts and cost."}
                         </p>
                       )}
 
-                      <h3>{lang === "ru" ? "В столешнице над модулем" : "In the worktop above"}</h3>
-                      <div className="segmented applianceSelector" role="group" aria-label={lang === "ru" ? "Элемент столешницы" : "Worktop fixture"}>
+                      <h3>{localized(lang, "В столешнице над модулем", "In the worktop above", "في سطح العمل فوق الوحدة")}</h3>
+                      <div className="segmented applianceSelector" role="group" aria-label={localized(lang, "Элемент столешницы", "Worktop fixture", "عنصر سطح العمل")}>
                         {(["none", "sink", "hob"] as const).map((type) => (
                           <button
                             type="button"
@@ -4081,10 +4126,10 @@ export function App() {
                             onClick={() => setSelectedWorktopFixture(type)}
                           >
                             {type === "none"
-                              ? lang === "ru" ? "Нет" : "None"
+                              ? localized(lang, "Нет", "None", "لا يوجد")
                               : type === "sink"
-                                ? lang === "ru" ? "Мойка" : "Sink"
-                                : lang === "ru" ? "Варочная" : "Hob"}
+                                ? localized(lang, "Мойка", "Sink", "حوض")
+                                : localized(lang, "Варочная", "Hob", "موقد")}
                           </button>
                         ))}
                       </div>

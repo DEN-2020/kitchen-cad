@@ -79,7 +79,7 @@ test("corner filler adds a visible strip and a plinth return to the cut list", (
   assert.deepEqual([plinthReturn.u, plinthReturn.v], [105, 130]);
 });
 
-test("an appliance-bay corner filler receives its own floor-to-worktop support", () => {
+test("an appliance-bay corner filler supports the front but still requires a neighbour for the rear rail", () => {
   const project = createProject();
   const bay = createModule("base");
   Object.assign(bay, {
@@ -104,7 +104,7 @@ test("an appliance-bay corner filler receives its own floor-to-worktop support",
     model.issues.some(
       (issue) => issue.type === "appliance-support-missing" && issue.side === "left",
     ),
-    false,
+    true,
   );
 });
 

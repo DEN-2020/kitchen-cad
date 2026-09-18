@@ -21,6 +21,9 @@ test("a self-supporting appliance bay keeps side panels and a clear 600 mm openi
   const rearRail = parts.find((part) => part.id.endsWith("-RS"));
   assert.deepEqual(frontRail.size, [600, 18, 100]);
   assert.deepEqual(rearRail.size, [600, 100, 18]);
+  assert.deepEqual(parts.find((part) => part.id.endsWith("-SL")).edges, [0, module.bodyEdge, 0, 0]);
+  assert.deepEqual(parts.find((part) => part.id.endsWith("-SR")).edges, [0, module.bodyEdge, 0, 0]);
+  assert.deepEqual(rearRail.edges, [0, 0, 0, 0]);
   assert.equal(parts.some((part) => part.name.includes("Дно")), false);
   assert.equal(parts.some((part) => part.role === "front"), false);
   assert.ok(model.objects.some((object) => object.moduleId === module.id && object.embeddedAppliance));
@@ -148,7 +151,48 @@ test("hob appliance bay braces the lowered front rail up to the countertop", () 
 
   assert.deepEqual(leftBrace.size, [18, 34, 100]);
   assert.deepEqual(rightBrace.size, [18, 34, 100]);
+  assert.deepEqual(leftBrace.edges, [0, module.bodyEdge, 0, 0]);
+  assert.deepEqual(rightBrace.edges, [0, module.bodyEdge, 0, 0]);
   assert.equal(leftBrace.center[1] - leftBrace.size[1] / 2, frontRail.center[1] + frontRail.size[1] / 2);
   assert.equal(rightBrace.center[1] + rightBrace.size[1] / 2, rearRail.center[1] + rearRail.size[1] / 2);
   assert.equal(model.issues.some((issue) => issue.type === "fixture-part-collision"), false);
+});
+
+test("a rear appliance rail bridges a corner filler to the neighbouring side", () => {
+  const project = createProject();
+  project.room.width = 1850;
+  project.room.depth = 4200;
+  const bay = createModule("base");
+  bay.width = 636;
+  bay.height = 720;
+  bay.depth = 560;
+  bay.feet = 160;
+  bay.rotationY = 270;
+  bay.offsetX = 652;
+  bay.offsetZ = 649;
+  bay.applianceBay = "dishwasher";
+  bay.applianceWidth = 598;
+  bay.applianceHeight = 815;
+  bay.applianceDepth = 550;
+  bay.applianceSideClearance = 20;
+  bay.applianceSupportMode = "right";
+  bay.cornerFillerLeft = 51;
+  const corner = createModule("cornerBaseBlind");
+  corner.width = 1200;
+  corner.depth = 560;
+  corner.feet = 160;
+  corner.offsetX = -586;
+  corner.offsetZ = 0;
+  project.modules = [bay, corner];
+  project.fixtures = [];
+  project.countertop.enabled = false;
+
+  const model = buildProject(project);
+  const rearRail = model.parts.find((part) => part.moduleId === bay.id && part.id.endsWith("-RS"));
+  assert.deepEqual(rearRail.size, [669, 100, 18]);
+  assert.equal(
+    model.issues.some((issue) => issue.type === "appliance-support-missing" && issue.moduleId === bay.id),
+    false,
+  );
+  assert.ok(model.warnings.some((warning) => warning.includes("задняя планка продлена через добор на 51 мм")));
 });

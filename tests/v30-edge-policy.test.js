@@ -25,3 +25,10 @@ test('600 cabinet edge total is plausible and not all carcass sides',()=>{
  assert.ok(fronts>2&&fronts<3.5,`front edge ${fronts} m`);
  assert.ok(body>2&&body<4.5,`body edge ${body} m`);
 });
+
+test('blind-corner hinge partition bands only its exposed front edge',()=>{
+ const p=createProject(),m=createModule('cornerBaseBlind');p.modules=[m];p.fixtures=[];p.countertop.enabled=false;
+ const part=buildProject(p).parts.find(x=>x.id.endsWith('-MS'));
+ assert.deepEqual(part.edges,[0,m.bodyEdge,0,0]);
+ assert.equal(edgeBandMeters(part),part.v/1000);
+});
