@@ -385,7 +385,8 @@ export function App() {
     [importNotice, setImportNotice] = useState<ImportNotice>(null),
     [catalogQuery, setCatalogQuery] = useState(""),
     [catalogSearchOpen, setCatalogSearchOpen] = useState(false),
-    [moduleTab, setModuleTab] = useState<ModuleTab>("geometry");
+    [moduleTab, setModuleTab] = useState<ModuleTab>("geometry"),
+    [cameraResetKey, setCameraResetKey] = useState(0);
   const importInputRef = useRef<HTMLInputElement>(null),
     projectRef = useRef(project);
   projectRef.current = project;
@@ -631,6 +632,7 @@ export function App() {
       setSelection({ kind: "module", id: selectedModule.id });
       setDetail("none");
       setPanel("selection");
+      setCameraResetKey((value) => value + 1);
       patchUi({ view: "3d" });
     },
     leaveFocus = () => {
@@ -906,6 +908,10 @@ export function App() {
             focusId={focusId}
             detail={detail}
             view={view}
+            cameraResetKey={cameraResetKey}
+            ghostEmbeddedAppliance={
+              !!focusId && detail === "none" && moduleTab !== "equipment"
+            }
             onMoveModule={moveModule}
           />
           <div
@@ -922,7 +928,17 @@ export function App() {
             <button
               className={view === "3d" ? "active" : ""}
               aria-pressed={view === "3d"}
-              onClick={() => patchUi({ view: "3d" })}
+              title={
+                view === "3d"
+                  ? lang === "ru"
+                    ? "Сбросить камеру на вид спереди"
+                    : "Reset camera to the front"
+                  : undefined
+              }
+              onClick={() => {
+                if (view === "3d") setCameraResetKey((value) => value + 1);
+                else patchUi({ view: "3d" });
+              }}
             >
               3D
             </button>
@@ -4107,7 +4123,11 @@ export function App() {
         <nav className="bottomNav focusNav">
           <button
             className={panel === "selection" ? "active" : ""}
-            onClick={() => setPanel("selection")}
+            onClick={() => {
+              setDetail("none");
+              if (focusId) setSelection({ kind: "module", id: focusId });
+              setPanel("selection");
+            }}
           >
             <EditIcon />
             <span>{t("parameters")}</span>

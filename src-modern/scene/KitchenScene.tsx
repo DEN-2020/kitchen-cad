@@ -124,10 +124,12 @@ function Surface({
   object,
   selected = false,
   onSelect,
+  ghost = false,
 }: {
   object: any;
   selected?: boolean;
   onSelect?: () => void;
+  ghost?: boolean;
 }) {
   if (object.kind === "fixture-sink" || object.kind === "fixture-hob")
     return <FixtureVisual object={object} />;
@@ -160,14 +162,17 @@ function Surface({
       >
         <cylinderGeometry args={[size[0] / 2, size[0] / 2, size[2], 48]} />
         <meshPhysicalMaterial
-          color={a.color || "#77858a"}
+          color={ghost ? "#52b9c7" : a.color || "#77858a"}
           roughness={object.kind === "appliance-glass" ? 0.1 : 0.24}
           metalness={object.kind === "appliance-glass" ? 0.12 : 0.62}
           clearcoat={object.kind === "appliance-glass" ? 0.8 : 0.2}
-          transparent={object.kind === "appliance-glass"}
-          opacity={object.kind === "appliance-glass" ? 0.88 : 1}
+          transparent={ghost || object.kind === "appliance-glass"}
+          opacity={ghost ? 0.2 : object.kind === "appliance-glass" ? 0.88 : 1}
+          depthWrite={!ghost}
         />
-        {selected && <Edges color="#9a75ff" lineWidth={2} />}
+        {(selected || ghost) && (
+          <Edges color={ghost ? "#62dcea" : "#9a75ff"} lineWidth={2} />
+        )}
       </mesh>
     );
   return (
@@ -189,8 +194,8 @@ function Surface({
         <boxGeometry args={size} />
       )}
       <meshPhysicalMaterial
-        map={texture || undefined}
-        color={a.color || "#ccc"}
+        map={ghost ? undefined : texture || undefined}
+        color={ghost ? "#52b9c7" : a.color || "#ccc"}
         roughness={roughness}
         metalness={metallic ? 0.45 : 0.01}
         clearcoat={a.gloss ? 0.92 : object.role === "front" ? 0.08 : 0}
@@ -198,8 +203,9 @@ function Surface({
         transmission={glass ? 0.22 : 0}
         thickness={glass ? 0.012 : 0}
         ior={1.46}
-        transparent={glass}
-        opacity={glass ? 0.55 : 1}
+        transparent={glass || ghost}
+        opacity={ghost ? 0.2 : glass ? 0.55 : 1}
+        depthWrite={!ghost}
       />
       {object.role === "front" &&
         object.hingeSide &&
@@ -226,7 +232,9 @@ function Surface({
             </mesh>
           );
         })}
-      {selected && <Edges color="#9a75ff" lineWidth={2} />}
+      {(selected || ghost) && (
+        <Edges color={ghost ? "#62dcea" : "#9a75ff"} lineWidth={2} />
+      )}
     </mesh>
   );
 }
@@ -359,6 +367,7 @@ function ModuleVisual({
   detail,
   explode,
   doorsOpen,
+  ghostEmbeddedAppliance,
   onSelect,
   onSelectPart,
   onCommitPosition,
@@ -372,6 +381,7 @@ function ModuleVisual({
   detail: DimensionDetail;
   explode: number;
   doorsOpen: boolean;
+  ghostEmbeddedAppliance: boolean;
   onSelect: () => void;
   onSelectPart: (id: string) => void;
   onCommitPosition: (x: number, z: number) => void;
@@ -395,7 +405,9 @@ function ModuleVisual({
         }),
       [objects, module, detailMode, explode],
     ),
-    visibleObjects = localObjects,
+    visibleObjects = detailMode
+      ? localObjects.filter((object) => !object.embeddedAppliance)
+      : localObjects,
     rootObjects = detailMode
       ? visibleObjects
       : visibleObjects.filter((o) => !o.parentFrontId),
@@ -426,6 +438,7 @@ function ModuleVisual({
         object={object}
         selected={selectedPartId === object.id}
         onSelect={onObjectSelect}
+        ghost={ghostEmbeddedAppliance && !!object.embeddedAppliance}
       />
     );
   };
@@ -943,12 +956,14 @@ function CameraRig({
   focusId,
   view,
   autoOrbit,
+  resetKey,
 }: {
   project: any;
   model: any;
   focusId: string | null;
   view: ViewMode;
   autoOrbit: boolean;
+  resetKey: number;
 }) {
   const { camera, invalidate, size } = useThree(),
     controls = useRef<any>(null),
@@ -956,6 +971,7 @@ function CameraRig({
     initialized = useRef(false),
     previousView = useRef<ViewMode>(view),
     previousFocusId = useRef<string | null>(focusId),
+    previousResetKey = useRef(resetKey),
     fm = focusId ? model.modules.find((x: any) => x.id === focusId) : null,
     target = fm
       ? new THREE.Vector3(
@@ -1013,7 +1029,14 @@ function CameraRig({
         initialized.current &&
         view === "3d" &&
         previousView.current === "3d" &&
-        previousFocusId.current === focusId;
+        previousFocusId.current === focusId &&
+        previousResetKey.current === resetKey;
+    if (!preserveOrbit && controls.current) {
+      const damping = controls.current.enableDamping;
+      controls.current.enableDamping = false;
+      controls.current.update();
+      controls.current.enableDamping = damping;
+    }
     if (preserveOrbit) {
       const previousTarget = controls.current?.target?.clone() || target.clone(),
         direction = camera.position.clone().sub(previousTarget);
@@ -1076,9 +1099,12 @@ function CameraRig({
     initialized.current = true;
     previousView.current = view;
     previousFocusId.current = focusId;
+    previousResetKey.current = resetKey;
+    invalidate();
   }, [
     focusId,
     view,
+    resetKey,
     camera,
     fm?.x,
     fm?.y,
@@ -1105,6 +1131,8 @@ function CameraRig({
       panSpeed={0.8}
       minDistance={0.3}
       maxDistance={12}
+      minPolarAngle={0.08}
+      maxPolarAngle={Math.PI / 2 - 0.04}
       touches={{
         ONE: view === "3d" ? THREE.TOUCH.ROTATE : THREE.TOUCH.PAN,
         TWO: THREE.TOUCH.DOLLY_PAN,
@@ -1181,6 +1209,8 @@ function SceneContent(props: any) {
       focusId,
       detail,
       view,
+      cameraResetKey,
+      ghostEmbeddedAppliance,
       onMoveModule,
     } = props,
     selectedModuleId =
@@ -1363,6 +1393,7 @@ function SceneContent(props: any) {
           detail={detail}
           explode={explode}
           doorsOpen={!!project.ui?.doorsOpen}
+          ghostEmbeddedAppliance={!!ghostEmbeddedAppliance}
           onSelect={() => setSelection({ kind: "module", id: m.id })}
           onSelectPart={(id: string) =>
             setSelection({ kind: "part", id, moduleId: m.id })
@@ -1417,6 +1448,7 @@ function SceneContent(props: any) {
         focusId={focusId}
         view={view}
         autoOrbit={!!project.ui?.autoOrbit}
+        resetKey={cameraResetKey || 0}
       />
       <SnapshotBridge />
     </>
