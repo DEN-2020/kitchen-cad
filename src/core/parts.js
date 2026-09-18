@@ -128,6 +128,18 @@ export function buildProject(project){
     else{const message=`${module.id}: у ${side==='left'?'левой':'правой'} стороны ниши нет ни собственной несущей боковины, ни примыкающего корпуса до столешницы.`;issues.push({type:'appliance-support-missing',moduleId:module.id,side,message});warnings.push(message)}
    }
   }
+  for(const dishwasher of modules.filter(m=>['base','sink'].includes(m.type)&&m.applianceBay==='dishwasher')){
+   const a=moduleBounds(dishwasher);
+   for(const corner of structuralModules.filter(m=>m.id!==dishwasher.id&&isCornerType(m.type)&&!isWallMountedType(m.type))){
+    const b=moduleBounds(corner),overlapX=Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x),overlapZ=Math.min(a.z+a.depth,b.z+b.depth)-Math.max(a.z,b.z),gaps=[];
+    if(overlapX>0){if(a.z>=b.z+b.depth)gaps.push(a.z-(b.z+b.depth));else if(b.z>=a.z+a.depth)gaps.push(b.z-(a.z+a.depth))}
+    if(overlapZ>0){if(a.x>=b.x+b.width)gaps.push(a.x-(b.x+b.width));else if(b.x>=a.x+a.width)gaps.push(b.x-(a.x+a.width))}
+    if(!gaps.length)continue;
+    const clearance=Math.min(...gaps),required=51;
+    if(clearance<required){const message=`${dishwasher.id}: между дверцей посудомоечной машины и угловым модулем только ${round(clearance)} мм; требуется не менее ${required} мм бокового зазора для полного открывания.`;issues.push({type:'dishwasher-corner-clearance',moduleId:dishwasher.id,otherId:corner.id,clearance,required,message});warnings.push(message)}
+    else if(clearance<100)warnings.push(`${dishwasher.id}: угловой зазор ${round(clearance)} мм проходит минимальную проверку открывания посудомоечной машины; окончательно сверить выступ ручки и фасад выбранной модели.`);
+   }
+  }
   const roomTypes=new Set(['window','door']),floor=modules.filter(m=>!isWallMountedType(m.type)&&!roomTypes.has(m.type)),baseTypes=new Set(['base','drawer','sink','cornerBase','cornerBaseBlind','cornerBaseDiagonal','cornerBaseL']),bases=floor.filter(m=>baseTypes.has(m.type)),top=project.countertop;
  for(let i=0;i<floor.length;i++)for(let j=i+1;j<floor.length;j++)if(rectsOverlap(floor[i],floor[j])){const a=floor[i],b=floor[j],cornerAppliance=(isCornerType(a.type)&&isApplianceType(b.type))||(isCornerType(b.type)&&isApplianceType(a.type)),message=cornerAppliance?'Техника пересекает угловой шкаф. Её нужно ставить отдельным проёмом или в предназначенный для неё модуль рядом, а не внутрь углового корпуса.':'Есть пересечение напольных модулей.';issues.push({type:cornerAppliance?'appliance-corner-overlap':'overlap',moduleId:a.id,otherId:b.id,message});warnings.push(message)}
  const autoStart=bases.length?Math.min(...bases.map(m=>m.x)):0,autoEnd=bases.length?Math.max(...bases.map(m=>m.x+m.width)):0,autoLength=Math.max(0,autoEnd-autoStart),topLength=top.lengthMode==='manual'?top.length:autoLength+2*top.overhang,topX=top.lengthMode==='manual'?top.offsetX:autoStart-top.overhang,topZ=Number.isFinite(top.offsetZ)?top.offsetZ:0,topY=Number.isFinite(top.elevation)?top.elevation:(bases.length?Math.max(...bases.map(m=>m.y+m.height)):860);

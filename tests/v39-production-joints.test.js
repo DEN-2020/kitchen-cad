@@ -105,6 +105,36 @@ test("dishwasher under a hob stays blocked until the two appliance manuals appro
   );
 });
 
+test("a dishwasher beside a perpendicular corner requires at least 51 mm door clearance", () => {
+  const project = createProject();
+  const dishwasher = createModule("base");
+  Object.assign(dishwasher, {
+    width: 636,
+    applianceBay: "dishwasher",
+    applianceWidth: 598,
+    applianceHeight: 815,
+    applianceDepth: 550,
+    applianceSideClearance: 2,
+    applianceSupportMode: "both",
+  });
+  const corner = createModule("cornerBaseBlind");
+  dishwasher.offsetZ = 600;
+  corner.offsetX = -1236;
+  project.modules = [dishwasher, corner];
+  const blocked = buildProject(project);
+  const issue = blocked.issues.find(
+    (item) => item.type === "dishwasher-corner-clearance",
+  );
+  assert.equal(issue.clearance, 40);
+  assert.equal(issue.required, 51);
+  dishwasher.offsetZ = 620;
+  const safe = buildProject(project);
+  assert.equal(
+    safe.issues.some((item) => item.type === "dishwasher-corner-clearance"),
+    false,
+  );
+});
+
 test("a backless wall cabinet is a reinforced-installation warning, not an automatic blocker", () => {
   const project = createProject();
   const cabinet = createModule("wall");

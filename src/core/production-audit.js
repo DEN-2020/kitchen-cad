@@ -8,7 +8,7 @@ const VISUAL_ONLY_FRONT_STYLES=new Set(['frame','glass','slatted','shaker','louv
 const HARD_MODEL_ISSUES=new Set([
   'module-out','overlap','appliance-corner-overlap','countertop-out','countertop-cover',
   'fixture','fixture-part-collision','appliance-bay-fit','appliance-fixture-conflict','appliance-hob-clearance',
-  'appliance-hob-compatibility','appliance-support-missing','hood-clearance','washer-clearance',
+  'appliance-hob-compatibility','appliance-support-missing','dishwasher-corner-clearance','hood-clearance','washer-clearance',
 ]);
 
 /** Production gate for draft geometry. It does not replace a workshop check. */
