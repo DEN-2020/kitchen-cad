@@ -17,6 +17,10 @@ test("a self-supporting appliance bay keeps side panels and a clear 600 mm openi
   const parts = model.parts.filter((part) => part.moduleId === module.id);
   assert.ok(parts.some((part) => part.name === "Несущая боковина ниши левая"));
   assert.ok(parts.some((part) => part.name === "Несущая боковина ниши правая"));
+  const frontRail = parts.find((part) => part.id.endsWith("-FS"));
+  const rearRail = parts.find((part) => part.id.endsWith("-RS"));
+  assert.deepEqual(frontRail.size, [600, 18, 100]);
+  assert.deepEqual(rearRail.size, [600, 100, 18]);
   assert.equal(parts.some((part) => part.name.includes("Дно")), false);
   assert.equal(parts.some((part) => part.role === "front"), false);
   assert.ok(model.objects.some((object) => object.moduleId === module.id && object.embeddedAppliance));
@@ -32,12 +36,16 @@ test("an embedded washer retains its round front-loading door geometry", () => {
   module.applianceDepth = 590;
   module.applianceSideClearance = 20;
   module.width = 654;
+  module.feet = 160;
   project.modules = [module];
   const model = buildProject(project);
   const applianceObjects = model.objects.filter((object) => object.embeddedAppliance);
+  const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
   assert.ok(applianceObjects.some((object) => object.kind === "appliance-port" && object.shape === "disc"));
   assert.ok(applianceObjects.some((object) => object.kind === "appliance-glass" && object.shape === "disc"));
   assert.ok(applianceObjects.every((object) => object.applianceType === "washer"));
+  assert.equal(frontRail.center[1] - frontRail.size[1] / 2, 862);
+  assert.ok(frontRail.center[1] - frontRail.size[1] / 2 >= 850 + 10);
 });
 
 test("blind corner keeps a useful storage section beside an appliance opening", () => {

@@ -27,6 +27,12 @@ test("a one-sided washer bay can share the adjacent cabinet side as its second w
       .map((part) => [part.u, part.v, part.thickness]),
     [[620, 100, 18]],
   );
+  assert.deepEqual(
+    parts
+      .filter((part) => part.id.endsWith("-FS"))
+      .map((part) => ({ cut: [part.u, part.v, part.thickness], size: part.size })),
+    [{ cut: [620, 100, 18], size: [620, 18, 100] }],
+  );
   assert.equal(parts.some((part) => part.id.endsWith("-SR")), false);
   assert.equal(
     model.issues.some((issue) => issue.type === "appliance-support-missing"),
@@ -100,6 +106,40 @@ test("dishwasher under a hob stays blocked until the two appliance manuals appro
   project.modules = [cabinet];
   project.fixtures = [createFixture("hob", cabinet.id)];
   const model = buildProject(project);
+  assert.ok(
+    model.issues.some((issue) => issue.type === "appliance-hob-compatibility"),
+  );
+});
+
+test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and horizontal front rail", () => {
+  const project = createProject();
+  const cabinet = createModule("base");
+  Object.assign(cabinet, {
+    width: 636,
+    feet: 160,
+    applianceBay: "dishwasher",
+    applianceWidth: 600,
+    applianceHeight: 815,
+    applianceDepth: 550,
+    applianceSideClearance: 18,
+    applianceSupportMode: "right",
+  });
+  project.countertop.elevation = 880;
+  project.countertop.thickness = 20;
+  const hob = createFixture("hob", cabinet.id);
+  hob.installationHeight = 60;
+  project.modules = [cabinet];
+  project.fixtures = [hob];
+  const model = buildProject(project);
+  const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
+  const builtHob = model.fixtures.find((fixture) => fixture.id === hob.id);
+  assert.deepEqual(frontRail.size, [618, 18, 100]);
+  assert.equal(frontRail.center[1] - frontRail.size[1] / 2, 828);
+  assert.equal(builtHob.collisions.length, 0);
+  assert.equal(
+    model.issues.some((issue) => issue.type === "fixture-part-collision"),
+    false,
+  );
   assert.ok(
     model.issues.some((issue) => issue.type === "appliance-hob-compatibility"),
   );
