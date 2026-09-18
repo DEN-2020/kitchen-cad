@@ -108,6 +108,43 @@ type ImportNotice = { kind: "success" | "error"; message: string } | null;
 const localized = (lang: Lang, ru: string, en: string, ar: string) =>
   lang === "ru" ? ru : lang === "ar" ? ar : en;
 const mmUnit = (lang: Lang) => localized(lang, "мм", "mm", "مم");
+const areaUnit = (lang: Lang) => localized(lang, "м²", "m²", "م²");
+const meterUnit = (lang: Lang) => localized(lang, "м", "m", "م");
+const productionFindingText = (item: any, lang: Lang) => {
+  if (lang === "ru") return item.message;
+  const labels: Record<string, [string, string]> = {
+    "countertop-unpriced": [
+      "The countertop price is zero and is not included in the purchase total.",
+      "سعر سطح العمل صفر، لذلك لا يدخل في إجمالي الشراء.",
+    ],
+    "hardware-unpriced": [
+      "Prices are missing for some hardware items.",
+      "أسعار بعض قطع الإكسسوارات غير محددة.",
+    ],
+    "preliminary-corner": [
+      "This corner cabinet must be approved before cutting.",
+      "يجب اعتماد تصميم خزانة الزاوية قبل القص.",
+    ],
+    "appliance-support-missing": [
+      "The appliance bay is missing a full-height structural support.",
+      "فتحة الجهاز تحتاج إلى دعامة إنشائية كاملة الارتفاع.",
+    ],
+    "appliance-bay-fit": [
+      "The appliance does not fit the configured clear opening.",
+      "الجهاز لا يناسب الفتحة الصافية المحددة.",
+    ],
+    "material-thickness": [
+      "A part thickness does not match the selected sheet product.",
+      "سماكة إحدى القطع لا تطابق منتج اللوح المحدد.",
+    ],
+    "stock-unplaced": [
+      "A part does not fit the selected sheet format.",
+      "إحدى القطع لا تناسب مقاس اللوح المحدد.",
+    ],
+  };
+  const label = labels[item.code];
+  return label ? label[lang === "ar" ? 1 : 0] : localized(lang, "Требуется проверка в цехе.", "Workshop review is required.", "يلزم فحص هذه النقطة في الورشة.");
+};
 const sizeText = (m: any, lang: Lang) =>
   `${m.width} × ${m.height} × ${m.depth} ${mmUnit(lang)}`;
 const moduleDisplayLabel = (lang: Lang, module: any) => {
@@ -330,8 +367,8 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
         <strong>{batch.sheets} {localized(lang, "л.", "sheets", "ألواح")}</strong>
       </summary>
       <div className="sheetMetrics">
-        <span><b>{plan.usedArea.toFixed(2)} m²</b>{localized(lang, "детали", "parts", "قطع")}</span>
-        <span><b>{plan.reusableArea.toFixed(2)} m²</b>{localized(lang, "полезный остаток", "usable offcut", "بقايا قابلة للاستخدام")}</span>
+        <span><b>{plan.usedArea.toFixed(2)} {areaUnit(lang)}</b>{localized(lang, "детали", "parts", "قطع")}</span>
+        <span><b>{plan.reusableArea.toFixed(2)} {areaUnit(lang)}</b>{localized(lang, "полезный остаток", "usable offcut", "بقايا قابلة للاستخدام")}</span>
         <span><b>{Math.round(plan.utilization * 100)}%</b>{localized(lang, "использовано", "utilized", "مستخدم")}</span>
       </div>
       <div className="sheetMaps">
@@ -369,9 +406,12 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
         <strong>≈ {fitCount} {localized(lang, "шт.", "pcs", "قطعة")}</strong>
       </div>
       <p className="note">
-        {lang === "ru"
-          ? `По площади с запасом ${batch.reserveSheets} л.; раскладка рекомендует ${batch.sheets} л. Закупка целыми листами ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. Пропил ${plan.kerf} мм, обрезка края ${plan.trim} мм${wood ? ", направление текстуры зафиксировано" : ""}.`
-          : `Area reserve: ${batch.reserveSheets} sheets; nesting recommends ${batch.sheets}. Whole-sheet purchase ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. Kerf ${plan.kerf} mm, edge trim ${plan.trim} mm${wood ? ", grain direction locked" : ""}.`}
+        {localized(
+          lang,
+          `По площади с запасом ${batch.reserveSheets} л.; раскладка рекомендует ${batch.sheets} л. Закупка целыми листами ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. Пропил ${plan.kerf} мм, обрезка края ${plan.trim} мм${wood ? ", направление текстуры зафиксировано" : ""}.`,
+          `Area reserve: ${batch.reserveSheets} sheets; nesting recommends ${batch.sheets}. Whole-sheet purchase ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. Kerf ${plan.kerf} mm, edge trim ${plan.trim} mm${wood ? ", grain direction locked" : ""}.`,
+          `احتياطي المساحة ${batch.reserveSheets} لوح؛ ويوصي مخطط القص بـ ${batch.sheets} لوح. شراء الألواح الكاملة ≈ ${Math.round(batch.purchaseCost).toLocaleString()} EGP. عرض القطع ${plan.kerf} مم، وتشذيب الحافة ${plan.trim} مم${wood ? "، واتجاه العروق ثابت" : ""}.`,
+        )}
       </p>
     </details>
   );
@@ -1356,7 +1396,7 @@ export function App() {
                 <div className="projectStats">
                   <div>
                     <b>{Math.round(cost.procurementTotal).toLocaleString()}</b>
-                    <span>{lang === "ru" ? "EGP к закупке" : "EGP purchase"}</span>
+                    <span>{localized(lang, "EGP к закупке", "EGP purchase", "EGP للشراء")}</span>
                   </div>
                   <div>
                     <b>
@@ -1392,20 +1432,23 @@ export function App() {
                 <div className={productionAudit.ready ? "fitStatus ok" : "fitStatus bad"}>
                   <b>
                     {productionAudit.ready
-                      ? lang === "ru" ? "Проверки пройдены" : "Checks passed"
-                      : lang === "ru" ? `Не готово к производству · ${productionAudit.blockers.length}` : `Not production-ready · ${productionAudit.blockers.length}`}
+                      ? localized(lang, "Проверки пройдены", "Checks passed", "تم اجتياز الفحوصات")
+                      : localized(lang, `Не готово к производству · ${productionAudit.blockers.length}`, `Not production-ready · ${productionAudit.blockers.length}`, `غير جاهز للتصنيع · ${productionAudit.blockers.length}`)}
                   </b>
                   <span>
-                    {lang === "ru"
-                      ? `Предупреждений: ${productionAudit.warnings.length}. Экспорт с блокерами помечается как черновой.`
-                      : `Warnings: ${productionAudit.warnings.length}. Exports with blockers are drafts.`}
+                    {localized(
+                      lang,
+                      `Предупреждений: ${productionAudit.warnings.length}. Экспорт с блокерами помечается как черновой.`,
+                      `Warnings: ${productionAudit.warnings.length}. Exports with blockers are drafts.`,
+                      `تحذيرات: ${productionAudit.warnings.length}. يتم تمييز التصدير الذي يحتوي على موانع كمسودة.`,
+                    )}
                   </span>
                 </div>
                 {!productionAudit.ready && (
                   <div className="productionFindings">
                     {productionAudit.blockers.slice(0, 6).map((item: any, index: number) => (
                       <p className="warning" key={`${item.code}-${item.moduleId || index}`}>
-                        {item.message}
+                        {productionFindingText(item, lang)}
                       </p>
                     ))}
                   </div>
@@ -1458,36 +1501,41 @@ export function App() {
                   </button>
                 </div>
                 <p className="note costPresetNote">
-                  {lang === "ru"
-                    ? activeCostPreset
-                       ? "Сценарий применяет материалы корпуса и фасадов ко всем мебельным модулям."
-                       : "В кухне используются разные материалы. Цена считается для каждой детали по её материалу."
-                    : activeCostPreset
-                       ? "The preset applies body and front products to every furniture module."
-                       : "Mixed products are used. Each part is priced by its own material."}
+                  {activeCostPreset
+                    ? localized(lang, "Сценарий применяет материалы корпуса и фасадов ко всем мебельным модулям.", "The preset applies body and front products to every furniture module.", "يطبق السيناريو خامات الهيكل والواجهات على جميع وحدات الأثاث.")
+                    : localized(lang, "В кухне используются разные материалы. Цена считается для каждой детали по её материалу.", "Mixed products are used. Each part is priced by its own material.", "يستخدم المطبخ خامات مختلفة، وتحسب تكلفة كل قطعة حسب خامتها.")}
                 </p>
                 <p className="note costFormulaNote">
-                  {lang === "ru"
-                    ? "Материал = площадь деталей × цена за м² × (1 + отход). Формат листа влияет на подсказку закупки, но не искажает цену."
-                    : "Material = part area × EGP/m² × waste factor. Sheet size is used for the purchasing estimate."}
+                  {localized(
+                    lang,
+                    "Материал = площадь деталей × цена за м² × (1 + отход). Формат листа влияет на подсказку закупки, но не искажает цену.",
+                    "Material = part area × EGP/m² × waste factor. Sheet size is used for the purchasing estimate.",
+                    "الخامة = مساحة القطع × السعر لكل م² × معامل الهدر. يستخدم مقاس اللوح لتقدير الشراء.",
+                  )}
                 </p>
                 {!!cost.materialWarnings.length && (
                   <p className="warning">
-                    {lang === "ru"
-                      ? "Толщина некоторых деталей не совпадает с толщиной выбранного продукта. Цена остаётся приблизительной — выбери подходящий продукт или верни его штатную толщину."
-                      : "Some part thicknesses do not match the selected product. Choose a matching product or restore its standard thickness."}
+                    {localized(
+                      lang,
+                      "Толщина некоторых деталей не совпадает с толщиной выбранного продукта. Цена остаётся приблизительной — выбери подходящий продукт или верни его штатную толщину.",
+                      "Some part thicknesses do not match the selected product. Choose a matching product or restore its standard thickness.",
+                      "سماكة بعض القطع لا تطابق المنتج المحدد. اختر منتجاً مناسباً أو أعد السماكة القياسية.",
+                    )}
                   </p>
                 )}
                 {!!cost.stockWarnings?.length && (
                   <p className="warning">
-                    {lang === "ru"
-                      ? `В раскрой не помещается деталей: ${cost.stockWarnings.length}. Проверь формат листа, направление текстуры или размер детали — такие позиции нельзя считать готовыми к закупке.`
-                      : `${cost.stockWarnings.length} parts do not fit the selected sheet. Check sheet size, grain direction or part dimensions before purchasing.`}
+                    {localized(
+                      lang,
+                      `В раскрой не помещается деталей: ${cost.stockWarnings.length}. Проверь формат листа, направление текстуры или размер детали — такие позиции нельзя считать готовыми к закупке.`,
+                      `${cost.stockWarnings.length} parts do not fit the selected sheet. Check sheet size, grain direction or part dimensions before purchasing.`,
+                      `${cost.stockWarnings.length} قطعة لا تناسب اللوح المحدد. تحقق من مقاس اللوح واتجاه العروق وأبعاد القطعة قبل الشراء.`,
+                    )}
                   </p>
                 )}
                 <details className="materialPriceDetails" open>
                   <summary>
-                    {lang === "ru" ? "Цены материалов, EGP/м²" : "Material prices, EGP/m²"}
+                    {localized(lang, "Цены материалов, EGP/м²", "Material prices, EGP/m²", "أسعار الخامات، EGP/م²")}
                   </summary>
                   <div className="dimensionGrid">
                     {Object.values(MATERIAL_PRODUCTS)
@@ -1498,7 +1546,7 @@ export function App() {
                           compact
                           label={materialProductLabel(product, lang)}
                           value={cost.settings.materialPrices[product.id]}
-                          unit="EGP/м²"
+                          unit={localized(lang, "EGP/м²", "EGP/m²", "EGP/م²")}
                           min={0}
                           max={10000}
                           onCommit={(n) => patchMaterialPrice(product.id, n)}
@@ -1520,7 +1568,7 @@ export function App() {
                   />
                   <NumberField
                     compact
-                    label={lang === "ru" ? "Пропил пилы" : "Saw kerf"}
+                    label={localized(lang, "Пропил пилы", "Saw kerf", "عرض القطع")}
                     value={cost.settings.sawKerf}
                     unit={mmUnit(lang)}
                     min={0}
@@ -1529,7 +1577,7 @@ export function App() {
                   />
                   <NumberField
                     compact
-                    label={lang === "ru" ? "Обрезка края" : "Edge trim"}
+                    label={localized(lang, "Обрезка края", "Edge trim", "تشذيب الحافة")}
                     value={cost.settings.sheetEdgeTrim}
                     unit={mmUnit(lang)}
                     min={0}
@@ -1682,7 +1730,7 @@ export function App() {
                 {!!cost.hardwareBill.length && (
                   <details className="materialPriceDetails">
                     <summary>
-                      {lang === "ru" ? "Фурнитура по количеству" : "Hardware quantities"}
+                      {localized(lang, "Фурнитура по количеству", "Hardware quantities", "كميات الإكسسوارات")}
                     </summary>
                     <div className="dimensionGrid">
                       {cost.hardwareBill.map((row: any) => (
@@ -1699,9 +1747,12 @@ export function App() {
                       ))}
                     </div>
                     <p className="note">
-                      {lang === "ru"
-                        ? "Количество считается автоматически. Поле «Фурнитура» выше остаётся резервом на позиции, которых ещё нет в каталоге."
-                        : "Quantities are automatic. The fixed hardware field remains an allowance for uncatalogued items."}
+                      {localized(
+                        lang,
+                        "Количество считается автоматически. Поле «Фурнитура» выше остаётся резервом на позиции, которых ещё нет в каталоге.",
+                        "Quantities are automatic. The fixed hardware field remains an allowance for uncatalogued items.",
+                        "تحسب الكميات تلقائياً، ويبقى حقل الإكسسوارات الثابت احتياطياً للعناصر غير الموجودة في الكتالوج.",
+                      )}
                     </p>
                   </details>
                 )}
@@ -1716,26 +1767,26 @@ export function App() {
                 </h3>
                 <div className="costBreakdown">
                   <small>
-                    {lang === "ru" ? "Итого к закупке" : "Purchase total"}: {" "}
+                    {localized(lang, "Итого к закупке", "Purchase total", "إجمالي الشراء")}: {" "}
                     <b>{Math.round(cost.procurementTotal).toLocaleString()} EGP</b>
                   </small>
                   <small>
-                    {lang === "ru" ? "Израсходованный материал и работы" : "Consumed material & work"}: {" "}
+                    {localized(lang, "Израсходованный материал и работы", "Consumed material & work", "الخامات والعمل المستهلك")}: {" "}
                     <b>{Math.round(cost.consumedTotal).toLocaleString()} EGP</b>
                   </small>
                   <small>
                     {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
-                    : {cost.body.pricedArea.toFixed(2)} м² ={" "}
+                    : {cost.body.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
                     <b>{Math.round(cost.body.cost).toLocaleString()} EGP</b>
                   </small>
                   {!!cost.front.matte.sheets && <small>
                     {lang === "ru" ? "Фасады · матовые" : lang === "ar" ? "واجهات مطفية" : "Fronts · matte"}
-                    : {cost.front.matte.pricedArea.toFixed(2)} м² ={" "}
+                    : {cost.front.matte.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
                     <b>{Math.round(cost.front.matte.cost).toLocaleString()} EGP</b>
                   </small>}
                   {!!cost.front.gloss.sheets && <small>
                     {lang === "ru" ? "Фасады · глянец" : lang === "ar" ? "واجهات لامعة" : "Fronts · gloss"}
-                    : {cost.front.gloss.pricedArea.toFixed(2)} м² ={" "}
+                    : {cost.front.gloss.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
                     <b>{Math.round(cost.front.gloss.cost).toLocaleString()} EGP</b>
                   </small>}
                   <small>
@@ -1744,11 +1795,11 @@ export function App() {
                       : lang === "ar"
                         ? "ظهر"
                         : "Backs"}
-                    : {cost.back.pricedArea.toFixed(2)} м² ={" "}
+                    : {cost.back.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
                     <b>{Math.round(cost.back.cost).toLocaleString()} EGP</b>
                   </small>
                   <small>
-                    {lang === "ru" ? "Закупка целыми листами (справочно)" : "Whole-sheet purchase (reference)"}: {" "}
+                    {localized(lang, "Закупка целыми листами (справочно)", "Whole-sheet purchase (reference)", "شراء الألواح الكاملة (مرجعي)")}: {" "}
                     <b>{Math.round(cost.purchaseMaterials).toLocaleString()} EGP</b>
                   </small>
                   <small>
@@ -1759,7 +1810,7 @@ export function App() {
                         : "Body edge"}
                     :{" "}
                     <b>
-                      {cost.edge.body.meters.toFixed(1)} m ·{" "}
+                      {cost.edge.body.meters.toFixed(1)} {meterUnit(lang)} ·{" "}
                       {Math.round(cost.edge.body.cost).toLocaleString()} EGP
                     </b>
                   </small>
@@ -1771,7 +1822,7 @@ export function App() {
                         : "Front edge"}
                     :{" "}
                     <b>
-                      {cost.edge.front.meters.toFixed(1)} m ·{" "}
+                      {cost.edge.front.meters.toFixed(1)} {meterUnit(lang)} ·{" "}
                       {Math.round(cost.edge.front.cost).toLocaleString()} EGP
                     </b>
                   </small>
@@ -1784,7 +1835,7 @@ export function App() {
                     :{" "}
                     <b>
                       {cost.edge.meters08.toFixed(1)} /{" "}
-                      {cost.edge.meters2.toFixed(1)} m
+                      {cost.edge.meters2.toFixed(1)} {meterUnit(lang)}
                     </b>
                   </small>
                   <small>
@@ -1822,16 +1873,14 @@ export function App() {
                 </div>
                 <details className="costStockDetails">
                   <summary>
-                    {lang === "ru"
-                      ? "Листы по фактическим материалам"
-                      : "Sheets by actual material"}
+                    {localized(lang, "Листы по фактическим материалам", "Sheets by actual material", "الألواح حسب الخامة الفعلية")}
                     <span>{cost.sheetCount}</span>
                   </summary>
                   <div className="costStockList">
                     {[
-                      [lang === "ru" ? "Корпус" : "Body", cost.body.batches],
-                      [lang === "ru" ? "Фасад" : "Front", cost.front.batches],
-                      [lang === "ru" ? "Задник" : "Back", cost.back.batches],
+                      [localized(lang, "Корпус", "Body", "الهيكل"), cost.body.batches],
+                      [localized(lang, "Фасад", "Front", "الواجهة"), cost.front.batches],
+                      [localized(lang, "Задник", "Back", "الظهر"), cost.back.batches],
                     ].flatMap(([role, batches]: any) =>
                       (batches || []).map((batch: any, index: number) => (
                         <SheetPlan
@@ -1851,9 +1900,12 @@ export function App() {
                     )}
                   </div>
                   <p className="note">
-                    {lang === "ru"
-                      ? "Цена сметы по-прежнему считается по м² с заданным запасом. Раскладка отдельно показывает, сколько целых листов реально покупать и какие прямоугольные остатки можно сохранить. Это предварительный раскрой: порядок резов и технологические поля нужно подтвердить в цехе."
-                      : "The estimate still uses m² plus the configured reserve. Nesting separately shows whole sheets to buy and reusable rectangular offcuts. It remains a preliminary layout for workshop confirmation."}
+                    {localized(
+                      lang,
+                      "Цена сметы по-прежнему считается по м² с заданным запасом. Раскладка отдельно показывает, сколько целых листов реально покупать и какие прямоугольные остатки можно сохранить. Это предварительный раскрой: порядок резов и технологические поля нужно подтвердить в цехе.",
+                      "The estimate still uses m² plus the configured reserve. Nesting separately shows whole sheets to buy and reusable rectangular offcuts. It remains a preliminary layout for workshop confirmation.",
+                      "يستخدم التقدير المساحة بالمتر المربع مع الاحتياطي المحدد. ويبين مخطط القص عدد الألواح الكاملة المطلوب شراؤها والبقايا المستطيلة القابلة للاستخدام. يجب اعتماد ترتيب القص والهوامش في الورشة.",
+                    )}
                   </p>
                 </details>
               </section>
@@ -1921,10 +1973,10 @@ export function App() {
                 <div className={productionAudit.ready ? "fitStatus ok" : "fitStatus bad"}>
                   <b>
                     {productionAudit.ready
-                      ? lang === "ru" ? "Готово по автоматическим проверкам" : "Automated checks passed"
-                      : lang === "ru" ? `Блокирующих проверок: ${productionAudit.blockers.length}` : `Blocking checks: ${productionAudit.blockers.length}`}
+                      ? localized(lang, "Готово по автоматическим проверкам", "Automated checks passed", "تم اجتياز الفحوصات التلقائية")
+                      : localized(lang, `Блокирующих проверок: ${productionAudit.blockers.length}`, `Blocking checks: ${productionAudit.blockers.length}`, `فحوصات مانعة: ${productionAudit.blockers.length}`)}
                   </b>
-                  <span>{lang === "ru" ? `Предупреждений: ${productionAudit.warnings.length}` : `Warnings: ${productionAudit.warnings.length}`}</span>
+                  <span>{localized(lang, `Предупреждений: ${productionAudit.warnings.length}`, `Warnings: ${productionAudit.warnings.length}`, `تحذيرات: ${productionAudit.warnings.length}`)}</span>
                 </div>
                 <div className="segmented costPresetSelector">
                   <button
@@ -1965,13 +2017,9 @@ export function App() {
                   </button>
                 </div>
                 <p className="note costPresetNote">
-                  {lang === "ru"
-                    ? activeCostPreset
-                      ? `Сценарий применяется ко всей кухне (${furnitureModuleCount} мебельных модулей).`
-                      : "Активны свои цены для всей кухни."
-                    : activeCostPreset
-                      ? `Scenario applies to the whole kitchen (${furnitureModuleCount} furniture modules).`
-                      : "Custom whole-kitchen prices are active."}
+                  {activeCostPreset
+                    ? localized(lang, `Сценарий применяется ко всей кухне (${furnitureModuleCount} мебельных модулей).`, `Scenario applies to the whole kitchen (${furnitureModuleCount} furniture modules).`, `يطبق السيناريو على المطبخ كاملاً (${furnitureModuleCount} وحدات أثاث).`)
+                    : localized(lang, "Активны свои цены для всей кухни.", "Custom whole-kitchen prices are active.", "الأسعار المخصصة للمطبخ بالكامل مفعلة.")}
                 </p>
                 <div className="dimensionGrid">
                   {["mfc18", "highGlossMdfPvc18", "acrylicHighGlossMdf18"].map(
@@ -1983,7 +2031,7 @@ export function App() {
                           compact
                           label={materialProductLabel(product, lang)}
                           value={cost.settings.materialPrices[productId]}
-                          unit="EGP/м²"
+                          unit={localized(lang, "EGP/м²", "EGP/m²", "EGP/م²")}
                           min={0}
                           max={10000}
                           onCommit={(n) => patchMaterialPrice(productId, n)}
@@ -2081,7 +2129,7 @@ export function App() {
                 <div className="costBreakdown">
                   <small>
                     {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
-                    : {cost.body.pricedArea.toFixed(2)} м² ={" "}
+                    : {cost.body.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
                     {Math.round(cost.body.cost)} EGP
                   </small>
                   <small>
@@ -2090,7 +2138,7 @@ export function App() {
                       : lang === "ar"
                         ? "واجهات"
                         : "Fronts"}
-                    : {cost.front.pricedArea.toFixed(2)} м² ={" "}
+                    : {cost.front.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
                     {Math.round(cost.front.cost)} EGP
                   </small>
                   <small>
