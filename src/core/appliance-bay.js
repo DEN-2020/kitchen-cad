@@ -1,7 +1,7 @@
 export const APPLIANCE_BAY_DEFAULTS = Object.freeze({
   washer: Object.freeze({
-    width: 598,
-    height: 845,
+    width: 600,
+    height: 850,
     depth: 590,
     sideClearance: 20,
     topClearance: 15,
@@ -33,6 +33,14 @@ export function applianceBayMeasurements(module, projectDefaults = {}) {
         : defaults.sideClearance,
     ),
     board = Math.max(0, Number(module?.board) || 18),
+    supportMode = ["both", "left", "right", "none"].includes(
+      module?.applianceSupportMode,
+    )
+      ? module.applianceSupportMode
+      : "both",
+    leftSupport = supportMode === "both" || supportMode === "left",
+    rightSupport = supportMode === "both" || supportMode === "right",
+    supportCount = Number(leftSupport) + Number(rightSupport),
     corner = module?.type === "cornerBaseBlind",
     openingWidth = corner
       ? Math.max(
@@ -42,11 +50,14 @@ export function applianceBayMeasurements(module, projectDefaults = {}) {
             (Number(module?.width) || 0) - 260,
           ),
         )
-      : Math.max(0, (Number(module?.width) || 0) - 2 * board),
+      : Math.max(
+          0,
+          (Number(module?.width) || 0) - supportCount * board,
+        ),
     requiredOpeningWidth = applianceWidth + sideClearance,
     requiredOuterWidth = corner
       ? requiredOpeningWidth
-      : requiredOpeningWidth + 2 * board,
+      : requiredOpeningWidth + supportCount * board,
     topClearance =
       module?.applianceBay === "washer"
         ? Math.max(
@@ -66,6 +77,10 @@ export function applianceBayMeasurements(module, projectDefaults = {}) {
     applianceDepth,
     sideClearance,
     board,
+    supportMode,
+    leftSupport,
+    rightSupport,
+    supportCount,
     corner,
     openingWidth,
     requiredOpeningWidth,

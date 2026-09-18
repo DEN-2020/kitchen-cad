@@ -3090,6 +3090,26 @@ export function App() {
                           max={300}
                           onCommit={(n) => patchModule({ feet: n })}
                         />
+                      )}
+                      {["base", "sink", "drawer"].includes(selectedModule.type) && (
+                        <>
+                          <NumberField
+                            compact
+                            label={lang === "ru" ? "Добор слева" : "Left corner filler"}
+                            value={selectedModule.cornerFillerLeft || 0}
+                            min={0}
+                            max={200}
+                            onCommit={(n) => patchModule({ cornerFillerLeft: n })}
+                          />
+                          <NumberField
+                            compact
+                            label={lang === "ru" ? "Добор справа" : "Right corner filler"}
+                            value={selectedModule.cornerFillerRight || 0}
+                            min={0}
+                            max={200}
+                            onCommit={(n) => patchModule({ cornerFillerRight: n })}
+                          />
+                        </>
                       )}{" "}
                       {String(selectedModule.type).startsWith("corner") && (
                         <NumberField
@@ -3902,14 +3922,28 @@ export function App() {
                             {lang === "ru"
                               ? selectedModule.type === "cornerBaseBlind"
                                 ? "Доступная часть углового модуля становится проёмом под технику. Дно, полки, фасад, цоколь и опоры убираются только из проёма; глухая секция остаётся с дном и полками."
-                                : "Это самонесущая ниша: столешница опирается на две полноразмерные боковины. Между ними остаётся чистый проём под технику; дна, полок, фасада, цоколя и ножек внутри него нет. Боковины нужно закрепить к стене и столешнице."
+                                : "Чистый проём задаётся по фактическому размеру техники и монтажному люфту. Можно оставить две собственные боковины либо одну, используя полноразмерную боковину соседнего шкафа как вторую опору. Дна, полок, фасада, цоколя и ножек внутри проёма нет."
                               : selectedModule.type === "cornerBaseBlind"
                                 ? "The accessible corner section becomes an appliance bay; the blind storage section keeps its bottom and shelves."
-                                : "Two full-height side panels support the worktop; the clear opening between them contains the appliance."}
+                                : "The bay may use two own side panels or share one full-height side with an adjacent cabinet."}
                           </p>
+                          {selectedModule.type !== "cornerBaseBlind" && (
+                            <label className="field">
+                              {lang === "ru" ? "Собственные опоры ниши" : "Bay support panels"}
+                              <select
+                                value={selectedModule.applianceSupportMode || "both"}
+                                onChange={(e) => patchModule({ applianceSupportMode: e.target.value })}
+                              >
+                                <option value="both">{lang === "ru" ? "Слева и справа" : "Left and right"}</option>
+                                <option value="left">{lang === "ru" ? "Только слева; справа соседний шкаф" : "Left only; share right"}</option>
+                                <option value="right">{lang === "ru" ? "Только справа; слева соседний шкаф" : "Right only; share left"}</option>
+                                <option value="none">{lang === "ru" ? "Нет; опоры с обеих сторон соседние" : "None; share both sides"}</option>
+                              </select>
+                            </label>
+                          )}
                           <div className="dimensionGrid">
-                            <NumberField compact label={t("width")} value={selectedModule.applianceWidth || 598} min={400} max={1200} onCommit={(n) => patchModule({ applianceWidth: n })} />
-                            <NumberField compact label={t("height")} value={selectedModule.applianceHeight || (selectedModule.applianceBay === "washer" ? 845 : 815)} min={500} max={1000} onCommit={(n) => patchModule({ applianceHeight: n })} />
+                            <NumberField compact label={t("width")} value={selectedModule.applianceWidth || (selectedModule.applianceBay === "washer" ? 600 : 598)} min={400} max={1200} onCommit={(n) => patchModule({ applianceWidth: n })} />
+                            <NumberField compact label={t("height")} value={selectedModule.applianceHeight || (selectedModule.applianceBay === "washer" ? 850 : 815)} min={500} max={1000} onCommit={(n) => patchModule({ applianceHeight: n })} />
                             <NumberField compact label={t("depth")} value={selectedModule.applianceDepth || (selectedModule.applianceBay === "washer" ? 590 : 550)} min={400} max={900} onCommit={(n) => patchModule({ applianceDepth: n })} />
                             <NumberField compact label={lang === "ru" ? "Боковой люфт, всего" : "Total side clearance"} value={selectedModule.applianceSideClearance ?? (selectedModule.applianceBay === "washer" ? 20 : 2)} min={0} max={100} onCommit={(n) => patchModule({ applianceSideClearance: n })} />
                           </div>
