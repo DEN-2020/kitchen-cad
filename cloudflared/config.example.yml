@@ -1,0 +1,9 @@
+# Prefer a remotely-managed tunnel in the Cloudflare dashboard for normal use.
+# This file is only a reference for a locally-managed tunnel.
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: C:\Users\Admin\.cloudflared\REPLACE_WITH_TUNNEL_UUID.json
+
+ingress:
+  - hostname: kitchen-sync.example.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404

@@ -4,7 +4,7 @@
   "private":true,
   "type":"module",
   "engines":{"node":">=22.16.0"},
-  "scripts":{"dev":"vite --host 0.0.0.0","test":"node --test tests/*.test.js","typecheck":"tsc --noEmit","build":"tsc --noEmit && vite build","preview":"vite preview --host 0.0.0.0"},
+  "scripts":{"dev":"vite --host 0.0.0.0","test":"node --test tests/*.test.js","typecheck":"tsc --noEmit","build":"tsc --noEmit && vite build","preview":"vite preview --host 0.0.0.0","sync:init":"node server/init.mjs","sync:server":"node --no-warnings --env-file-if-exists=.env.local server/index.mjs","sync:install":"powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-sync-startup.ps1","sync:uninstall":"powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-sync-startup.ps1"},
   "dependencies":{"@react-three/drei":"^10.7.0","@react-three/fiber":"^9.3.0","react":"19.2.0","react-dom":"19.2.0","three":"^0.185.1"},
   "devDependencies":{"@types/react":"^19.2.0","@types/react-dom":"^19.2.0","@types/three":"^0.185.0","@vitejs/plugin-react":"^5.0.1","typescript":"^5.9.2","vite":"^7.1.3"}
 }

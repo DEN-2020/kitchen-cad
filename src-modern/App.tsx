@@ -88,6 +88,8 @@ import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
 import { applianceBayMeasurements } from "../src/core/appliance-bay.js";
 import { auditProductionReadiness } from "../src/core/production-audit.js";
 import { useProjectHistory } from "./state/useProjectHistory";
+import { ProjectSyncPanel } from "./sync/ProjectSyncPanel";
+import { useProjectSync } from "./sync/useProjectSync";
 
 type Panel =
   | "selection"
@@ -372,6 +374,7 @@ export function App() {
   const importInputRef = useRef<HTMLInputElement>(null),
     projectRef = useRef(project);
   projectRef.current = project;
+  const projectSync = useProjectSync(project);
   const model = useMemo(() => deriveModel(project), [project]);
   const cost = useMemo(
     () => estimateProjectCost(project, model),
@@ -2244,6 +2247,34 @@ export function App() {
                   </p>
                 )}
               </section>
+              <ProjectSyncPanel
+                lang={lang}
+                sync={projectSync}
+                onLoad={(remote) => {
+                  try {
+                    const imported = decodeEditorProject(JSON.stringify(remote.project));
+                    setProject(imported);
+                    setSelection(null);
+                    setFocusId(null);
+                    setDetail("none");
+                    setImportNotice({
+                      kind: "success",
+                      message:
+                        lang === "ru"
+                          ? `Версия ${remote.revision} проекта «${imported.name}» загружена с компьютера.`
+                          : `Revision ${remote.revision} of “${imported.name}” loaded from the PC.`,
+                    });
+                  } catch (error) {
+                    setImportNotice({
+                      kind: "error",
+                      message:
+                        lang === "ru"
+                          ? `Версия с компьютера повреждена: ${error instanceof Error ? error.message : String(error)}`
+                          : `The PC copy is invalid: ${error instanceof Error ? error.message : String(error)}`,
+                    });
+                  }
+                }}
+              />
               {model.warnings.slice(0, 8).map((w: string, i: number) => (
                 <div className="warning" key={i}>
                   {w}
