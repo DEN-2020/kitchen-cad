@@ -11,6 +11,15 @@ const HARD_MODEL_ISSUES=new Set([
   'appliance-hob-compatibility','appliance-support-missing','dishwasher-corner-clearance','hood-clearance','washer-clearance',
 ]);
 
+export function cornerProductionSignature(module={}){
+  return [
+    module.type,module.width,module.height,module.depth,module.feet,module.board,module.frontThickness,module.back,
+    module.bottomMode,module.backMode,module.topMode,module.cornerOpening,module.cornerOpeningSide,module.cornerMuntinWidth,
+    module.shelfCount,module.gap,module.frontEnabled,module.doorCount,module.applianceBay,module.applianceSupportMode,
+    module.applianceWidth,module.applianceHeight,module.applianceDepth,module.applianceSideClearance,
+  ].map(value=>String(value??'')).join('|');
+}
+
 /** Production gate for draft geometry. It does not replace a workshop check. */
 export function auditProductionReadiness(project={},model={},cost={}){
   const findings=[],seen=new Set(),modules=Array.isArray(model.modules)?model.modules:(project.modules||[]);
@@ -24,7 +33,11 @@ export function auditProductionReadiness(project={},model={},cost={}){
   }
   for(const module of modules){
     if(isDisplayOnlyType(module.type))continue;
-    if(PRELIMINARY_CORNER_TYPES.has(module.type))add('blocker','preliminary-corner','Корпус этого углового модуля пока является предварительным и не готов к напилу.',module.id);
+    if(PRELIMINARY_CORNER_TYPES.has(module.type)){
+      const approved=module.cornerProductionApproval===cornerProductionSignature(module);
+      if(!approved)add('blocker','preliminary-corner','Корпус этого углового модуля пока является предварительным и не готов к напилу.',module.id);
+      else add('warning','corner-construction-approved','Конструкция углового модуля утверждена для текущих размеров; изменение геометрии автоматически потребует повторного утверждения.',module.id);
+    }
     if(module.type==='drawer')add('blocker','drawer-boxes-missing','Короба и днища ящиков не входят в напил; рассчитаны только фасады и количество направляющих.',module.id);
     if(module.type==='tallOven')add('blocker','oven-niche-missing','Ниша пенала под духовку не формируется по паспорту выбранной техники.',module.id);
     if(module.width>900&&!isCornerType(module.type))add('blocker','wide-span-unsupported','Ширина корпуса больше 900 мм, но центральная перегородка/усиление не сформированы в напиле.',module.id);

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildProject } from "../src/core/parts.js";
 import { createFixture, createModule, createProject } from "../src/core/project.js";
 import { auditProductionReadiness } from "../src/core/production-audit.js";
+import { applianceHobApprovalSignature } from "../src/core/appliance-bay.js";
 
 test("a one-sided washer bay can share the adjacent cabinet side as its second worktop support", () => {
   const project = createProject();
@@ -137,6 +138,43 @@ test("dishwasher under a hob stays blocked until the two appliance manuals appro
   const model = buildProject(project);
   assert.ok(
     model.issues.some((issue) => issue.type === "appliance-hob-compatibility"),
+  );
+});
+
+test("an approved hob appliance layout stays approved only for its current geometry", () => {
+  const project = createProject();
+  const cabinet = createModule("base");
+  Object.assign(cabinet, {
+    width: 636,
+    feet: 160,
+    applianceBay: "dishwasher",
+    applianceWidth: 598,
+    applianceHeight: 815,
+    applianceDepth: 550,
+    applianceSideClearance: 20,
+    applianceSupportMode: "both",
+  });
+  const hob = createFixture("hob", cabinet.id);
+  hob.installationHeight = 60;
+  project.countertop.elevation = 880;
+  project.modules = [cabinet];
+  project.fixtures = [hob];
+  cabinet.applianceHobApproval = applianceHobApprovalSignature(
+    cabinet,
+    hob,
+    project.countertop,
+  );
+
+  const approved = buildProject(project);
+  assert.equal(
+    approved.issues.some((issue) => issue.type === "appliance-hob-compatibility"),
+    false,
+  );
+
+  hob.installationHeight = 61;
+  const changed = buildProject(project);
+  assert.ok(
+    changed.issues.some((issue) => issue.type === "appliance-hob-compatibility"),
   );
 });
 

@@ -21,6 +21,36 @@ export function applianceDefaults(type = "washer") {
   };
 }
 
+export function applianceHobApprovalSignature(
+  module = {},
+  fixture = {},
+  countertop = {},
+) {
+  return [
+    module.type,
+    module.width,
+    module.height,
+    module.depth,
+    module.feet,
+    module.board,
+    module.applianceBay,
+    module.applianceWidth,
+    module.applianceHeight,
+    module.applianceDepth,
+    module.applianceSideClearance,
+    module.applianceSupportMode,
+    fixture.type,
+    fixture.width,
+    fixture.depth,
+    fixture.installationHeight,
+    fixture.rimHeight,
+    countertop.thickness,
+    countertop.elevation,
+  ]
+    .map((value) => String(value ?? ""))
+    .join("|");
+}
+
 export function applianceBayMeasurements(module, projectDefaults = {}) {
   const defaults = applianceDefaults(module?.applianceBay),
     applianceWidth = Number(module?.applianceWidth) || defaults.width,

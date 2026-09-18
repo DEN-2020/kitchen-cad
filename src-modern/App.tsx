@@ -85,8 +85,8 @@ import {
 } from "./i18n";
 import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
 import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
-import { applianceBayMeasurements } from "../src/core/appliance-bay.js";
-import { auditProductionReadiness } from "../src/core/production-audit.js";
+import { applianceBayMeasurements, applianceHobApprovalSignature } from "../src/core/appliance-bay.js";
+import { auditProductionReadiness, cornerProductionSignature } from "../src/core/production-audit.js";
 import { useProjectHistory } from "./state/useProjectHistory";
 import { ProjectSyncPanel } from "./sync/ProjectSyncPanel";
 import { useProjectSync } from "./sync/useProjectSync";
@@ -3268,6 +3268,57 @@ export function App() {
                     ].includes(selectedModule.type) && (
                       <div className="cornerConstructionNote">
                         <span className="fieldCaption">
+                          {lang === "ru" ? "Статус конструкции" : "Construction status"}
+                        </span>
+                        <div
+                          className="segmented cornerSideSelector"
+                          role="group"
+                          aria-label={lang === "ru" ? "Утверждение конструкции угла" : "Corner construction approval"}
+                        >
+                          <button
+                            type="button"
+                            className={
+                              selectedModule.cornerProductionApproval !==
+                              cornerProductionSignature(selectedModule)
+                                ? "active"
+                                : ""
+                            }
+                            aria-pressed={
+                              selectedModule.cornerProductionApproval !==
+                              cornerProductionSignature(selectedModule)
+                            }
+                            onClick={() => patchModule({ cornerProductionApproval: null })}
+                          >
+                            {lang === "ru" ? "Черновик" : "Draft"}
+                          </button>
+                          <button
+                            type="button"
+                            className={
+                              selectedModule.cornerProductionApproval ===
+                              cornerProductionSignature(selectedModule)
+                                ? "active"
+                                : ""
+                            }
+                            aria-pressed={
+                              selectedModule.cornerProductionApproval ===
+                              cornerProductionSignature(selectedModule)
+                            }
+                            onClick={() =>
+                              patchModule({
+                                cornerProductionApproval:
+                                  cornerProductionSignature(selectedModule),
+                              })
+                            }
+                          >
+                            {lang === "ru" ? "Утверждено" : "Approved"}
+                          </button>
+                        </div>
+                        <span>
+                          {lang === "ru"
+                            ? "Утверждение относится только к текущим размерам, проёму и монтажной стойке. После изменения геометрии корпус снова станет черновым."
+                            : "Approval is tied to the current dimensions, opening and hinge partition; geometry changes require approval again."}
+                        </span>
+                        <span className="fieldCaption">
                           {lang === "ru"
                             ? frontsEnabled
                               ? "Сторона проёма и фасада"
@@ -4061,7 +4112,67 @@ export function App() {
                         <p className="warning">{lang === "ru" ? "Конфликт: мойка и техника занимают один проём. Такой вариант нельзя отдавать в производство." : "Conflict: the sink and appliance occupy the same bay."}</p>
                       )}
                       {applianceBayActive && selectedFixture?.type === "hob" && (
-                        <p className="warning">{lang === "ru" ? applianceFits ? "По введённым размерам корпуса помещаются, но вентиляцию и минимальные зазоры всё равно нужно сверить по паспортам обеих моделей." : `Не помещается по высоте: корпус варочной выступает ниже столешницы на ${applianceWorktopDrop} мм. Увеличь высоту столешницы/ниши или выбери совместимые модели.` : "A hob above an appliance requires model-specific ventilation and clearance checks."}</p>
+                        <>
+                          <p className="warning">
+                            {lang === "ru"
+                              ? applianceFits
+                                ? selectedModule.applianceHobApproval ===
+                                  applianceHobApprovalSignature(
+                                    selectedModule,
+                                    selectedFixture,
+                                    project.countertop,
+                                  )
+                                  ? "Компоновка утверждена для текущих размеров. При монтаже нужен совместимый теплозащитный/пароизоляционный экран и сохранение рассчитанного вентиляционного зазора."
+                                  : "По введённым размерам корпуса помещаются. Чтобы снять производственный блокер, утвердите текущую компоновку с теплозащитным экраном."
+                                : `Не помещается по высоте: корпус варочной выступает ниже столешницы на ${applianceWorktopDrop} мм. Увеличь высоту столешницы/ниши или выбери совместимые модели.`
+                              : "A hob above an appliance requires an approved layout, heat shield and ventilation clearance."}
+                          </p>
+                          {applianceFits && (
+                            <div className="segmented applianceSelector" role="group">
+                              <button
+                                type="button"
+                                className={
+                                  selectedModule.applianceHobApproval !==
+                                  applianceHobApprovalSignature(
+                                    selectedModule,
+                                    selectedFixture,
+                                    project.countertop,
+                                  )
+                                    ? "active"
+                                    : ""
+                                }
+                                onClick={() => patchModule({ applianceHobApproval: null })}
+                              >
+                                {lang === "ru" ? "Требует проверки" : "Needs review"}
+                              </button>
+                              <button
+                                type="button"
+                                className={
+                                  selectedModule.applianceHobApproval ===
+                                  applianceHobApprovalSignature(
+                                    selectedModule,
+                                    selectedFixture,
+                                    project.countertop,
+                                  )
+                                    ? "active"
+                                    : ""
+                                }
+                                onClick={() =>
+                                  patchModule({
+                                    applianceHobApproval:
+                                      applianceHobApprovalSignature(
+                                        selectedModule,
+                                        selectedFixture,
+                                        project.countertop,
+                                      ),
+                                  })
+                                }
+                              >
+                                {lang === "ru" ? "Утверждено с экраном" : "Approved with shield"}
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </section>
                   )}

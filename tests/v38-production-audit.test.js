@@ -7,7 +7,10 @@ import {
   HARDWARE_PRODUCTS,
 } from "../src/core/hardware.js";
 import { buildProject } from "../src/core/parts.js";
-import { auditProductionReadiness } from "../src/core/production-audit.js";
+import {
+  auditProductionReadiness,
+  cornerProductionSignature,
+} from "../src/core/production-audit.js";
 import { createModule, createProject } from "../src/core/project.js";
 
 const projectWith = (module) => {
@@ -123,6 +126,33 @@ test("production gate keeps every corner construction in draft status", () => {
       type,
     );
   }
+});
+
+test("an explicitly approved corner is not a blocker until its geometry changes", () => {
+  const corner = createModule("cornerBaseBlind");
+  corner.cornerProductionApproval = cornerProductionSignature(corner);
+  const project = projectWith(corner);
+  const approved = auditProductionReadiness(
+    project,
+    buildProject(project),
+    estimateProjectCost(project, buildProject(project)),
+  );
+  assert.equal(
+    approved.blockers.some((item) => item.code === "preliminary-corner"),
+    false,
+  );
+  assert.ok(
+    approved.warnings.some((item) => item.code === "corner-construction-approved"),
+  );
+
+  corner.cornerOpening += 1;
+  const changedModel = buildProject(project);
+  const changed = auditProductionReadiness(
+    project,
+    changedModel,
+    estimateProjectCost(project, changedModel),
+  );
+  assert.ok(changed.blockers.some((item) => item.code === "preliminary-corner"));
 });
 
 test("a wide straight cabinet is blocked until a structural divider is modeled", () => {
