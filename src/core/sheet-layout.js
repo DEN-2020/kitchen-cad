@@ -133,6 +133,7 @@ function splitFreeRect(sheet, rectIndex, width, height, kerf) {
 const partMetrics = (part) => {
   const size = orientations(part)[0];
   return {
+    id: String(part.id || ""),
     width: size.width,
     height: size.height,
     long: Math.max(size.width, size.height),
@@ -143,12 +144,29 @@ const partMetrics = (part) => {
 
 const compareId = (a, b) => String(a.id || "").localeCompare(String(b.id || ""));
 
+const seededIdHash = (value, seed) => {
+  let hash = (2166136261 ^ seed) >>> 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash;
+};
+
+const SEEDED_SORTERS = Array.from({ length: 16 }, (_, index) => {
+  const seed = index + 1;
+  return (a, b) =>
+    seededIdHash(a.id, seed) - seededIdHash(b.id, seed) ||
+    a.id.localeCompare(b.id);
+});
+
 const SORTERS = [
   (a, b) => b.long - a.long || b.area - a.area,
   (a, b) => b.area - a.area || b.long - a.long,
   (a, b) => b.short - a.short || b.long - a.long,
   (a, b) => b.width - a.width || b.height - a.height,
   (a, b) => b.height - a.height || b.width - a.width,
+  ...SEEDED_SORTERS,
 ];
 
 function packParts(parts, sorter, sheetWidth, sheetHeight, trim, kerf) {

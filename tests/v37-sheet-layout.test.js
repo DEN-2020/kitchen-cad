@@ -92,3 +92,22 @@ test("multi-strategy nesting avoids a nearly empty fourth carcass sheet", () => 
   assert.equal(plan.unplaced.length, 0);
   assert.equal(plan.sheetCount, 3);
 });
+
+test("deterministic search keeps the current compact kitchen carcass on three sheets", () => {
+  const dimensions = [
+    [135, 89.2], [100, 880], [559.2, 880], [618, 100], [688, 100],
+    [559.2, 780], [559.2, 780], [1164, 559.2], [1164, 99.2],
+    [1164, 100], [1200, 89.2], [630.4, 774.4], [69.2, 776],
+    ...Array.from({ length: 6 }, () => [319.2, 720]),
+    ...Array.from({ length: 6 }, () => [564, 319.2]),
+    ...Array.from({ length: 3 }, () => [562, 299.2]),
+    [559.2, 880], [632, 100], [632, 100],
+  ];
+  const plan = planSheetLayout(
+    dimensions.map(([u, v], index) => part(`current-${index + 1}`, u, v)),
+    product,
+    { trim: 10, kerf: 4 },
+  );
+  assert.equal(plan.unplaced.length, 0);
+  assert.equal(plan.sheetCount, 3);
+});
