@@ -219,11 +219,12 @@ test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and horiz
   );
 });
 
-test("a dishwasher beside a perpendicular corner requires at least 51 mm door clearance", () => {
+test("a dishwasher beside a perpendicular corner includes front projection and appliance inset", () => {
   const project = createProject();
   const dishwasher = createModule("base");
   Object.assign(dishwasher, {
     width: 636,
+    rotationY: 270,
     applianceBay: "dishwasher",
     applianceWidth: 598,
     applianceHeight: 815,
@@ -232,16 +233,20 @@ test("a dishwasher beside a perpendicular corner requires at least 51 mm door cl
     applianceSupportMode: "both",
   });
   const corner = createModule("cornerBaseBlind");
-  dishwasher.offsetZ = 600;
+  corner.handleStyle = "none";
+  dishwasher.offsetZ = 638;
   corner.offsetX = -1236;
   project.modules = [dishwasher, corner];
   const blocked = buildProject(project);
   const issue = blocked.issues.find(
     (item) => item.type === "dishwasher-corner-clearance",
   );
-  assert.equal(issue.clearance, 40);
-  assert.equal(issue.required, 51);
-  dishwasher.offsetZ = 620;
+  assert.equal(issue.bodyClearance, 40);
+  assert.equal(issue.applianceInset, 1);
+  assert.equal(issue.cornerProjection, 20);
+  assert.equal(issue.clearance, 21);
+  assert.equal(issue.required, 55);
+  dishwasher.offsetZ = 672;
   const safe = buildProject(project);
   assert.equal(
     safe.issues.some((item) => item.type === "dishwasher-corner-clearance"),

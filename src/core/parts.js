@@ -41,6 +41,7 @@ function frontExtras(m,id,objects,x,y,z,w,h,hingeSide,parentFrontId){const dark=
 function frontFinish(m,override={}){const decor=override.decor||m.frontDecor,color=override.color||(override.decor?undefined:m.frontColor);return{decor,appearance:appearance(decor,color,m.gloss,m.grain)}}
 function moduleBounds(m){const r=((Math.round((Number(m.rotationY)||0)/90)*90)%360+360)%360,fw=(r===90||r===270)?m.depth:m.width,fd=(r===90||r===270)?m.width:m.depth,cx=m.x+m.width/2,cz=m.z+m.depth/2;return{x:cx-fw/2,z:cz-fd/2,width:fw,depth:fd}}
 function rectsOverlap(a,b){const A=moduleBounds(a),B=moduleBounds(b);return A.x<B.x+B.width&&A.x+A.width>B.x&&A.z<B.z+B.depth&&A.z+A.depth>B.z}
+function cabinetFrontProjection(m){const t=Math.max(0,Number(m.frontThickness)||18),style=String(m.frontStyle||''),handle=String(m.handleStyle||'none');let projection=t+2;if(['frame','shaker'].includes(style))projection=Math.max(projection,t+16.5);if(['slatted','louvered'].includes(style))projection=Math.max(projection,t+16);if(handle==='bar')projection=Math.max(projection,t+32);else if(handle==='knob')projection=Math.max(projection,t+35);else if(handle==='integrated'||style==='handleless')projection=Math.max(projection,t+25);return projection}
 
 export function buildProject(project){
  const modules=layoutProject(project),parts=[],objects=[],warnings=[],issues=[];
@@ -140,11 +141,11 @@ export function buildProject(project){
    const a=moduleBounds(dishwasher);
    for(const corner of structuralModules.filter(m=>m.id!==dishwasher.id&&isCornerType(m.type)&&!isWallMountedType(m.type))){
     const b=moduleBounds(corner),overlapX=Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x),overlapZ=Math.min(a.z+a.depth,b.z+b.depth)-Math.max(a.z,b.z),gaps=[];
-    if(overlapX>0){if(a.z>=b.z+b.depth)gaps.push(a.z-(b.z+b.depth));else if(b.z>=a.z+a.depth)gaps.push(b.z-(a.z+a.depth))}
-    if(overlapZ>0){if(a.x>=b.x+b.width)gaps.push(a.x-(b.x+b.width));else if(b.x>=a.x+a.width)gaps.push(b.x-(a.x+a.width))}
+    if(overlapX>0){if(a.z>=b.z+b.depth)gaps.push({body:a.z-(b.z+b.depth),x:0,z:1});else if(b.z>=a.z+a.depth)gaps.push({body:b.z-(a.z+a.depth),x:0,z:-1})}
+    if(overlapZ>0){if(a.x>=b.x+b.width)gaps.push({body:a.x-(b.x+b.width),x:1,z:0});else if(b.x>=a.x+a.width)gaps.push({body:b.x-(a.x+a.width),x:-1,z:0})}
     if(!gaps.length)continue;
-    const clearance=Math.min(...gaps),required=51;
-    if(clearance<required){const message=`${dishwasher.id}: между дверцей посудомоечной машины и угловым модулем только ${round(clearance)} мм; требуется не менее ${required} мм бокового зазора для полного открывания.`;issues.push({type:'dishwasher-corner-clearance',moduleId:dishwasher.id,otherId:corner.id,clearance,required,message});warnings.push(message)}
+    const gap=gaps.sort((left,right)=>left.body-right.body)[0],cornerAngle=(Number(corner.rotationY)||0)*Math.PI/180,cornerForward={x:Math.sin(cornerAngle),z:Math.cos(cornerAngle)},dishwasherAngle=(Number(dishwasher.rotationY)||0)*Math.PI/180,dishwasherSide={x:Math.cos(dishwasherAngle),z:-Math.sin(dishwasherAngle)},cornerProjection=cornerForward.x*gap.x+cornerForward.z*gap.z>.5?cabinetFrontProjection(corner):0,measurements=applianceBayMeasurements(dishwasher,{...project.defaults,countertopDepth:project.countertop?.depth}),applianceInset=Math.abs(dishwasherSide.x*gap.x+dishwasherSide.z*gap.z)>.5?Math.max(0,(measurements.openingWidth-measurements.applianceWidth)/2):0,clearance=round(gap.body+applianceInset-cornerProjection),required=55;
+    if(clearance<required){const message=`${dishwasher.id}: фактический боковой зазор открытой дверцы до углового фасада ${clearance} мм (между корпусами ${round(gap.body)} мм, отступ техники ${round(applianceInset)} мм, выступ углового фасада/ручки ${round(cornerProjection)} мм); требуется не менее ${required} мм с монтажным запасом.`;issues.push({type:'dishwasher-corner-clearance',moduleId:dishwasher.id,otherId:corner.id,clearance,required,bodyClearance:round(gap.body),applianceInset:round(applianceInset),cornerProjection:round(cornerProjection),message});warnings.push(message)}
     else if(clearance<100)warnings.push(`${dishwasher.id}: угловой зазор ${round(clearance)} мм проходит минимальную проверку открывания посудомоечной машины; окончательно сверить выступ ручки и фасад выбранной модели.`);
    }
   }
