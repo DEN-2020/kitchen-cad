@@ -68,6 +68,24 @@ export function buildProject(project){
    }
   };
   addCornerFillers();
+  if(m.type==='wallMicrowaveCombo'){
+   const topW=Math.max(500,Math.min(w,Number(m.comboCabinetWidth)||590)),topH=Math.max(220,Math.min(h-220,Number(m.comboCabinetHeight)||300)),topD=Math.max(260,Math.min(d,Number(m.comboCabinetDepth)||316)),topX=w/2,topY=h-topH,topInner=topW-2*t,leftX=topX-topW/2+t/2,rightX=topX+topW/2-t/2;
+   add('USL','Боковина верхнего шкафа левая',topD,topH,t,[0,m.bodyEdge,0,0],[t,topH,topD],[leftX,topY+topH/2,topD/2]);
+   add('USR','Боковина верхнего шкафа правая',topD,topH,t,[0,m.bodyEdge,0,0],[t,topH,topD],[rightX,topY+topH/2,topD/2]);
+   add('UBT','Дно верхнего шкафа',topInner,topD,t,[0,0,0,m.bodyEdge],[topInner,t,topD],[topX,topY+t/2,topD/2]);
+   add('UTP','Крышка верхнего шкафа',topInner,topD,t,[0,0,0,m.bodyEdge],[topInner,t,topD],[topX,h-t/2,topD/2]);
+   add('UMR','Монтажная планка верхнего шкафа',topInner,100,t,[0,0,0,0],[topInner,100,t],[topX,h-50,t/2]);
+   add('MSH','Полка для микроволновки',w,d,m.frontThickness,[m.frontEdge,m.frontEdge,0,m.frontEdge],[w,m.frontThickness,d],[w/2,m.frontThickness/2,d/2],'front');
+   if(frontsEnabled){const fw=topW-2*m.gap,fh=topH-2*m.gap,front=add('F1','Фасад верхнего шкафа',fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[topX,topY+topH/2,topD+2+m.frontThickness/2],'front',{hingeSide:'left',hingeMountPartId:`${id}-USL`,hingeType:'overlay-110'});frontExtras(m,id,objects,topX,topY+topH/2,topD+m.frontThickness+4,fw,fh,'left',front.id)}
+   const mw=Math.max(400,Math.min(w-40,Number(m.comboMicrowaveWidth)||520)),mh=Math.max(200,Math.min(topY-m.frontThickness-8,Number(m.comboMicrowaveHeight)||280)),md=Math.max(300,Math.min(d-10,Number(m.comboMicrowaveDepth)||400)),my=m.frontThickness+mh/2,mz=d-md/2-5,metal=appearance('graphite','#788388'),dark=appearance('graphite','#141b1f');
+   pushBox(objects,m,id,'MICRO-BODY',[mw,mh,md],[w/2,my,mz],metal,'appliance');
+   pushBox(objects,m,id,'MICRO-GLASS',[mw-105,mh-65,14],[w/2-28,my,d+2],dark,'appliance-detail');
+   pushBox(objects,m,id,'MICRO-CONTROL',[72,mh-55,14],[w/2+mw/2-48,my,d+3],metal,'appliance-detail');
+   for(const bx of[w*.2,w*.8]){pushBox(objects,m,id,`BRACKET-${bx}-V`,[12,150,12],[bx,-65,22],metal,'support');pushBox(objects,m,id,`BRACKET-${bx}-H`,[12,12,250],[bx,-6,137],metal,'support')}
+   const message=`${id}: комбинированный модуль использует верхний шкаф ${round(topW)}×${round(topH)}×${round(topD)} мм и отдельную полку ${round(w)}×${round(d)} мм на металлических кронштейнах. До распила сверить габариты, вентиляционные зазоры и массу конкретной микроволновки, а также не перекрывать выход вытяжки.`;
+   issues.push({type:'microwave-combo-confirmation',moduleId:m.id,message});warnings.push(message);
+   return;
+  }
   if(fullApplianceBay){
    const fullSideHeight=h+m.feet,sideCenterY=fullSideHeight/2-m.feet,opening=appliance.openingWidth,aw=appliance.applianceWidth,ah=appliance.applianceHeight,ad=appliance.applianceDepth,fits=appliance.fits;
    if(appliance.leftSupport)add('SL','Несущая боковина ниши левая',bodyDepth,fullSideHeight,t,[0,m.bodyEdge,0,0],[t,fullSideHeight,bodyDepth],[t/2,sideCenterY,(backOverlay?b:0)+bodyDepth/2]);

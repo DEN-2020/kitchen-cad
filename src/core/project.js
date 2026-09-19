@@ -13,7 +13,7 @@ const typeDefaults = {
   cornerBaseBlind:{width:1000,height:780,depth:560,feet:100,doorCount:1,cornerOpening:450,cornerMuntinWidth:70},
   cornerBaseDiagonal:{width:900,height:780,depth:900,feet:100,doorCount:1,cornerOpening:450,cornerWingDepth:600,cornerRunDepth:600},
   cornerBaseL:{width:900,height:780,depth:900,feet:100,doorCount:2,cornerOpening:450,cornerWingDepth:600,cornerRunDepth:600},
-  wall:{width:600,height:720,depth:320,elevation:1500}, cornerWall:{width:650,height:720,depth:650,elevation:1500,doorCount:2}, cornerWallBlind:{width:800,height:720,depth:320,elevation:1500,doorCount:1,cornerOpening:360,cornerMuntinWidth:70},
+  wall:{width:600,height:720,depth:320,elevation:1500}, wallMicrowaveCombo:{width:600,height:620,depth:420,elevation:1600,doorCount:1,shelfCount:0}, cornerWall:{width:650,height:720,depth:650,elevation:1500,doorCount:2}, cornerWallBlind:{width:800,height:720,depth:320,elevation:1500,doorCount:1,cornerOpening:360,cornerMuntinWidth:70},
   cornerWallDiagonal:{width:650,height:720,depth:650,elevation:1500,doorCount:1,cornerOpening:360,cornerWingDepth:320,cornerRunDepth:320},
   cornerWallL:{width:650,height:720,depth:650,elevation:1500,doorCount:2,cornerOpening:320,cornerWingDepth:320,cornerRunDepth:320},
   tall:{width:600,height:2100,depth:560,feet:100,shelfCount:5}, tallOven:{width:600,height:2100,depth:600,feet:100,shelfCount:3},
@@ -42,6 +42,8 @@ export function createModule(type='base') {
     bodyColor:DECORS.white.color, frontColor:DECORS.olive.color, gloss:true, grain:'v',
     doorCount:d.doorCount ?? 0, frontEnabled:true, frontStyle:'flat', handleStyle:'bar', legStyle:'round',
     applianceBay:'none', applianceWidth:600, applianceHeight:850, applianceDepth:590, applianceSideClearance:20, applianceSupportMode:'both',
+    comboCabinetWidth:type==='wallMicrowaveCombo'?590:undefined, comboCabinetHeight:type==='wallMicrowaveCombo'?300:undefined, comboCabinetDepth:type==='wallMicrowaveCombo'?316:undefined,
+    comboMicrowaveWidth:type==='wallMicrowaveCombo'?520:undefined, comboMicrowaveHeight:type==='wallMicrowaveCombo'?280:undefined, comboMicrowaveDepth:type==='wallMicrowaveCombo'?400:undefined,
     cornerFillerLeft:0, cornerFillerRight:0,
     frontOverhangTop:0, frontOverhangBottom:0, frontOverhangLeft:0, frontOverhangRight:0, frontOverrides:[],
   };

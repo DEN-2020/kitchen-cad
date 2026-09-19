@@ -93,6 +93,7 @@ export const MODULE_TYPES = Object.freeze({
   cornerBaseDiagonal: 'Угловой нижний — диагональный 45°',
   cornerBaseL: 'Угловой нижний — L-образный',
   wall: 'Навесной шкаф',
+  wallMicrowaveCombo: 'Шкаф над вытяжкой с нишей СВЧ',
   cornerWall: 'Угловой навесной шкаф (legacy)',
   cornerWallBlind: 'Угловой навесной — глухой',
   cornerWallDiagonal: 'Угловой навесной — диагональный 45°',
@@ -113,7 +114,7 @@ export const MODULE_TYPES = Object.freeze({
 export const CATALOG_GROUPS = Object.freeze([
   { id:'base', ru:'Нижние шкафы', en:'Base cabinets', ar:'خزائن سفلية', types:['base','drawer','sink'] },
   { id:'base-corner', ru:'Угловые нижние', en:'Base corner cabinets', ar:'خزائن زاوية سفلية', types:['cornerBaseBlind','cornerBaseDiagonal','cornerBaseL'] },
-  { id:'wall', ru:'Навесные шкафы', en:'Wall cabinets', ar:'خزائن علوية', types:['wall'] },
+  { id:'wall', ru:'Навесные шкафы', en:'Wall cabinets', ar:'خزائن علوية', types:['wall','wallMicrowaveCombo'] },
   { id:'wall-corner', ru:'Угловые навесные', en:'Wall corner cabinets', ar:'خزائن زاوية علوية', types:['cornerWallBlind','cornerWallDiagonal','cornerWallL'] },
   { id:'tall', ru:'Пеналы', en:'Tall units', ar:'خزائن طويلة', types:['tall','tallOven'] },
   { id:'appliances', ru:'Техника', en:'Appliances', ar:'أجهزة', types:['washer','dishwasher','oven','fridge','freezer','microwave','hood'] },
@@ -126,7 +127,7 @@ export const DISPLAY_ONLY_TYPES = Object.freeze([...APPLIANCE_TYPES,...ROOM_ELEM
 export const isApplianceType = type => APPLIANCE_TYPES.includes(type);
 export const isRoomElementType = type => ROOM_ELEMENT_TYPES.includes(type);
 export const isDisplayOnlyType = type => DISPLAY_ONLY_TYPES.includes(type);
-const WALL_MOUNTED_TYPES = Object.freeze(['wall','cornerWall','cornerWallBlind','cornerWallDiagonal','cornerWallL','microwave','hood','window']);
+const WALL_MOUNTED_TYPES = Object.freeze(['wall','wallMicrowaveCombo','cornerWall','cornerWallBlind','cornerWallDiagonal','cornerWallL','microwave','hood','window']);
 export const MODULE_PLACEMENT = Object.freeze(Object.fromEntries(
   Object.keys(MODULE_TYPES).map(type => [type, Object.freeze({
     layer: WALL_MOUNTED_TYPES.includes(type) ? 'wall' : isRoomElementType(type) ? 'room' : 'floor',

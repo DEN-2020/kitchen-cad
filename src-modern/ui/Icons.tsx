@@ -38,6 +38,7 @@ export function CatalogGlyph({type}:{type:string}){
  if(type==='sink')return <svg {...c}><rect x="7" y="13" width="34" height="29" rx="2"/><path d="M10 13V8h28v5M14 17h20v10c0 4-4 7-10 7s-10-3-10-7zM24 17v-5"/></svg>;
  if(type==='drawer')return <svg {...c}><rect x="8" y="8" width="32" height="34" rx="2"/><path d="M8 19h32M8 30h32M18 14h12M18 25h12M18 36h12"/></svg>;
  if(type==='wall')return <svg {...c}><rect x="7" y="7" width="34" height="28" rx="2"/><path d="M24 7v28M10 40h28"/></svg>;
+ if(type==='wallMicrowaveCombo')return <svg {...c}><rect x="7" y="4" width="34" height="40" rx="2"/><path d="M7 21h34M24 4v17M11 26h26v14H11zM31 29v8"/></svg>;
  if(type.includes('Blind'))return <svg {...c}><rect x="7" y="8" width="34" height="34" rx="2"/><path d="M25 8v34M29 12v26M12 25h13"/></svg>;
  if(type.includes('Diagonal'))return <svg {...c}><path d="M8 8h32v32H8zM15 40 40 15M8 23h17V8"/></svg>;
  if(type.includes('corner')||type.includes('Corner'))return <svg {...c}><path d="M8 8h22v12h10v22H8z"/><path d="M30 8v12H18v22"/></svg>;
