@@ -70,7 +70,7 @@ export function materialSelectionPatch(role,productId){
 
 export const DECORS = Object.freeze({
   white: { name: 'Тёплый белый', nameEn: 'Warm white', nameAr: 'أبيض دافئ', color: '#eeeae0', pattern: 'solid' },
-  gray: { name: 'Серый', nameEn: 'Grey', nameAr: 'رمادي', color: '#9da3a6', pattern: 'solid' },
+  gray: { name: 'Серый', nameEn: 'Grey', nameAr: 'رمادي', color: '#7f878c', pattern: 'solid' },
   olive: { name: 'Шалфей', nameEn: 'Sage', nameAr: 'أخضر مريمي', color: '#899782', pattern: 'solid' },
   graphite: { name: 'Графит', nameEn: 'Graphite', nameAr: 'جرافيت', color: '#424d54', pattern: 'solid' },
   oak: { name: 'Дуб', nameEn: 'Oak', nameAr: 'بلوط', color: '#c29764', pattern: 'wood' },

@@ -353,7 +353,7 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
     !wood,
   );
   return (
-    <details className="sheetPlan">
+    <details className="sheetPlan" open>
       <summary>
         <span
           className="costStockColor"
@@ -362,20 +362,25 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
         <span className="sheetPlanTitle">
           <b>{role} · {batch.materialName}</b>
           <small>
-            {decorLabel((DECORS as any)[batch.decor], lang) || batch.decor} · {batch.thickness} {mmUnit(lang)} · {batch.sheetWidth}×{batch.sheetHeight}
+            {decorLabel((DECORS as any)[batch.decor], lang) || batch.decor} · {String(batch.color || "").toUpperCase()} · {batch.thickness} {mmUnit(lang)} · {batch.sheetWidth}×{batch.sheetHeight}
           </small>
         </span>
         <strong>{batch.sheets} {localized(lang, "л.", "sheets", "ألواح")}</strong>
       </summary>
+      <div className="sheetUsage" aria-label={localized(lang, "Использование купленных листов", "Purchased sheet usage", "استخدام الألواح المشتراة")}>
+        <i style={{ width: `${Math.max(0, Math.min(100, plan.utilization * 100))}%` }} />
+        <b>{Math.round(plan.utilization * 100)}%</b>
+      </div>
       <div className="sheetMetrics">
+        <span><b>{plan.stockArea.toFixed(2)} {areaUnit(lang)}</b>{localized(lang, "куплено", "purchased", "تم شراؤه")}</span>
         <span><b>{plan.usedArea.toFixed(2)} {areaUnit(lang)}</b>{localized(lang, "детали", "parts", "قطع")}</span>
+        <span><b>{plan.leftoverArea.toFixed(2)} {areaUnit(lang)}</b>{localized(lang, "остаток всего", "total leftover", "إجمالي البقايا")}</span>
         <span><b>{plan.reusableArea.toFixed(2)} {areaUnit(lang)}</b>{localized(lang, "полезный остаток", "usable offcut", "بقايا قابلة للاستخدام")}</span>
-        <span><b>{Math.round(plan.utilization * 100)}%</b>{localized(lang, "использовано", "utilized", "مستخدم")}</span>
       </div>
       <div className="sheetMaps">
         {plan.sheets.map((sheet: any) => (
           <div className="sheetMapCard" key={sheet.index}>
-            <div><b>{localized(lang, "Лист", "Sheet", "لوح")} {sheet.index}</b><small>{Math.round(sheet.utilization * 100)}%</small></div>
+            <div><b>{localized(lang, "Лист", "Sheet", "لوح")} {sheet.index}</b><small>{sheet.usedArea.toFixed(2)} / {(sheet.width * sheet.height / 1e6).toFixed(2)} {areaUnit(lang)} · {Math.round(sheet.utilization * 100)}%</small></div>
             <svg
               viewBox={`0 0 ${sheet.width} ${sheet.height}`}
               role="img"
@@ -1873,11 +1878,61 @@ export function App() {
                     : <b>{Math.round(cost.extras).toLocaleString()} EGP</b>
                   </small>
                 </div>
-                <details className="costStockDetails">
+                <details className="costStockDetails" open>
                   <summary>
                     {localized(lang, "Листы по фактическим материалам", "Sheets by actual material", "الألواح حسب الخامة الفعلية")}
                     <span>{cost.sheetCount}</span>
                   </summary>
+                  {(cost.front.batches || []).length > 1 && (
+                    <div className="materialSplitWarning">
+                      <b>
+                        {localized(
+                          lang,
+                          `Фасады разделены на ${cost.front.batches.length} цвета/материала`,
+                          `Fronts are split across ${cost.front.batches.length} finishes`,
+                          `الواجهات مقسمة إلى ${cost.front.batches.length} خامات/ألوان`,
+                        )}
+                      </b>
+                      <small>
+                        {(cost.front.batches || []).map((batch: any) =>
+                          `${decorLabel((DECORS as any)[batch.decor], lang) || batch.decor} ${String(batch.color || "").toUpperCase()}`,
+                        ).join(" · ")}
+                      </small>
+                      <span>
+                        {localized(
+                          lang,
+                          "Каждый цвет требует отдельного физического листа.",
+                          "Each colour requires a separate physical sheet.",
+                          "كل لون يحتاج إلى لوح منفصل.",
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProject((current: any) =>
+                            applyProjectFinish(
+                              updateProjectDefaults(current, {
+                                bodyDecor: "white",
+                                bodyColor: (DECORS as any).white.color,
+                                bodyMaterialId: "mfc18",
+                                frontDecor: "gray",
+                                frontColor: (DECORS as any).gray.color,
+                                frontMaterialId: "highGlossMdfPvc18",
+                                gloss: true,
+                              }),
+                            ),
+                          )
+                        }
+                      >
+                        {localized(
+                          lang,
+                          "Сделать: белый корпус + серый глянец",
+                          "Use white body + grey gloss fronts",
+                          "هيكل أبيض + واجهات رمادية لامعة",
+                        )}
+                      </button>
+                    </div>
+                  )}
                   <div className="costStockList">
                     {[
                       [localized(lang, "Корпус", "Body", "الهيكل"), cost.body.batches],

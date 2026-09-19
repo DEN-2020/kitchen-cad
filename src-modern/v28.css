@@ -445,7 +445,9 @@
 .sheetPlan>summary>strong{grid-column:3;grid-row:1;font-size:10px;margin-right:17px;white-space:nowrap}
 .sheetPlanTitle b,.sheetPlanTitle small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sheetPlanTitle b{font-size:9px}.sheetPlanTitle small{margin-top:2px;color:var(--muted);font-size:8px}
-.sheetMetrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:2px 0 8px;overflow:hidden;border-radius:7px;background:var(--divider)}
+.sheetUsage{position:relative;height:16px;margin:2px 0 6px;overflow:hidden;border-radius:999px;background:color-mix(in srgb,var(--muted) 22%,var(--field-bg))}
+.sheetUsage i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#70d59c))}.sheetUsage b{position:absolute;inset:0;display:grid;place-items:center;color:var(--text);font-size:8px;text-shadow:0 1px 2px var(--bg)}
+.sheetMetrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;margin:2px 0 8px;overflow:hidden;border-radius:7px;background:var(--divider)}
 .sheetMetrics span{padding:7px 5px;background:var(--surface);text-align:center;color:var(--muted);font-size:8px}
 .sheetMetrics b{display:block;margin-bottom:2px;color:var(--text);font-size:11px}
 .sheetMaps{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;padding:1px 0 6px}
@@ -460,4 +462,6 @@
 .offcutFit label{position:relative}.offcutFit input{width:100%;height:30px;padding:0 22px 0 6px;border:0;border-radius:5px;background:var(--field-bg);color:var(--text);font-size:10px}
 .offcutFit label small{position:absolute;right:4px;top:9px;font-size:7px}.offcutFit strong{color:var(--accent);white-space:nowrap;font-size:9px}
 .sheetPlan>.note{margin:7px 1px 10px}
+.materialSplitWarning{display:grid;gap:5px;margin:4px 0 8px;padding:9px;border-left:3px solid #d79b4b;border-radius:7px;background:color-mix(in srgb,#d79b4b 10%,var(--surface));font-size:9px}
+.materialSplitWarning small,.materialSplitWarning span{color:var(--muted);line-height:1.4}.materialSplitWarning button{min-height:36px;margin-top:2px;background:var(--accent);color:var(--bg);font-weight:800}
 @media(max-width:370px){.moduleTabs button{min-width:54px}.offcutFit{grid-template-columns:1fr 62px auto 62px}.offcutFit>strong{grid-column:1/-1;text-align:right}}
