@@ -14,10 +14,10 @@ test('v19 corner catalog exposes blind, diagonal and L-shaped variants',()=>{
 
 test('base cabinet leg height is independently editable',()=>{
  const m=createModule('base');
- assert.equal(m.height,720);
- assert.equal(m.feet,140);
+ assert.equal(m.height,780);
+ assert.equal(m.feet,100);
  m.feet=125;
- assert.equal(m.height+m.feet,845);
+ assert.equal(m.height+m.feet,905);
 });
 
 test('washing machine reference defaults remain 600 x 850',()=>{

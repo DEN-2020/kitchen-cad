@@ -8,11 +8,11 @@ let sequence = 0;
 export function newId(prefix='m') { return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now().toString(36)}-${++sequence}`; }
 
 const typeDefaults = {
-  base:{width:600,height:720,depth:560,feet:140}, drawer:{width:600,height:720,depth:560,feet:140,drawerCount:3}, sink:{width:600,height:720,depth:560,feet:140,shelfCount:0},
-  cornerBase:{width:900,height:720,depth:900,feet:140,doorCount:2},
-  cornerBaseBlind:{width:1000,height:720,depth:560,feet:140,doorCount:1,cornerOpening:450,cornerMuntinWidth:70},
-  cornerBaseDiagonal:{width:900,height:720,depth:900,feet:140,doorCount:1,cornerOpening:450,cornerWingDepth:600,cornerRunDepth:600},
-  cornerBaseL:{width:900,height:720,depth:900,feet:140,doorCount:2,cornerOpening:450,cornerWingDepth:600,cornerRunDepth:600},
+  base:{width:600,height:780,depth:560,feet:100}, drawer:{width:600,height:780,depth:560,feet:100,drawerCount:3}, sink:{width:600,height:780,depth:560,feet:100,shelfCount:0},
+  cornerBase:{width:900,height:780,depth:900,feet:100,doorCount:2},
+  cornerBaseBlind:{width:1000,height:780,depth:560,feet:100,doorCount:1,cornerOpening:450,cornerMuntinWidth:70},
+  cornerBaseDiagonal:{width:900,height:780,depth:900,feet:100,doorCount:1,cornerOpening:450,cornerWingDepth:600,cornerRunDepth:600},
+  cornerBaseL:{width:900,height:780,depth:900,feet:100,doorCount:2,cornerOpening:450,cornerWingDepth:600,cornerRunDepth:600},
   wall:{width:600,height:720,depth:320,elevation:1500}, cornerWall:{width:650,height:720,depth:650,elevation:1500,doorCount:2}, cornerWallBlind:{width:800,height:720,depth:320,elevation:1500,doorCount:1,cornerOpening:360,cornerMuntinWidth:70},
   cornerWallDiagonal:{width:650,height:720,depth:650,elevation:1500,doorCount:1,cornerOpening:360,cornerWingDepth:320,cornerRunDepth:320},
   cornerWallL:{width:650,height:720,depth:650,elevation:1500,doorCount:2,cornerOpening:320,cornerWingDepth:320,cornerRunDepth:320},

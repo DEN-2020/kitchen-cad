@@ -96,15 +96,28 @@ test("estimate separates consumed area from real whole-sheet procurement", () =>
   assert.ok(cost.procurementRangeHigh > cost.procurementRangeLow);
 });
 
-test("production gate blocks incomplete modules and missing purchase prices", () => {
+test("production gate blocks incomplete geometry but treats missing prices as estimate warnings", () => {
   const project = projectWith(createModule("drawer"));
   const model = buildProject(project);
   const audit = auditProductionReadiness(project, model, estimateProjectCost(project, model));
   const codes = new Set(audit.blockers.map((item) => item.code));
+  const warningCodes = new Set(audit.warnings.map((item) => item.code));
   assert.equal(audit.ready, false);
   assert.ok(codes.has("drawer-boxes-missing"));
-  assert.ok(codes.has("countertop-unpriced"));
-  assert.ok(codes.has("hardware-unpriced"));
+  assert.ok(!codes.has("countertop-unpriced"));
+  assert.ok(!codes.has("hardware-unpriced"));
+  assert.ok(warningCodes.has("countertop-unpriced"));
+  assert.ok(warningCodes.has("hardware-unpriced"));
+});
+
+test("missing prices do not block a geometrically complete cabinet", () => {
+  const project = projectWith(createModule("base"));
+  const model = buildProject(project);
+  const audit = auditProductionReadiness(project, model, estimateProjectCost(project, model));
+  assert.equal(audit.ready, true);
+  assert.equal(audit.blockers.length, 0);
+  assert.ok(audit.warnings.some((item) => item.code === "countertop-unpriced"));
+  assert.ok(audit.warnings.some((item) => item.code === "hardware-unpriced"));
 });
 
 test("production gate keeps every corner construction in draft status", () => {

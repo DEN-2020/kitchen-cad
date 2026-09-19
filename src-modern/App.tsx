@@ -1438,9 +1438,9 @@ export function App() {
                   <span>
                     {localized(
                       lang,
-                      `Предупреждений: ${productionAudit.warnings.length}. Экспорт с блокерами помечается как черновой.`,
-                      `Warnings: ${productionAudit.warnings.length}. Exports with blockers are drafts.`,
-                      `تحذيرات: ${productionAudit.warnings.length}. يتم تمييز التصدير الذي يحتوي على موانع كمسودة.`,
+                      `Технических примечаний: ${productionAudit.warnings.length}. Экспорт с блокирующими проверками помечается как черновой.`,
+                      `Technical notes: ${productionAudit.warnings.length}. Exports with blocking checks are drafts.`,
+                      `ملاحظات فنية: ${productionAudit.warnings.length}. يتم تمييز التصدير الذي يحتوي على فحوصات مانعة كمسودة.`,
                     )}
                   </span>
                 </div>
@@ -1976,7 +1976,7 @@ export function App() {
                       ? localized(lang, "Готово по автоматическим проверкам", "Automated checks passed", "تم اجتياز الفحوصات التلقائية")
                       : localized(lang, `Блокирующих проверок: ${productionAudit.blockers.length}`, `Blocking checks: ${productionAudit.blockers.length}`, `فحوصات مانعة: ${productionAudit.blockers.length}`)}
                   </b>
-                  <span>{localized(lang, `Предупреждений: ${productionAudit.warnings.length}`, `Warnings: ${productionAudit.warnings.length}`, `تحذيرات: ${productionAudit.warnings.length}`)}</span>
+                  <span>{localized(lang, `Примечаний: ${productionAudit.warnings.length}`, `Notes: ${productionAudit.warnings.length}`, `ملاحظات: ${productionAudit.warnings.length}`)}</span>
                 </div>
                 <div className="segmented costPresetSelector">
                   <button
@@ -2373,11 +2373,27 @@ export function App() {
                   }
                 }}
               />
-              {model.warnings.slice(0, 8).map((w: string, i: number) => (
-                <div className="warning" key={i}>
-                  {w}
-                </div>
-              ))}
+              {!!model.warnings.length && (
+                <details className="materialPriceDetails projectNotesDetails">
+                  <summary>
+                    {localized(lang, "Технические примечания", "Technical notes", "ملاحظات فنية")}
+                    <span>{model.warnings.length}</span>
+                  </summary>
+                  <p className="note">
+                    {localized(
+                      lang,
+                      "Это проверки и напоминания для цеха, а не список поломок. Красными блокерами считаются только ошибки геометрии.",
+                      "These are workshop checks and reminders, not a list of failures. Only geometry errors are blocking.",
+                      "هذه فحوصات وتذكيرات للورشة وليست أعطالاً. أخطاء الهندسة فقط هي المانعة.",
+                    )}
+                  </p>
+                  <div className="productionFindings">
+                    {model.warnings.map((w: string, i: number) => (
+                      <p className="warning" key={i}>{w}</p>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           ) : panel === "settings" ? (
             <div className="inspectorBody">

@@ -47,7 +47,10 @@ test("an embedded washer retains its round front-loading door geometry", () => {
   assert.ok(applianceObjects.some((object) => object.kind === "appliance-port" && object.shape === "disc"));
   assert.ok(applianceObjects.some((object) => object.kind === "appliance-glass" && object.shape === "disc"));
   assert.ok(applianceObjects.every((object) => object.applianceType === "washer"));
-  assert.equal(frontRail.center[1] - frontRail.size[1] / 2, 862);
+  assert.equal(
+    frontRail.center[1] - frontRail.size[1] / 2,
+    module.feet + module.height - module.board,
+  );
   assert.ok(frontRail.center[1] - frontRail.size[1] / 2 >= 850 + 10);
 });
 
@@ -115,7 +118,7 @@ test("hob body depth is checked above an appliance", () => {
   assert.ok(model.issues.some((issue) => issue.type === "appliance-hob-clearance"));
 });
 
-test("hob appliance bay braces the lowered front rail up to the countertop", () => {
+test("hob appliance bay uses a full-width vertical front rail up to the countertop", () => {
   const project = createProject();
   const module = createModule("base");
   module.applianceBay = "dishwasher";
@@ -147,14 +150,15 @@ test("hob appliance bay braces the lowered front rail up to the countertop", () 
   const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
   const leftBrace = model.parts.find((part) => part.id.endsWith("-FSL"));
   const rightBrace = model.parts.find((part) => part.id.endsWith("-FSR"));
-  const rearRail = model.parts.find((part) => part.id.endsWith("-RS"));
 
-  assert.deepEqual(leftBrace.size, [18, 34, 100]);
-  assert.deepEqual(rightBrace.size, [18, 34, 100]);
-  assert.deepEqual(leftBrace.edges, [0, module.bodyEdge, 0, 0]);
-  assert.deepEqual(rightBrace.edges, [0, module.bodyEdge, 0, 0]);
-  assert.equal(leftBrace.center[1] - leftBrace.size[1] / 2, frontRail.center[1] + frontRail.size[1] / 2);
-  assert.equal(rightBrace.center[1] + rightBrace.size[1] / 2, rearRail.center[1] + rearRail.size[1] / 2);
+  assert.deepEqual(frontRail.size, [618, 100, 18]);
+  assert.equal(
+    frontRail.center[1] + frontRail.size[1] / 2,
+    module.feet + module.height,
+  );
+  assert.equal(frontRail.center[2] + frontRail.size[2] / 2, module.depth);
+  assert.equal(leftBrace, undefined);
+  assert.equal(rightBrace, undefined);
   assert.equal(model.issues.some((issue) => issue.type === "fixture-part-collision"), false);
 });
 

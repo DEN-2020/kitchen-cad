@@ -75,8 +75,11 @@ test("corner filler adds a visible strip and a plinth return to the cut list", (
   const model = buildProject(project);
   const filler = model.parts.find((part) => part.id.endsWith("-CFL"));
   const plinthReturn = model.parts.find((part) => part.id.endsWith("-CPL"));
-  assert.deepEqual([filler.u, filler.v, filler.role], [40, 716, "front"]);
-  assert.deepEqual([plinthReturn.u, plinthReturn.v], [105, 130]);
+  assert.deepEqual(
+    [filler.u, filler.v, filler.role],
+    [40, cabinet.height - cabinet.gap * 2, "front"],
+  );
+  assert.deepEqual([plinthReturn.u, plinthReturn.v], [105, cabinet.feet - 10]);
 });
 
 test("an appliance-bay corner filler supports the front but still requires a neighbour for the rear rail", () => {
@@ -84,7 +87,7 @@ test("an appliance-bay corner filler supports the front but still requires a nei
   const bay = createModule("base");
   Object.assign(bay, {
     width: 636,
-    feet: 160,
+    feet: 100,
     legStyle: "hidden",
     applianceBay: "dishwasher",
     applianceWidth: 598,
@@ -112,7 +115,7 @@ test("a hood mounted only 470 mm above the worktop is a production blocker", () 
   const project = createProject();
   const cabinet = createModule("base");
   const hood = createModule("hood");
-  hood.elevation = 1350;
+  hood.elevation = 1370;
   project.modules = [cabinet, hood];
   project.fixtures = [createFixture("hob", cabinet.id)];
   const model = buildProject(project);
@@ -178,12 +181,12 @@ test("an approved hob appliance layout stays approved only for its current geome
   );
 });
 
-test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and horizontal front rail", () => {
+test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and vertical front rail", () => {
   const project = createProject();
   const cabinet = createModule("base");
   Object.assign(cabinet, {
     width: 636,
-    feet: 160,
+    feet: 100,
     applianceBay: "dishwasher",
     applianceWidth: 600,
     applianceHeight: 815,
@@ -200,8 +203,8 @@ test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and horiz
   const model = buildProject(project);
   const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
   const builtHob = model.fixtures.find((fixture) => fixture.id === hob.id);
-  assert.deepEqual(frontRail.size, [618, 18, 100]);
-  assert.equal(frontRail.center[1] - frontRail.size[1] / 2, 828);
+  assert.deepEqual(frontRail.size, [618, 100, 18]);
+  assert.equal(frontRail.center[1] + frontRail.size[1] / 2, 880);
   assert.equal(builtHob.collisions.length, 0);
   assert.equal(
     model.issues.some((issue) => issue.type === "fixture-part-collision"),

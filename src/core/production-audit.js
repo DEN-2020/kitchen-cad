@@ -44,7 +44,7 @@ export function auditProductionReadiness(project={},model={},cost={}){
     if(VISUAL_ONLY_FRONT_STYLES.has(module.frontStyle))add('blocker','front-style-visual-only','Рамка, стекло или рейки показаны визуально, но не разложены на отдельные материалы и детали.',module.id);
     if(module.backMode==='none'&&isWallMountedType(module.type))add('warning','backless-wall-reinforcement','Навесной шкаф без задника допустим только с монтажной шиной/навесами и защитой от перекоса; крепление и жёсткость проверить по стене.',module.id);
     else if(module.backMode==='none'&&['tall','tallOven'].includes(module.type))add('blocker','structural-back-missing','У пенала не задан задник/диагональная жёсткость и система крепления.',module.id);
-    else if(module.backMode==='none'&&!['sink','cornerBaseBlind'].includes(module.type))add('warning','back-missing','Задняя стенка не включена в деталировку и стоимость.',module.id);
+    else if(module.backMode==='none'&&!['sink','cornerBaseBlind'].includes(module.type)&&!['washer','dishwasher'].includes(module.applianceBay))add('warning','back-missing','Задняя стенка не включена в деталировку и стоимость.',module.id);
     if(['cornerBaseBlind','cornerWallBlind'].includes(module.type))add('warning','blind-corner-drilling','Проверить карту сверления монтажной стойки и конкретную петлю глухого угла.',module.id);
     if(['washer','dishwasher'].includes(module.applianceBay))add('warning','appliance-datasheet-required','Размеры проёма рассчитаны по введённым габаритам; перед распилом сверить точную модель техники и её монтажную схему.',module.id);
   }
@@ -52,11 +52,11 @@ export function auditProductionReadiness(project={},model={},cost={}){
   for(const warning of cost.materialWarnings||[])add('blocker','material-thickness',`${warning.materialName}: толщина детали ${warning.partThickness} мм не совпадает с продуктом ${warning.productThickness} мм.`);
   if((model.parts||[]).some(part=>part.role==='front'&&part.hingeSide))add('warning','machining-maps-missing','Координаты чашек петель и присадки не сформированы: перед заказом сверления нужна карта выбранной системы фурнитуры.');
   if((model.parts||[]).some(part=>part.role==='front'&&Number(part.u)>600))add('warning','wide-front-hinge-load','Есть фасад шире 600 мм. Количество и тип петель нужно проверить по массе, высоте и таблице производителя фурнитуры.');
-  if(cost.countertopPriced===false)add('blocker','countertop-unpriced','Столешница имеет нулевую цену и не входит в денежный итог закупки.');
+  if(cost.countertopPriced===false)add('warning','countertop-unpriced','Столешница имеет нулевую цену и не входит в денежный итог закупки. Геометрия и деталировка при этом остаются доступными.');
   if((project.fixtures||[]).length)add('warning','fixture-operations-unpriced','Вырезы, герметизация и монтаж раковины/варочной поверхности пока не имеют отдельной цены.');
   if((cost.unpricedHardware||[]).length){
-    const names=cost.unpricedHardware.map(row=>row.name).join(', '),severity=(Number(cost.hardwareFixed)||0)>0?'warning':'blocker';
-    add(severity,'hardware-unpriced',`Не заданы цены фурнитуры: ${names}.`);
+    const names=cost.unpricedHardware.map(row=>row.name).join(', ');
+    add('warning','hardware-unpriced',`Не заданы цены фурнитуры: ${names}. Это делает денежную смету неполной, но не блокирует геометрию напила.`);
   }
   if(modules.some(module=>isDisplayOnlyType(module.type)&&!['window','door'].includes(module.type)))add('warning','appliances-unpriced','Стоимость бытовой техники не входит в смету кухни.');
   if((cost.procurementTotal||0)>(cost.consumedTotal||cost.total||0)+1)add('warning','purchase-vs-consumption','Денежная закупка целыми листами выше стоимости фактически израсходованной площади; используй итог «к закупке».');
