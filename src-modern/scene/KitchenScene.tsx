@@ -231,26 +231,30 @@ function Surface({
       {!ghost && <EdgeBandVisual object={object} />}
       {object.role === "front" &&
         object.hingeSide &&
-        Array.from({ length: object.hingeCount || 2 }, (_, i) => {
-          const n = object.hingeCount || 2,
-            edge = Math.min(0.11, Math.max(0.07, size[1] * 0.12)),
-            yy =
-              n === 1
-                ? 0
-                : size[1] / 2 - edge - i * ((size[1] - 2 * edge) / (n - 1));
+        (object.hingeDrilling?.positionsFromTop ||
+          Array.from({ length: object.hingeCount || 2 }, (_, i) => {
+            const n = object.hingeCount || 2,
+              edge = Math.min(110, Math.max(70, object.v * 0.12));
+            return n === 1
+              ? object.v / 2
+              : edge + i * ((object.v - 2 * edge) / (n - 1));
+          })).map((fromTop: number, i: number) => {
+          const cupCenter = mm(object.hingeDrilling?.cupCenterFromEdge || 20.5),
+            yy = size[1] / 2 - mm(fromTop);
           return (
             <mesh
               key={`hinge-${i}`}
               position={[
                 object.hingeSide === "left"
-                  ? -size[0] / 2 + 0.018
-                  : size[0] / 2 - 0.018,
+                  ? -size[0] / 2 + cupCenter
+                  : size[0] / 2 - cupCenter,
                 yy,
-                size[2] / 2 + 0.006,
+                -size[2] / 2 - 0.001,
               ]}
+              rotation={[Math.PI / 2, 0, 0]}
             >
-              <boxGeometry args={[0.016, 0.045, 0.009]} />
-              <meshBasicMaterial color="#6d54d9" />
+              <cylinderGeometry args={[0.0175, 0.0175, 0.002, 24]} />
+              <meshBasicMaterial color="#6d54d9" transparent opacity={0.9} />
             </mesh>
           );
         })}

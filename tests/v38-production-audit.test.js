@@ -79,11 +79,35 @@ test("automatic hardware bill follows fronts, shelves and visible supports", () 
   const project = projectWith(module);
   const model = buildProject(project);
   const bill = Object.fromEntries(buildHardwareBill(project, model).map((row) => [row.id, row.quantity]));
-  assert.equal(bill.fastenerSet, 1);
+  assert.equal(bill.carcassScrew, 20);
   assert.equal(bill.hinge, 2);
+  assert.equal(bill.hingeScrew, 8);
   assert.equal(bill.handle, 1);
+  assert.equal(bill.handleScrew, 2);
   assert.equal(bill.shelfPin, 4);
   assert.equal(bill.leg, 4);
+  assert.equal(bill.legScrew, 16);
+  assert.equal(bill.countertopBracket, 2);
+  assert.equal(bill.bracketScrew, 8);
+});
+
+test("fronts carry workshop hinge drilling marks and handle-free projects show an optional handle count", () => {
+  const module = createModule("base");
+  module.doorCount = 2;
+  module.handleStyle = "none";
+  const project = projectWith(module);
+  const model = buildProject(project);
+  const fronts = model.parts.filter((part) => part.role === "front" && part.hingeSide);
+  assert.equal(fronts.length, 2);
+  for (const front of fronts) {
+    assert.equal(front.hingeCount, 2);
+    assert.equal(front.hingeDrilling.cupDiameter, 35);
+    assert.equal(front.hingeDrilling.cupCenterFromEdge, 20.5);
+    assert.equal(front.hingeDrilling.positionsFromTop.length, 2);
+  }
+  const handles = buildHardwareBill(project, model).find((row) => row.id === "handle");
+  assert.equal(handles.quantity, 0);
+  assert.equal(handles.optionalQuantity, 2);
 });
 
 test("estimate separates consumed area from real whole-sheet procurement", () => {
@@ -107,7 +131,7 @@ test("production gate blocks incomplete geometry but treats missing prices as es
   assert.ok(!codes.has("countertop-unpriced"));
   assert.ok(!codes.has("hardware-unpriced"));
   assert.ok(warningCodes.has("countertop-unpriced"));
-  assert.ok(warningCodes.has("hardware-unpriced"));
+  assert.ok(!warningCodes.has("hardware-unpriced"));
 });
 
 test("missing prices do not block a geometrically complete cabinet", () => {
@@ -117,7 +141,7 @@ test("missing prices do not block a geometrically complete cabinet", () => {
   assert.equal(audit.ready, true);
   assert.equal(audit.blockers.length, 0);
   assert.ok(audit.warnings.some((item) => item.code === "countertop-unpriced"));
-  assert.ok(audit.warnings.some((item) => item.code === "hardware-unpriced"));
+  assert.ok(!audit.warnings.some((item) => item.code === "hardware-unpriced"));
 });
 
 test("production gate keeps every corner construction in draft status", () => {

@@ -8,7 +8,7 @@ export const DEFAULT_MATERIAL_PRICES=Object.freeze(Object.fromEntries(
 
 export const DEFAULT_COSTING=Object.freeze({
   currency:'EGP',wastePercent:15,materialPrices:DEFAULT_MATERIAL_PRICES,
-  hardwarePrices:DEFAULT_HARDWARE_PRICES,
+  hardwarePrices:DEFAULT_HARDWARE_PRICES,hardwarePriceVersion:1,
   sawKerf:4,sheetEdgeTrim:10,
   cuttingPerSheet:100,serviceBase:300,edge08PerM:12,edge2PerM:25,
   countertopPerM:0,hardwareFixed:0,extraCost:0,uncertaintyPercent:12,
@@ -26,7 +26,8 @@ const areaM2=part=>Math.max(0,n(part.u,0))*Math.max(0,n(part.v,0))/1e6;
 export function normalizedCosting(project={}){
   const raw=project.costing||{},c={...DEFAULT_COSTING,...raw};
   c.materialPrices={...DEFAULT_MATERIAL_PRICES,...(raw.materialPrices||{})};
-  c.hardwarePrices={...DEFAULT_HARDWARE_PRICES,...(raw.hardwarePrices||{})};
+  const savedHardwarePrices=raw.hardwarePriceVersion===1?(raw.hardwarePrices||{}):Object.fromEntries(Object.entries(raw.hardwarePrices||{}).filter(([,value])=>Number(value)>0));
+  c.hardwarePrices={...DEFAULT_HARDWARE_PRICES,...savedHardwarePrices};c.hardwarePriceVersion=1;
   // Compatibility for projects saved before the EGP/m² model.
   if(!raw.materialPrices){
     const legacyArea=Math.max(.01,n(raw.sheetWidth,2440)*n(raw.sheetHeight,1220)/1e6);

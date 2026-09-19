@@ -85,6 +85,7 @@ import {
   type Lang,
 } from "./i18n";
 import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
+import { hardwareProductLabel, hardwareUnitLabel } from "../src/core/hardware.js";
 import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
 import { applianceBayMeasurements, applianceHobApprovalSignature } from "../src/core/appliance-bay.js";
 import { auditProductionReadiness, cornerProductionSignature } from "../src/core/production-audit.js";
@@ -626,6 +627,7 @@ export function App() {
     patchHardwarePrice = (id: string, price: number) =>
       patchCost({
         hardwarePrices: { ...cost.settings.hardwarePrices, [id]: price },
+        hardwarePriceVersion: 1,
       }),
     applyCostPreset = (id: keyof typeof COST_PRESETS) =>
       setProject((p: any) => applyMaterialPreset(p, id)),
@@ -1737,7 +1739,7 @@ export function App() {
                         <NumberField
                           key={row.id}
                           compact
-                          label={`${row.name} · ${row.quantity} ${row.unit}`}
+                          label={`${hardwareProductLabel(row, lang)} · ${row.quantity} ${hardwareUnitLabel(row, lang)}${row.cost ? ` · ${Math.round(row.cost).toLocaleString()} EGP` : ""}${row.optionalQuantity ? ` · ${localized(lang, "опция", "optional", "اختياري")} ${row.optionalQuantity} (${Math.round(row.optionalCost).toLocaleString()} EGP)` : ""}`}
                           value={row.unitPrice}
                           unit="EGP"
                           min={0}
@@ -1749,9 +1751,9 @@ export function App() {
                     <p className="note">
                       {localized(
                         lang,
-                        "Количество считается автоматически. Поле «Фурнитура» выше остаётся резервом на позиции, которых ещё нет в каталоге.",
-                        "Quantities are automatic. The fixed hardware field remains an allowance for uncatalogued items.",
-                        "تحسب الكميات تلقائياً، ويبقى حقل الإكسسوارات الثابت احتياطياً للعناصر غير الموجودة في الكتالوج.",
+                        "Количество считается автоматически. Цены — редактируемый ориентир онлайн-розницы Египта на 19.09.2026; опциональные ручки не входят в итог, пока не выбраны у модулей.",
+                        "Quantities are automatic. Prices are editable Egypt online-retail references checked 19 Sep 2026; optional handles stay outside the total until selected on modules.",
+                        "تحسب الكميات تلقائياً. الأسعار تقديرية وقابلة للتعديل لمتاجر مصر بتاريخ 19-09-2026؛ المقابض الاختيارية لا تدخل في الإجمالي حتى اختيارها للوحدات.",
                       )}
                     </p>
                   </details>

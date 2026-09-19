@@ -7,7 +7,7 @@ export function hingeCountForHeight(height,override){
  return 5;
 }
 export function hingePositionsForHeight(height,count){
- const h=Math.max(1,Number(height)||1),n=Math.max(1,Math.round(Number(count)||1)),edge=Math.min(110,Math.max(70,h*.12));
+ const h=Math.max(1,Number(height)||1),n=Math.max(1,Math.round(Number(count)||1)),edge=Math.min(110,Math.max(70,Math.round(h*.12/5)*5));
  if(n===1)return[h/2];
  const usable=Math.max(0,h-2*edge),step=n>1?usable/(n-1):0;
  return Array.from({length:n},(_,i)=>edge+i*step);
