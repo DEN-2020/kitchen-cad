@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildProject } from "../src/core/parts.js";
+import { estimateProjectCost } from "../src/core/cost.js";
 import { createModule, createProject } from "../src/core/project.js";
 
 test("a self-supporting appliance bay keeps side panels and a clear 600 mm opening", () => {
@@ -25,7 +26,8 @@ test("a self-supporting appliance bay keeps side panels and a clear 600 mm openi
   assert.deepEqual(parts.find((part) => part.id.endsWith("-SR")).edges, [0, module.bodyEdge, 0, 0]);
   assert.deepEqual(rearRail.edges, [0, 0, 0, 0]);
   assert.equal(parts.some((part) => part.name.includes("Дно")), false);
-  assert.equal(parts.some((part) => part.role === "front"), false);
+  assert.equal(parts.some((part) => part.role === "front" && part.hingeSide), false);
+  assert.ok(parts.some((part) => part.name === "Съёмная декоративная планка над техникой"));
   assert.ok(model.objects.some((object) => object.moduleId === module.id && object.embeddedAppliance));
   assert.equal(model.issues.some((issue) => issue.type === "appliance-bay-fit"), false);
 });
@@ -118,7 +120,7 @@ test("hob body depth is checked above an appliance", () => {
   assert.ok(model.issues.some((issue) => issue.type === "appliance-hob-clearance"));
 });
 
-test("hob appliance bay uses a full-width vertical front rail up to the countertop", () => {
+test("hob appliance bay uses a lowered horizontal front rail and removable filler", () => {
   const project = createProject();
   const module = createModule("base");
   module.applianceBay = "dishwasher";
@@ -147,16 +149,28 @@ test("hob appliance bay uses a full-width vertical front rail up to the countert
   }];
 
   const model = buildProject(project);
+  const cost = estimateProjectCost(project, model);
   const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
+  const applianceFiller = model.parts.find((part) => part.id.endsWith("-AF"));
+  const applianceBody = model.objects.find(
+    (object) => object.embeddedAppliance && object.kind === "appliance",
+  );
   const leftBrace = model.parts.find((part) => part.id.endsWith("-FSL"));
   const rightBrace = model.parts.find((part) => part.id.endsWith("-FSR"));
 
-  assert.deepEqual(frontRail.size, [618, 100, 18]);
+  assert.deepEqual(frontRail.size, [618, 18, 100]);
   assert.equal(
     frontRail.center[1] + frontRail.size[1] / 2,
-    module.feet + module.height,
+    module.feet + module.height - (60 - 6 - project.countertop.thickness),
   );
   assert.equal(frontRail.center[2] + frontRail.size[2] / 2, module.depth);
+  assert.deepEqual(frontRail.edges, [0, 0, 0, 0]);
+  assert.deepEqual(applianceFiller.size, [618, 60, 18]);
+  assert.equal(applianceFiller.center[1] + applianceFiller.size[1] / 2, 880);
+  assert.equal(applianceFiller.center[1] - applianceFiller.size[1] / 2, 820);
+  assert.deepEqual(applianceFiller.edges, [0, 0, module.frontEdge, 0]);
+  assert.equal(cost.edge.front.meters2, 0.618);
+  assert.equal(applianceBody.center[2] + applianceBody.size[2] / 2, module.depth);
   assert.equal(leftBrace, undefined);
   assert.equal(rightBrace, undefined);
   assert.equal(model.issues.some((issue) => issue.type === "fixture-part-collision"), false);

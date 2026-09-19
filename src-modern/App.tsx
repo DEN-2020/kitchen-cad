@@ -2650,6 +2650,11 @@ export function App() {
                         ? "Подписи и разнесение относятся только к деталям раскроя. Ручки и опоры остаются видимыми, но не входят в список напила."
                         : "Labels and exploded spacing apply only to cut parts. Handles and supports stay visible but are not part of the cut list."}
                     </p>
+                    <div className="edgeLegend" aria-label={localized(lang, "Обозначение кромки", "Edge-band legend", "دليل حواف الشريط")}>
+                      <span className="edge08">0.8 {mmUnit(lang)}</span>
+                      <span className="edge2">2 {mmUnit(lang)}</span>
+                      <span className="edgeNone">{localized(lang, "без кромки", "no edge", "بدون حافة")}</span>
+                    </div>
                   </section>
                   {selectedPart && (
                     <section>
@@ -2693,10 +2698,10 @@ export function App() {
                       </div>
                       <p className="note">
                         {lang === "ru"
-                          ? "Изменение сразу пересчитывает заготовку и печать."
+                          ? "Изменение сразу пересчитывает заготовку и печать. Голубая линия в 3D — кромка 0,8 мм, оранжевая — 2 мм; отсутствие линии означает торец без кромки."
                           : lang === "ar"
-                            ? "يتم تحديث مقاس القص والطباعة فوراً."
-                            : "Updates blank size and print immediately."}
+                            ? "يتم تحديث مقاس القص والطباعة فوراً. الخط الأزرق في العرض ثلاثي الأبعاد يعني حافة 0.8 مم، والبرتقالي 2 مم، وعدم وجود خط يعني بدون حافة."
+                            : "Blank size and print update immediately. Cyan in 3D means 0.8 mm edge band, orange means 2 mm; no line means no edge band."}
                       </p>
                     </section>
                   )}
@@ -2721,9 +2726,21 @@ export function App() {
                           <b>{p.name}</b>
                           <small>
                             {p.u} × {p.v} × {p.thickness} {mmUnit(lang)} · {p.substrate} ·{" "}
-                            {p.edgeType || ""} · L/R/T/B{" "}
-                            {p.edges?.join("/") || "0/0/0/0"} · {p.id}
+                            {p.edgeType || ""} · {p.id}
                           </small>
+                          <span className="partEdgeBadges">
+                            {(["U−", "U+", "V−", "V+"] as const).map((side, i) => {
+                              const value = Number(p.edges?.[i]) || 0;
+                              return (
+                                <i
+                                  key={side}
+                                  className={value >= 1.5 ? "edge2" : value > 0 ? "edge08" : "edgeNone"}
+                                >
+                                  {side} {value > 0 ? `${value} ${mmUnit(lang)}` : "—"}
+                                </i>
+                              );
+                            })}
+                          </span>
                         </span>
                       </button>
                     ))}

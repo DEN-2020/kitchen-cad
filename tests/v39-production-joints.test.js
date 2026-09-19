@@ -181,7 +181,7 @@ test("an approved hob appliance layout stays approved only for its current geome
   );
 });
 
-test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and vertical front rail", () => {
+test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and horizontal front rail", () => {
   const project = createProject();
   const cabinet = createModule("base");
   Object.assign(cabinet, {
@@ -202,9 +202,13 @@ test("a 900 mm finished worktop height clears a 60 mm hob, dishwasher, and verti
   project.fixtures = [hob];
   const model = buildProject(project);
   const frontRail = model.parts.find((part) => part.id.endsWith("-FS"));
+  const applianceFiller = model.parts.find((part) => part.id.endsWith("-AF"));
   const builtHob = model.fixtures.find((fixture) => fixture.id === hob.id);
-  assert.deepEqual(frontRail.size, [618, 100, 18]);
-  assert.equal(frontRail.center[1] + frontRail.size[1] / 2, 880);
+  assert.deepEqual(frontRail.size, [618, 18, 100]);
+  assert.equal(frontRail.center[1] + frontRail.size[1] / 2, 846);
+  assert.deepEqual(applianceFiller.size, [618, 60, 18]);
+  assert.equal(applianceFiller.center[1] - applianceFiller.size[1] / 2, 820);
+  assert.equal(applianceFiller.center[1] + applianceFiller.size[1] / 2, 880);
   assert.equal(builtHob.collisions.length, 0);
   assert.equal(
     model.issues.some((issue) => issue.type === "fixture-part-collision"),

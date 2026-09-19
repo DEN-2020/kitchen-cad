@@ -19,6 +19,7 @@ import { jointLinePoints } from "../../src/core/countertop-joints.js";
 import { doorHingeFrame, objectInDoorFrame } from "../../src/core/door-motion.js";
 import { clampPoseToRoom } from "../../src/core/placement.js";
 import { cinematicCameraPose } from "../../src/core/showroom-path.js";
+import { edgeVisualSegments } from "../../src/core/edge-visuals.js";
 import type { DimensionDetail, Selection, ViewMode } from "../domain/core";
 const mm = (v: number) => v / 1000,
   skinTypes = new Set(["washer", "dishwasher", "oven", "fridge"]),
@@ -120,6 +121,26 @@ function FixtureVisual({ object }: { object: any }) {
     </group>
   );
 }
+function EdgeBandVisual({ object }: { object: any }) {
+  const segments = useMemo(
+    () => edgeVisualSegments(object),
+    [object.kind, object.u, object.v, object.thickness, object.size, object.edges],
+  );
+  return (
+    <>
+      {segments.map((segment: any) => (
+        <mesh
+          key={segment.key}
+          position={segment.position.map(mm) as [number, number, number]}
+          renderOrder={6}
+        >
+          <boxGeometry args={segment.size.map(mm) as [number, number, number]} />
+          <meshBasicMaterial color={segment.color} toneMapped={false} />
+        </mesh>
+      ))}
+    </>
+  );
+}
 function Surface({
   object,
   selected = false,
@@ -207,6 +228,7 @@ function Surface({
         opacity={ghost ? 0.2 : glass ? 0.55 : 1}
         depthWrite={!ghost}
       />
+      {!ghost && <EdgeBandVisual object={object} />}
       {object.role === "front" &&
         object.hingeSide &&
         Array.from({ length: object.hingeCount || 2 }, (_, i) => {
