@@ -2772,8 +2772,8 @@ export function App() {
                     </div>
                     <p className="note">
                       {lang === "ru"
-                        ? "PDF использует текущий ракурс 3D как снимок сцены, а размеры вынесены на отдельные ортографические виды."
-                        : "PDF uses the current 3D camera as a scene snapshot, with dimensions on separate orthographic views."}
+                        ? "Разнос влияет только на PNG. PDF содержит только карты каждой детали: размеры, материал, кромки и сверление петель."
+                        : "Explode affects PNG only. PDF contains part cards only: dimensions, material, edges and hinge drilling."}
                     </p>
                   </section>
                   <div className="exportGrid">
