@@ -50,7 +50,8 @@ export function auditProductionReadiness(project={},model={},cost={}){
   }
   for(const warning of cost.stockWarnings||[])add('blocker','stock-unplaced',`Деталь ${warning.id||warning.name||''} не помещается в выбранный формат листа.`);
   for(const warning of cost.materialWarnings||[])add('blocker','material-thickness',`${warning.materialName}: толщина детали ${warning.partThickness} мм не совпадает с продуктом ${warning.productThickness} мм.`);
-  if((model.parts||[]).some(part=>part.role==='front'&&part.hingeSide))add('warning','machining-maps-missing','Координаты чашек петель и присадки не сформированы: перед заказом сверления нужна карта выбранной системы фурнитуры.');
+  const hingedFronts=(model.parts||[]).filter(part=>part.role==='front'&&part.hingeSide);
+  if(hingedFronts.some(part=>!part.hingeDrilling||!Array.isArray(part.hingeDrilling.positionsFromTop)||!part.hingeDrilling.positionsFromTop.length))add('warning','machining-maps-missing','Координаты чашек петель и присадки не сформированы: перед заказом сверления нужна карта выбранной системы фурнитуры.');
   if((model.parts||[]).some(part=>part.role==='front'&&part.hingeSide&&Number(part.u)>600))add('warning','wide-front-hinge-load','Есть фасад шире 600 мм. Количество и тип петель нужно проверить по массе, высоте и таблице производителя фурнитуры.');
   if(cost.countertopPriced===false)add('warning','countertop-unpriced','Столешница имеет нулевую цену и не входит в денежный итог закупки. Геометрия и деталировка при этом остаются доступными.');
   if((project.fixtures||[]).length)add('warning','fixture-operations-unpriced','Вырезы, герметизация и монтаж раковины/варочной поверхности пока не имеют отдельной цены.');

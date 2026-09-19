@@ -79,7 +79,7 @@ test("automatic hardware bill follows fronts, shelves and visible supports", () 
   const project = projectWith(module);
   const model = buildProject(project);
   const bill = Object.fromEntries(buildHardwareBill(project, model).map((row) => [row.id, row.quantity]));
-  assert.equal(bill.carcassScrew, 20);
+  assert.equal(bill.carcassScrew, 8);
   assert.equal(bill.hinge, 2);
   assert.equal(bill.hingeScrew, 8);
   assert.equal(bill.handle, 1);
@@ -110,6 +110,13 @@ test("fronts carry workshop hinge drilling marks and handle-free projects show a
   assert.equal(handles.quantity, 0);
   assert.equal(handles.optionalQuantity, 2);
   assert.equal(handleScrews.optionalQuantity, 4);
+});
+
+test("production audit accepts generated hinge machining maps", () => {
+  const project = projectWith(createModule("base"));
+  const model = buildProject(project);
+  const audit = auditProductionReadiness(project, model, estimateProjectCost(project, model));
+  assert.equal(audit.warnings.some((item) => item.code === "machining-maps-missing"), false);
 });
 
 test("estimate separates consumed area from real whole-sheet procurement", () => {

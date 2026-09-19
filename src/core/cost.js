@@ -8,7 +8,7 @@ export const DEFAULT_MATERIAL_PRICES=Object.freeze(Object.fromEntries(
 
 export const DEFAULT_COSTING=Object.freeze({
   currency:'EGP',wastePercent:15,materialPrices:DEFAULT_MATERIAL_PRICES,
-  hardwarePrices:DEFAULT_HARDWARE_PRICES,hardwarePriceVersion:1,
+  hardwarePrices:DEFAULT_HARDWARE_PRICES,hardwarePriceVersion:2,
   sawKerf:4,sheetEdgeTrim:10,
   cuttingPerSheet:100,serviceBase:300,edge08PerM:12,edge2PerM:25,
   countertopPerM:0,hardwareFixed:0,extraCost:0,uncertaintyPercent:12,
@@ -26,8 +26,8 @@ const areaM2=part=>Math.max(0,n(part.u,0))*Math.max(0,n(part.v,0))/1e6;
 export function normalizedCosting(project={}){
   const raw=project.costing||{},c={...DEFAULT_COSTING,...raw};
   c.materialPrices={...DEFAULT_MATERIAL_PRICES,...(raw.materialPrices||{})};
-  const savedHardwarePrices=raw.hardwarePriceVersion===1?(raw.hardwarePrices||{}):Object.fromEntries(Object.entries(raw.hardwarePrices||{}).filter(([,value])=>Number(value)>0));
-  c.hardwarePrices={...DEFAULT_HARDWARE_PRICES,...savedHardwarePrices};c.hardwarePriceVersion=1;
+  const savedHardwarePrices=raw.hardwarePriceVersion===2?(raw.hardwarePrices||{}):{};
+  c.hardwarePrices={...DEFAULT_HARDWARE_PRICES,...savedHardwarePrices};c.hardwarePriceVersion=2;
   // Compatibility for projects saved before the EGP/m² model.
   if(!raw.materialPrices){
     const legacyArea=Math.max(.01,n(raw.sheetWidth,2440)*n(raw.sheetHeight,1220)/1e6);
@@ -90,6 +90,6 @@ export function estimateProjectCost(project,model){
   const c=normalizedCosting(project),parts=Array.isArray(model?.parts)?model.parts:[],bodyParts=group(parts,'body'),frontParts=group(parts,'front'),backParts=group(parts,'back'),body=materialsFor(bodyParts,'body',c),front=materialsFor(frontParts,'front',c,{includeFinish:true}),back=materialsFor(backParts,'back',c),bodyEdge=edgeSummary(bodyParts,c),frontEdge=edgeSummary(frontParts,c),backEdge=edgeSummary(backParts,c),edgeCost=bodyEdge.cost+frontEdge.cost+backEdge.cost,edge08=bodyEdge.meters08+frontEdge.meters08+backEdge.meters08,edge2=bodyEdge.meters2+frontEdge.meters2+backEdge.meters2,sheetCount=body.sheets+front.sheets+back.sheets,cutting=sheetCount*c.cuttingPerSheet+c.serviceBase,ctLength=countertopLength(model),countertop=ctLength>0&&c.countertopPerM>0?ctLength/1000*c.countertopPerM:0,hardwareBill=priceHardwareBill(buildHardwareBill(project,model),c.hardwarePrices),hardwareAuto=hardwareBill.reduce((sum,row)=>sum+row.cost,0),hardware=c.hardwareFixed+hardwareAuto,extras=c.extraCost,materials=body.cost+front.cost+back.cost,unc=c.uncertaintyPercent/100;
   const materialWarnings=[...body.batches,...front.batches,...back.batches].filter(batch=>batch.thicknessMismatch).map(batch=>({materialProductId:batch.materialProductId,materialName:batch.materialName,partThickness:batch.thickness,productThickness:batch.productThickness}));
   const purchaseMaterials=body.purchaseCost+front.purchaseCost+back.purchaseCost,stockWarnings=[...body.batches,...front.batches,...back.batches].flatMap(batch=>batch.stockPlan.unplaced.map(part=>({materialProductId:batch.materialProductId,materialName:batch.materialName,...part})));
-  const common=edgeCost+cutting+countertop+hardware+extras,total=materials+common,procurementTotal=purchaseMaterials+common,rangeLow=Math.max(0,total*(1-unc)),rangeHigh=total*(1+unc),procurementRangeLow=Math.max(0,procurementTotal*(1-unc)),procurementRangeHigh=procurementTotal*(1+unc),unpricedHardware=hardwareBill.filter(row=>row.quantity>0&&row.unitPrice<=0);
+  const common=edgeCost+cutting+countertop+hardware+extras,total=materials+common,procurementTotal=purchaseMaterials+common,rangeLow=Math.max(0,total*(1-unc)),rangeHigh=total*(1+unc),procurementRangeLow=Math.max(0,procurementTotal*(1-unc)),procurementRangeHigh=procurementTotal*(1+unc),unpricedHardware=hardwareBill.filter(row=>row.quantity>0&&row.unitPrice<=0&&!(row.includedWith&&hardwareBill.some(parent=>parent.id===row.includedWith&&parent.unitPrice>0)));
   return{settings:c,body,front,back,sheetCount,materials,purchaseMaterials,stockWarnings,materialWarnings,edge:{meters08:edge08,meters2:edge2,meters:edge08+edge2,cost:edgeCost,body:bodyEdge,front:frontEdge,back:backEdge},cutting,countertop,countertopLength:ctLength,hardware,hardwareFixed:c.hardwareFixed,hardwareAuto,hardwareBill,unpricedHardware,extras,total,consumedTotal:total,procurementTotal,rangeLow,rangeHigh,procurementRangeLow,procurementRangeHigh,countertopPriced:ctLength===0||c.countertopPerM>0};
 }

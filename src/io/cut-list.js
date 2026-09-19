@@ -1,10 +1,11 @@
 import { SUBSTRATES, DECORS, MATERIAL_PRODUCTS } from '../catalog/materials.js';
 const csvCell = value => '"'+String(value).replaceAll('"','""')+'"';
 export function cutListCSV(parts){
-  const rows=[['ID','Модуль','Деталь','Материал','Декор','Кол-во','Готовая U мм','Готовая V мм','Толщина мм','Заготовка U мм','Заготовка V мм','Кромка U-','Кромка U+','Кромка V-','Кромка V+','Волокна']];
+  const rows=[['ID','Модуль','Деталь','Материал','Декор','Кол-во','Готовая U мм','Готовая V мм','Толщина мм','Заготовка U мм','Заготовка V мм','Кромка U-','Кромка U+','Кромка V-','Кромка V+','Волокна','Петли сторона','Чашка Ø мм','Глубина чашки мм','Центр от кромки мм','Центры от верха мм']];
   for(const p of parts){
     const material=MATERIAL_PRODUCTS[p.materialProductId]?.name||SUBSTRATES[p.substrate]?.name||p.substrate;
-    rows.push([p.id,p.moduleCode,p.name,material,DECORS[p.decor]?.name||p.decor,1,p.u,p.v,p.thickness,p.blankU,p.blankV,...p.edges,p.grain.toUpperCase()]);
+    const drill=p.hingeDrilling||{};
+    rows.push([p.id,p.moduleCode,p.name,material,DECORS[p.decor]?.name||p.decor,1,p.u,p.v,p.thickness,p.blankU,p.blankV,...p.edges,p.grain.toUpperCase(),p.hingeSide||'',drill.cupDiameter||'',drill.cupDepth||'',drill.cupCenterFromEdge||'',(drill.positionsFromTop||[]).join(' / ')]);
   }
   return '\ufeff'+rows.map(row=>row.map(csvCell).join(';')).join('\r\n');
 }

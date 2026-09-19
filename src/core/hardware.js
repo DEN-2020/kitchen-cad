@@ -5,7 +5,7 @@ const product=(id,ru,en,ar,unit='шт.')=>{const units=unit==='м'?{ru:'м',en:'
 
 export const HARDWARE_PRODUCTS = Object.freeze({
   hinge: product('hinge','Петля с ответной планкой','Hinge with mounting plate','مفصلة مع قاعدة'),
-  hingeScrew: product('hingeScrew','Саморез петли 4×16','Hinge screw 4×16','برغي مفصلة 4×16'),
+  hingeScrew: Object.freeze({...product('hingeScrew','Саморез петли 4×16 (обычно в комплекте)','Hinge screw 4×16 (normally included)','برغي مفصلة 4×16 (عادة ضمن الطقم)'),includedWith:'hinge'}),
   handle: product('handle','Ручка','Handle','مقبض'),
   handleScrew: product('handleScrew','Винт ручки M4','Handle screw M4','برغي مقبض M4'),
   leg: product('leg','Пластиковая регулируемая опора','Adjustable plastic leg','رِجل بلاستيكية قابلة للتعديل'),
@@ -23,10 +23,10 @@ export const HARDWARE_PRODUCTS = Object.freeze({
 });
 
 // Editable Egypt online-retail reference prices, checked 2026-09-19.
-// Small fasteners are deliberately conservative retail estimates, not wholesale quotes.
+// Pack prices are normalized to one item. Hinge packs normally include their screws.
 export const DEFAULT_HARDWARE_PRICES = Object.freeze({
-  hinge:120,hingeScrew:6,handle:85,handleScrew:6,leg:27,legScrew:6,
-  plinthClip:15,countertopBracket:5,bracketScrew:6,carcassScrew:8,
+  hinge:70,hingeScrew:0,handle:35,handleScrew:1,leg:27,legScrew:1.5,
+  plinthClip:15,countertopBracket:5,bracketScrew:1.5,carcassScrew:2,
   moduleConnector:12,drawerRunnerPair:350,shelfPin:5,wallHangerPair:250,
   wallRailM:160,wallAnchor:15,
 });
@@ -54,6 +54,17 @@ function adjacentPairCount(modules=[]){
   return pairs;
 }
 
+function carcassFastenerCount(parts=[]){
+  let count=0;
+  for(const part of parts){
+    const id=String(part.id||'');
+    if(/-(BT|TP)$/.test(id))count+=4; // two fasteners into each side panel
+    else if(/-(RF|RR|FS|RS)$/.test(id))count+=2; // one at each end of a narrow rail
+    else if(/-(BF|MS)$/.test(id))count+=4; // blind panel / hinge mounting partition
+  }
+  return Math.max(8,count);
+}
+
 /** Quantity-first hardware BOM. Fastener counts are workshop estimates and stay editable. */
 export function buildHardwareBill(project={},model={}){
   const rows=new Map(),modules=Array.isArray(model.modules)?model.modules:(project.modules||[]),parts=Array.isArray(model.parts)?model.parts:[],objects=Array.isArray(model.objects)?model.objects:[],structuralModules=modules.filter(module=>!isDisplayOnlyType(module.type));
@@ -63,8 +74,8 @@ export function buildHardwareBill(project={},model={}){
     if(moduleId&&!row.moduleIds.includes(moduleId))row.moduleIds.push(moduleId);rows.set(id,row);
   };
   for(const module of structuralModules){
-    const moduleParts=parts.filter(part=>part.moduleId===module.id),assemblyParts=moduleParts.filter(part=>part.role==='body'&&!/-SH\d+$/.test(String(part.id))&&!/-(PL|CP[LR]|CF[LR])$/.test(String(part.id)));
-    add('carcassScrew',Math.max(8,assemblyParts.length*4),module.id);
+    const moduleParts=parts.filter(part=>part.moduleId===module.id);
+    add('carcassScrew',carcassFastenerCount(moduleParts),module.id);
     if(module.type==='drawer')add('drawerRunnerPair',Math.max(1,Math.min(6,Math.round(Number(module.drawerCount)||3))),module.id);
     if(isWallMountedType(module.type)){
       add('wallHangerPair',1,module.id);add('wallRailM',Math.max(0,Number(module.width)||0)/1000,module.id);add('wallAnchor',2,module.id);
