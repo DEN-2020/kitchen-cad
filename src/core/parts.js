@@ -79,11 +79,11 @@ export function buildProject(project){
    add('UTP','Крышка шкафа с нишей СВЧ',inner,bodyD,t,[0,0,0,m.bodyEdge],[inner,t,bodyD],[topX,h-t/2,bodyD/2]);
    add('UMR','Монтажная планка шкафа с нишей СВЧ',inner,100,t,[0,0,0,0],[inner,100,t],[topX,h-t-50,t/2]);
    if(frontsEnabled){const doorStart=t+niche,fw=carcassW-2*m.gap,fh=Math.max(220,h-doorStart-2*m.gap),front=add('F1','Фасад верхнего шкафа',fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[topX,doorStart+m.gap+fh/2,bodyD+2+m.frontThickness/2],'front',{hingeSide:'left',hingeMountPartId:`${id}-USL`,hingeType:'overlay-110'});frontExtras(m,id,objects,topX,doorStart+m.gap+fh/2,bodyD+m.frontThickness+4,fw,fh,'left',front.id)}
-   const mw=Math.max(380,Math.min(inner-40,Number(m.comboMicrowaveWidth)||440)),mh=Math.max(220,Math.min(niche-80,Number(m.comboMicrowaveHeight)||259)),md=Math.max(300,Math.min(d+20,Number(m.comboMicrowaveDepth)||338)),my=t+mh/2,mz=d+20-md/2,metal=appearance('graphite','#788388'),dark=appearance('graphite','#141b1f');
+   const mw=Math.max(380,Math.min(inner-40,Number(m.comboMicrowaveWidth)||440)),mh=Math.max(220,Math.min(niche-80,Number(m.comboMicrowaveHeight)||259)),md=Math.max(300,Math.min(d,Number(m.comboMicrowaveDepth)||338)),my=t+mh/2,mz=d-md/2,metal=appearance('graphite','#788388'),dark=appearance('graphite','#141b1f');
    pushBox(objects,m,id,'MICRO-BODY',[mw,mh,md],[w/2,my,mz],metal,'appliance');
-   pushBox(objects,m,id,'MICRO-GLASS',[mw-92,mh-58,14],[w/2-24,my,d+22],dark,'appliance-detail');
-   pushBox(objects,m,id,'MICRO-CONTROL',[64,mh-52,14],[w/2+mw/2-43,my,d+23],metal,'appliance-detail');
-   const sideClear=round((inner-mw)/2),topClear=round(niche-mh),rearClear=round(d+20-md);
+   pushBox(objects,m,id,'MICRO-GLASS',[mw-92,mh-58,14],[w/2-24,my,d+2],dark,'appliance-detail');
+   pushBox(objects,m,id,'MICRO-CONTROL',[64,mh-52,14],[w/2+mw/2-43,my,d+3],metal,'appliance-detail');
+   const sideClear=round((inner-mw)/2),topClear=round(niche-mh),rearClear=round(d-md);
    const message=`${id}: цельный навесной корпус с открытой сзади нишей ${round(inner)}×${round(niche)}×${round(d)} мм; боковины и верхняя секция глубиной ${round(bodyD)} мм, несущая полка — ${round(d)} мм. Референс СВЧ ${round(mw)}×${round(mh)}×${round(md)} мм; ориентировочные зазоры: по ${sideClear} мм по бокам, ${topClear} мм сверху и ${rearClear} мм сзади. До распила выбрать точную модель, проверить её паспорт вентиляции, массу и не перекрывать выход вытяжки.`;
    issues.push({type:'microwave-combo-confirmation',moduleId:m.id,message});warnings.push(message);
    return;
