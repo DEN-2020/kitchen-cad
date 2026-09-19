@@ -87,7 +87,7 @@ export function buildHardwareBill(project={},model={}){
   for(const object of handleObjects){const module=modules.find(item=>item.id===object.moduleId);add('handle',1,object.moduleId);add('handleScrew',module?.handleStyle==='knob'?1:2,object.moduleId)}
   const potentialHandles=parts.filter(part=>part.role==='front'&&/-F\d+$/.test(String(part.id))).length;
   if(potentialHandles>selectedHandles){
-    const row=rows.get('handle')||{...HARDWARE_PRODUCTS.handle,quantity:0,moduleIds:[]};row.optionalQuantity=potentialHandles-selectedHandles;rows.set('handle',row);
+    const optionalHandles=potentialHandles-selectedHandles,row=rows.get('handle')||{...HARDWARE_PRODUCTS.handle,quantity:0,moduleIds:[]},screws=rows.get('handleScrew')||{...HARDWARE_PRODUCTS.handleScrew,quantity:0,moduleIds:[]};row.optionalQuantity=optionalHandles;screws.optionalQuantity=optionalHandles*2;rows.set('handle',row);rows.set('handleScrew',screws);
   }
   add('moduleConnector',adjacentPairCount(structuralModules.filter(module=>!isWallMountedType(module.type)))*2);
   add('moduleConnector',adjacentPairCount(structuralModules.filter(module=>isWallMountedType(module.type)))*2);

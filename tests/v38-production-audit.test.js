@@ -106,8 +106,10 @@ test("fronts carry workshop hinge drilling marks and handle-free projects show a
     assert.equal(front.hingeDrilling.positionsFromTop.length, 2);
   }
   const handles = buildHardwareBill(project, model).find((row) => row.id === "handle");
+  const handleScrews = buildHardwareBill(project, model).find((row) => row.id === "handleScrew");
   assert.equal(handles.quantity, 0);
   assert.equal(handles.optionalQuantity, 2);
+  assert.equal(handleScrews.optionalQuantity, 4);
 });
 
 test("estimate separates consumed area from real whole-sheet procurement", () => {
