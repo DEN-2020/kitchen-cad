@@ -387,15 +387,27 @@ function SheetPlan({ batch, role, lang }: { batch: any; role: string; lang: Lang
               aria-label={`${localized(lang, "Раскрой листа", "Sheet layout", "مخطط قص اللوح")} ${sheet.index}`}
             >
               <rect x="0" y="0" width={sheet.width} height={sheet.height} className="sheetStock" />
+              <rect x={sheet.trim} y={sheet.trim} width={sheet.usableWidth} height={sheet.usableHeight} className="sheetUsable" />
               {sheet.placements.map((item: any, index: number) => (
                 <g key={`${item.id}-${index}`}>
                   <rect x={item.x} y={item.y} width={item.width} height={item.height} className="sheetPart" />
-                  {item.width > 230 && item.height > 100 && (
-                    <text x={item.x + item.width / 2} y={item.y + item.height / 2}>{item.width}×{item.height}</text>
+                  {item.width > 150 && item.height > 65 && (
+                    <text x={item.x + item.width / 2} y={item.y + item.height / 2 - (item.height > 125 ? 34 : 0)}>#{item.sequence} {item.id}</text>
+                  )}
+                  {item.width > 230 && item.height > 125 && (
+                    <text x={item.x + item.width / 2} y={item.y + item.height / 2 + 34}>{item.width}×{item.height}</text>
                   )}
                 </g>
               ))}
             </svg>
+            <ol className="sheetCutList">
+              {sheet.placements.map((item: any) => (
+                <li key={`cut-${item.id}-${item.sequence}`}>
+                  <b>#{item.sequence} {item.id}</b>
+                  <span>{item.width}×{item.height} · x{item.x}, y{item.y} · {item.firstCut === "vertical" ? "V→H" : "H→V"}</span>
+                </li>
+              ))}
+            </ol>
             <small>
               {sheet.usefulOffcuts?.length
                 ? `${localized(lang, "Остатки", "Offcuts", "البقايا")}: ${sheet.usefulOffcuts.slice(0, 3).map((rect: any) => `${Math.round(rect.width)}×${Math.round(rect.height)}`).join(", ")}${sheet.usefulOffcuts.length > 3 ? "…" : ""}`

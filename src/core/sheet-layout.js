@@ -95,7 +95,8 @@ function splitFreeRect(sheet, rectIndex, width, height, kerf) {
 
   // Guillotine split. Choosing the longer remaining direction preserves one
   // large, useful offcut instead of many optimistic overlapping rectangles.
-  if (right > bottom) {
+  const verticalFirst = right > bottom;
+  if (verticalFirst) {
     if (right > 0)
       replacements.push({
         x: rect.x + width + kerf,
@@ -128,6 +129,10 @@ function splitFreeRect(sheet, rectIndex, width, height, kerf) {
   }
   sheet.freeRects.splice(rectIndex, 1, ...replacements);
   sheet.freeRects = removeContained(sheet.freeRects);
+  return {
+    firstCut: verticalFirst ? "vertical" : "horizontal",
+    secondCut: verticalFirst ? "horizontal" : "vertical",
+  };
 }
 
 const partMetrics = (part) => {
@@ -153,7 +158,7 @@ const seededIdHash = (value, seed) => {
   return hash;
 };
 
-const SEEDED_SORTERS = Array.from({ length: 16 }, (_, index) => {
+const SEEDED_SORTERS = Array.from({ length: 256 }, (_, index) => {
   const seed = index + 1;
   return (a, b) =>
     seededIdHash(a.id, seed) - seededIdHash(b.id, seed) ||
@@ -197,18 +202,27 @@ function packParts(parts, sorter, sheetWidth, sheetHeight, trim, kerf) {
     }
     const { sheet, rectIndex, orientation } = placement;
     const rect = sheet.freeRects[rectIndex];
+    const cut = splitFreeRect(
+      sheet,
+      rectIndex,
+      orientation.width,
+      orientation.height,
+      kerf,
+    );
     sheet.placements.push({
       id: part.id,
       name: part.name,
       moduleId: part.moduleId,
+      sequence: sheet.placements.length + 1,
       x: round(rect.x),
       y: round(rect.y),
       width: round(orientation.width),
       height: round(orientation.height),
       rotated: orientation.rotated,
       grainLocked: ["wood", "stone"].includes(part.appearance?.pattern),
+      firstCut: cut.firstCut,
+      secondCut: cut.secondCut,
     });
-    splitFreeRect(sheet, rectIndex, orientation.width, orientation.height, kerf);
   }
   return { sheets, unplaced };
 }

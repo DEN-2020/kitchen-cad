@@ -28,6 +28,9 @@ test("sheet layout produces real, non-overlapping stock guidance", () => {
       assert.ok(item.x >= 10 && item.y >= 10);
       assert.ok(item.x + item.width <= 1210.01);
       assert.ok(item.y + item.height <= 2430.01);
+      assert.ok(Number.isInteger(item.sequence) && item.sequence >= 1);
+      assert.ok(["vertical", "horizontal"].includes(item.firstCut));
+      assert.ok(["vertical", "horizontal"].includes(item.secondCut));
     }
   for (const sheet of plan.sheets)
     for (let i = 0; i < sheet.placements.length; i += 1)
