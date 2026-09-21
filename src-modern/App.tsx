@@ -655,6 +655,20 @@ export function App() {
       setProject((p: any) => ({ ...p, room: { ...p.room, ...patch } })),
     patchUi = (patch: any) => setProject((p: any) => updateUi(p, patch)),
     guardProductionExport = (action: (draft: boolean) => void) => {
+      const oldEdge = (project.modules || []).some((module: any) =>
+        module.bodyEdge !== 0.2 || module.frontEdge !== 0.2 ||
+        Object.values(module.edgeOverrides || {}).some((edges: any) =>
+          Array.isArray(edges) && edges.some((value: any) => Number(value) > 0 && Number(value) !== 0.2),
+        ),
+      );
+      if (oldEdge) {
+        if (window.confirm(localized(lang,
+          "В этой копии проекта ещё старая кромка. Пересчитать всю кухню на 0,2 мм? После пересчёта нажми печать ещё раз.",
+          "This project still has older edge bands. Recalculate all edges to 0.2 mm? Then press print again.",
+          "ما زالت حواف قديمة في هذا المشروع. إعادة حساب جميع الحواف إلى 0.2 مم؟ ثم اضغط الطباعة مرة أخرى.",
+        ))) setProject((p: any) => updateAllEdgeThickness(p, 0.2));
+        return;
+      }
       if (
         productionAudit.ready ||
         window.confirm(
