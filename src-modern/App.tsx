@@ -36,7 +36,9 @@ import {
   downloadCsv,
   downloadJson,
   downloadPng,
+  downloadWorkshopCsv,
   printReport,
+  printWorkshopReport,
 } from "./export/report";
 import {
   CATALOG_GROUPS,
@@ -2379,16 +2381,27 @@ export function App() {
                     <DownloadIcon />
                     <span>{t("csv")}</span>
                   </button>
+                  <button onClick={() => guardProductionExport((draft) => downloadWorkshopCsv(project, model, { draft }))}>
+                    <DownloadIcon />
+                    <span>{lang === "ru" ? "CSV для цеха · см" : lang === "ar" ? "CSV للورشة · سم" : "Workshop CSV · cm"}</span>
+                  </button>
                   <button onClick={() => downloadPng(project, model)}>
                     <DownloadIcon />
                     <span>{t("png")}</span>
                   </button>
                   <button
-                    className="primary wide"
+                    className="wide"
                     onClick={() => guardProductionExport(() => printReport(project, model))}
                   >
                     <PrintIcon />
-                    <span>{t("pdf")}</span>
+                    <span>{lang === "ru" ? "Карты деталей · мм" : lang === "ar" ? "بطاقات القطع · ملم" : "Part cards · mm"}</span>
+                  </button>
+                  <button
+                    className="primary wide"
+                    onClick={() => guardProductionExport((draft) => printWorkshopReport(project, model, { draft }))}
+                  >
+                    <PrintIcon />
+                    <span>{lang === "ru" ? "Ведомость для цеха · см / печать" : lang === "ar" ? "قائمة الورشة · سم / طباعة" : "Workshop list · cm / print"}</span>
                   </button>
                 </div>
                 {importNotice && (
@@ -2401,10 +2414,10 @@ export function App() {
                 )}
                 <p className="note">
                   {lang === "ru"
-                    ? "Импорт проверяет формат и версию файла. PDF содержит обзор проекта и листы деталей для каждого шкафа."
+                    ? "Ведомость для цеха группирует детали по листам: размеры в сантиметрах, кромка по сторонам. CSV можно передать для импорта, если программа мастера поддерживает этот формат."
                     : lang === "ar"
-                      ? "يتحقق الاستيراد من تنسيق الملف وإصداره قبل استبدال المشروع."
-                      : "Import validates the file format and version. PDF includes the project overview and cabinet detail sheets."}
+                      ? "تجمع قائمة الورشة الأجزاء حسب اللوح مع الأبعاد بالسنتيمتر والحواف على كل جانب. يمكن استيراد CSV إذا كان برنامج الورشة يدعمه."
+                      : "The workshop list groups parts by sheet with centimetre dimensions and edge banding on each side. CSV can be imported if the shop software supports it."}
                 </p>
                 {!productionAudit.ready && (
                   <p className="warning">
