@@ -45,7 +45,7 @@ export function workshopCutListCSV(model, cost, options = {}) {
     'Толщина см / Thickness cm', 'Кромка слева мм / Left edge mm',
     'Кромка справа мм / Right edge mm', 'Кромка сверху мм / Top edge mm',
     'Кромка снизу мм / Bottom edge mm', 'Материал / Material', 'Декор / Decor',
-    'Поворот на карте / Rotated on map',
+    'Поворот на карте / Rotated on map', 'Статус / Status',
   ];
   const rows = [];
   for (const { role, batch, sheet, rows: items } of sheets) for (const { part, placement } of items)
@@ -54,15 +54,14 @@ export function workshopCutListCSV(model, cost, options = {}) {
       centimetres(part.blankU), centimetres(part.blankV),
       centimetres(part.u), centimetres(part.v), centimetres(part.thickness),
       ...(part.edges || [0, 0, 0, 0]), batch.materialName, batch.decor,
-      placement.rotated ? 'yes' : 'no',
+      placement.rotated ? 'yes' : 'no', options.draft ? 'ЧЕРНОВИК / DRAFT' : '',
     ]);
   for (const part of unplaced) rows.push([
     'UNPLACED', '', '', part.id, part.name, 1,
     centimetres(part.blankU), centimetres(part.blankV),
     centimetres(part.u), centimetres(part.v), centimetres(part.thickness),
-    ...(part.edges || [0, 0, 0, 0]), part.materialProductId, part.decor, '',
+    ...(part.edges || [0, 0, 0, 0]), part.materialProductId, part.decor, '', 'НЕ РАЗМЕЩЕНО / UNPLACED',
   ]);
-  const notice = options.draft ? [['ЧЕРНОВИК — НЕ ПЕРЕДАВАТЬ В РАСПИЛ']] : [];
-  return '\ufeff' + [...notice, headers, ...rows]
+  return '\ufeff' + [headers, ...rows]
     .map((row) => row.map(csvCell).join(';')).join('\r\n');
 }

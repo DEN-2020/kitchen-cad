@@ -33,4 +33,9 @@ test('workshop sheets include every part once and use the actual edged blank', (
   assert.equal(fields[6], centimetres(sample.part.blankU));
   assert.equal(fields[8], centimetres(sample.part.u));
   assert.deepEqual(fields.slice(11, 15).map(Number), sample.part.edges);
+
+  const draft = workshopCutListCSV(model, cost, { draft: true }).replace(/^\uFEFF/, '').split('\r\n');
+  assert.equal(draft.length, model.parts.length + 1);
+  assert.ok(draft[0].endsWith('Статус / Status'));
+  assert.ok(draft.slice(1).every((line) => line.endsWith('ЧЕРНОВИК / DRAFT')));
 });
