@@ -25,7 +25,7 @@ export const DEFAULT_MODULE_STYLE=Object.freeze({
   frontDecor:'olive',frontColor:DECORS.olive.color,bodyDecor:'white',bodyColor:DECORS.white.color,gloss:true,
   bodyMaterialId:'mfc18',frontMaterialId:'highGlossMdfPvc18',
   frontStyle:'flat',handleStyle:'none',legStyle:'hidden',board:18,frontThickness:18,back:3,
-  bodyEdge:0.8,frontEdge:2,bodyEdgeType:'ABS',frontEdgeType:'ABS',bottomMode:'between',topMode:'between',backMode:'none',shelfCount:1,
+  bodyEdge:0.2,frontEdge:0.2,bodyEdgeType:'ABS',frontEdgeType:'ABS',bottomMode:'between',topMode:'between',backMode:'none',shelfCount:1,
 });
 
 export function createModule(type='base') {
@@ -34,7 +34,7 @@ export function createModule(type='base') {
   return {
     id:newId(), type, width:d.width, height:d.height, depth:d.depth,
     board:18, frontThickness:18, back:3, gap:2,
-    bodyEdge:0.8, frontEdge:2, bodyEdgeType:'ABS', frontEdgeType:'ABS',
+    bodyEdge:0.2, frontEdge:0.2, bodyEdgeType:'ABS', frontEdgeType:'ABS',
     bottomMode:'between', topMode:'between', backMode:'none', shelfCount:d.shelfCount ?? (display?0:1), drawerCount:d.drawerCount ?? 3,
     feet:d.feet ?? 0, elevation:d.elevation ?? (wall?1500:0), offsetX:0, offsetZ:0,
     cornerOpening:d.cornerOpening ?? 0, cornerOpeningSide:'right', cornerMuntinWidth:d.cornerMuntinWidth ?? 0, cornerWingDepth:d.cornerWingDepth ?? 0, cornerRunDepth:d.cornerRunDepth ?? 0,

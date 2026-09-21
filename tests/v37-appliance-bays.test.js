@@ -169,7 +169,7 @@ test("hob appliance bay uses a lowered horizontal front rail and removable fille
   assert.equal(applianceFiller.center[1] + applianceFiller.size[1] / 2, 880);
   assert.equal(applianceFiller.center[1] - applianceFiller.size[1] / 2, 820);
   assert.deepEqual(applianceFiller.edges, [0, 0, module.frontEdge, 0]);
-  assert.equal(cost.edge.front.meters2, 0.618);
+  assert.equal(cost.edge.front.meters08, 0.618);
   assert.equal(applianceBody.center[2] + applianceBody.size[2] / 2, module.depth);
   assert.equal(leftBrace, undefined);
   assert.equal(rightBrace, undefined);

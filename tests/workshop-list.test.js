@@ -10,6 +10,13 @@ test('centimetre export preserves the model precision of one tenth millimetre', 
   assert.equal(centimetres(18), '1.80');
 });
 
+test('new kitchen uses the workshop edge band thickness', () => {
+  const project = createProject();
+  assert.equal(project.defaults.bodyEdge, 0.2);
+  assert.equal(project.defaults.frontEdge, 0.2);
+  assert.ok(project.modules.every((module) => module.bodyEdge === 0.2 && module.frontEdge === 0.2));
+});
+
 test('workshop sheets include every part once and use the actual edged blank', () => {
   const project = createProject();
   const model = buildProject(project);

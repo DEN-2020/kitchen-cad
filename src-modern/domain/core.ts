@@ -385,6 +385,19 @@ export function updatePartEdges(
   };
   return p;
 }
+export function updateAllEdgeThickness(project: any, thickness = 0.2) {
+  const p = clone(project);
+  p.defaults = { ...(p.defaults || {}), bodyEdge: thickness, frontEdge: thickness };
+  for (const module of p.modules || []) {
+    module.bodyEdge = thickness;
+    module.frontEdge = thickness;
+    for (const [key, edges] of Object.entries(module.edgeOverrides || {})) {
+      if (Array.isArray(edges) && edges.length === 4)
+        module.edgeOverrides[key] = edges.map((value: any) => Number(value) > 0 ? thickness : 0);
+    }
+  }
+  return p;
+}
 export function updateProjectDefaults(
   project: any,
   patch: Record<string, unknown>,

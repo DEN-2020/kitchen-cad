@@ -70,6 +70,7 @@ import {
   updateCountertop,
   updateDoorOverride,
   updatePartEdges,
+  updateAllEdgeThickness,
   updateFixture,
   updateModule,
   updateProjectDefaults,
@@ -1650,10 +1651,10 @@ export function App() {
                     compact
                     label={
                       lang === "ru"
-                        ? "Кромка 0.8/м"
+                        ? "Кромка до 1 мм/м"
                         : lang === "ar"
-                          ? "حافة 0.8/م"
-                          : "Edge .8/m"
+                          ? "حافة حتى 1 مم/م"
+                          : "Edge ≤1 mm/m"
                     }
                     value={cost.settings.edge08PerM}
                     unit="EGP"
@@ -1665,10 +1666,10 @@ export function App() {
                     compact
                     label={
                       lang === "ru"
-                        ? "Кромка 2/м"
+                        ? "Кромка свыше 1 мм/м"
                         : lang === "ar"
-                          ? "حافة 2/م"
-                          : "Edge 2/m"
+                          ? "حافة أكثر من 1 مم/م"
+                          : "Edge >1 mm/m"
                     }
                     value={cost.settings.edge2PerM}
                     unit="EGP"
@@ -1849,10 +1850,10 @@ export function App() {
                   </small>
                   <small>
                     {lang === "ru"
-                      ? "Кромка 0.8 / 2 мм"
+                      ? "Кромка до 1 / свыше 1 мм"
                       : lang === "ar"
-                        ? "حواف 0.8 / 2 مم"
-                        : "Edge 0.8 / 2 mm"}
+                        ? "حواف حتى 1 / أكثر من 1 مم"
+                        : "Edge ≤1 / >1 mm"}
                     :{" "}
                     <b>
                       {cost.edge.meters08.toFixed(1)} /{" "}
@@ -2140,10 +2141,10 @@ export function App() {
                     compact
                     label={
                       lang === "ru"
-                        ? "Кромка 0.8/м"
+                        ? "Кромка до 1 мм/м"
                         : lang === "ar"
-                          ? "حافة 0.8/م"
-                          : "Edge .8/m"
+                          ? "حافة حتى 1 مم/م"
+                          : "Edge ≤1 mm/m"
                     }
                     value={cost.settings.edge08PerM}
                     unit="EGP"
@@ -2155,10 +2156,10 @@ export function App() {
                     compact
                     label={
                       lang === "ru"
-                        ? "Кромка 2/м"
+                        ? "Кромка свыше 1 мм/м"
                         : lang === "ar"
-                          ? "حافة 2/م"
-                          : "Edge 2/m"
+                          ? "حافة أكثر من 1 مم/م"
+                          : "Edge >1 mm/m"
                     }
                     value={cost.settings.edge2PerM}
                     unit="EGP"
@@ -2339,6 +2340,13 @@ export function App() {
                       ? "ملف المشروع"
                       : "Project file"}
                 </h3>
+                <button
+                  type="button"
+                  className="applyKitchenFinish"
+                  onClick={() => setProject((p: any) => updateAllEdgeThickness(p, 0.2))}
+                >
+                  {localized(lang, "Применить кромку 0,2 мм ко всей кухне", "Set all edge bands to 0.2 mm", "تطبيق حواف 0.2 مم على كل المطبخ")}
+                </button>
                 <input
                   ref={importInputRef}
                   className="hiddenFileInput"
@@ -2733,8 +2741,8 @@ export function App() {
                         : "Labels and exploded spacing apply only to cut parts. Handles and supports stay visible but are not part of the cut list."}
                     </p>
                     <div className="edgeLegend" aria-label={localized(lang, "Обозначение кромки", "Edge-band legend", "دليل حواف الشريط")}>
-                      <span className="edge08">0.8 {mmUnit(lang)}</span>
-                      <span className="edge2">2 {mmUnit(lang)}</span>
+                      <span className="edge08">{selectedModule.bodyEdge} {mmUnit(lang)} · {localized(lang, "корпус", "carcass", "الهيكل")}</span>
+                      <span className={selectedModule.frontEdge > 1 ? "edge2" : "edge08"}>{selectedModule.frontEdge} {mmUnit(lang)} · {localized(lang, "фасад", "front", "الواجهة")}</span>
                       <span className="edgeNone">{localized(lang, "без кромки", "no edge", "بدون حافة")}</span>
                     </div>
                   </section>
@@ -2752,8 +2760,8 @@ export function App() {
                           const on = (selectedPart.edges?.[i] || 0) > 0,
                             thickness =
                               selectedPart.role === "front"
-                                ? selectedModule.frontEdge || 2
-                                : selectedModule.bodyEdge || 0.8;
+                                ? selectedModule.frontEdge ?? 0.2
+                                : selectedModule.bodyEdge ?? 0.2;
                           return (
                             <button
                               key={side}
@@ -2780,10 +2788,10 @@ export function App() {
                       </div>
                       <p className="note">
                         {lang === "ru"
-                          ? "Изменение сразу пересчитывает заготовку и печать. Голубая линия в 3D — кромка 0,8 мм, оранжевая — 2 мм; отсутствие линии означает торец без кромки."
+                          ? "Изменение сразу пересчитывает заготовку и печать. Голубая линия в 3D — тонкая кромка, оранжевая — толстая; отсутствие линии означает торец без кромки."
                           : lang === "ar"
-                            ? "يتم تحديث مقاس القص والطباعة فوراً. الخط الأزرق في العرض ثلاثي الأبعاد يعني حافة 0.8 مم، والبرتقالي 2 مم، وعدم وجود خط يعني بدون حافة."
-                            : "Blank size and print update immediately. Cyan in 3D means 0.8 mm edge band, orange means 2 mm; no line means no edge band."}
+                            ? "يتم تحديث مقاس القص والطباعة فوراً. الخط الأزرق يعني حافة رفيعة، والبرتقالي حافة سميكة، وعدم وجود خط يعني بدون حافة."
+                            : "Blank size and print update immediately. Cyan marks thin edge band, orange marks thick edge band; no line means no edge band."}
                       </p>
                     </section>
                   )}
