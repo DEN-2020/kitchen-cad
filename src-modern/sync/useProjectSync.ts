@@ -140,9 +140,14 @@ export function useProjectSync(project: any) {
         setState((current) => ({ ...current, status: "checking", message: "" }));
         try {
           const remote = await fetchRemoteProject(configRef.current);
+          const currentProject = projectRef.current;
+          if (remote && projectFingerprint(remote.project) === projectFingerprint(currentProject)) {
+            applySuccess(remote, currentProject);
+            return remote;
+          }
           setState((current) => ({
             ...current,
-            status: "idle",
+            status: remote && remote.revision !== configRef.current.revision ? "conflict" : "idle",
             message: remote ? "" : "empty",
             remoteRevision: remote?.revision || null,
             remoteUpdatedAt: remote?.updatedAt || "",
@@ -152,7 +157,7 @@ export function useProjectSync(project: any) {
           return applyError(error);
         }
       }),
-    [applyError, runExclusive],
+    [applyError, applySuccess, runExclusive],
   );
 
   const pair = useCallback(
@@ -193,6 +198,17 @@ export function useProjectSync(project: any) {
           applySuccess(result, currentProject);
           return result;
         } catch (error) {
+          if (error instanceof ProjectSyncError && error.status === 409) {
+            try {
+              const remote = await fetchRemoteProject(configRef.current);
+              if (remote && projectFingerprint(remote.project) === projectFingerprint(currentProject)) {
+                applySuccess(remote, currentProject);
+                return remote;
+              }
+            } catch {
+              // Keep the original revision conflict; never overwrite either copy here.
+            }
+          }
           return applyError(error);
         }
       }),

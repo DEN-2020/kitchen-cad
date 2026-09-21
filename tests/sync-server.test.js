@@ -105,6 +105,14 @@ describe("local SQLite sync server", () => {
     assert.equal(saved.revision, 1);
     assert.equal(saved.project.name, "Test kitchen");
 
+    const repeated = await fetch(`${baseUrl}/api/projects/main`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ expectedRevision: 0, project }),
+    });
+    assert.equal(repeated.status, 200);
+    assert.equal((await repeated.json()).revision, 1);
+
     const conflict = await fetch(`${baseUrl}/api/projects/main`, {
       method: "PUT",
       headers,

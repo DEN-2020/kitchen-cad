@@ -102,8 +102,18 @@ export class ProjectStorage {
     try {
       const current = this.getStatement.get(id);
       const currentRevision = current ? Number(current.revision) : 0;
+      const payload = JSON.stringify(project);
       if (currentRevision !== expectedRevision) {
         this.db.exec("ROLLBACK");
+        if (current && current.payload === payload) {
+          return {
+            conflict: false,
+            id,
+            name: current.name,
+            revision: currentRevision,
+            updatedAt: current.updated_at,
+          };
+        }
         return {
           conflict: true,
           currentRevision,
@@ -114,7 +124,6 @@ export class ProjectStorage {
       const revision = currentRevision + 1;
       const updatedAt = new Date().toISOString();
       const name = String(project.name || "Kitchen CAD").slice(0, 200);
-      const payload = JSON.stringify(project);
       this.upsertStatement.run(id, name, payload, revision, updatedAt);
       this.insertVersionStatement.run(id, revision, name, payload, updatedAt);
       this.pruneVersionsStatement.run(id, id, this.maxVersions);

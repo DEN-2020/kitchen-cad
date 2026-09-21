@@ -55,8 +55,8 @@ export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
   const download = async () => {
     const accepted = window.confirm(
       ru
-        ? "Загрузить версию с компьютера? Текущую версию можно будет вернуть через отмену изменений или JSON-экспорт."
-        : "Load the PC version and replace the current editor state?",
+        ? "Загрузить актуальную версию с компьютера вместо проекта в этом браузере? Если здесь есть несохранённые изменения, сначала скачай его JSON."
+        : "Load the latest PC version over this browser copy? If this browser has unsynced edits, download its JSON first.",
     );
     if (!accepted) return;
     try {
@@ -160,7 +160,9 @@ export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
         </button>
         <button type="button" disabled={!ready || busy} onClick={() => void download()}>
           <DownloadIcon size={16} />
-          {ru ? "Загрузить с ПК" : "Load from PC"}
+          {sync.state.status === "conflict"
+            ? ru ? "Загрузить актуальную с ПК" : "Load latest from PC"
+            : ru ? "Загрузить с ПК" : "Load from PC"}
         </button>
         <button type="button" disabled={!ready || busy} onClick={() => void upload()}>
           <UploadIcon size={16} />
@@ -169,6 +171,13 @@ export function ProjectSyncPanel({ lang, sync, onLoad }: Props) {
             : ru ? "Сохранить на ПК" : "Save to PC"}
         </button>
       </div>
+      {sync.state.status === "conflict" && (
+        <p className="note syncNote" role="status">
+          {ru
+            ? `Копии различаются: на ПК ревизия ${sync.state.remoteRevision ?? "?"}, этот браузер знает ревизию ${sync.config.revision}. Ничего не перезаписано. Если актуальна версия на ПК — загрузи её; если изменения здесь новее — сначала скачай JSON, затем выбери «Заменить на ПК».`
+            : `The copies differ: PC revision ${sync.state.remoteRevision ?? "?"}, this browser knows revision ${sync.config.revision}. Nothing was overwritten. Load the PC copy if it is current; if this browser has newer edits, download its JSON before choosing “Replace on PC”.`}
+        </p>
+      )}
       <label className={`syncAuto ${!ready ? "disabled" : ""}`}>
         <input
           type="checkbox"
