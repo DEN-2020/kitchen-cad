@@ -39,6 +39,7 @@ import {
   downloadWorkshopCsv,
   printReport,
   printWorkshopReport,
+  printWorkshopSketchReport,
 } from "./export/report";
 import {
   CATALOG_GROUPS,
@@ -1919,248 +1920,14 @@ export function App() {
                 </div>
               </section>
               <section>
-                <h3>
-                  {lang === "ru"
-                    ? "Смета материалов"
-                    : lang === "ar"
-                      ? "تقدير التكلفة"
-                      : "Cost estimate"}
-                </h3>
-                <div className="projectStats">
-                  <div>
-                    <b>{Math.round(cost.procurementTotal).toLocaleString()}</b>
-                    <span>EGP</span>
-                  </div>
-                  <div>
-                    <b>{cost.sheetCount}</b>
-                    <span>
-                      {lang === "ru"
-                        ? "листов"
-                        : lang === "ar"
-                          ? "ألواح"
-                          : "sheets"}
-                    </span>
-                  </div>
-                  <div>
-                    <b>{(cost.edge.meters08 + cost.edge.meters2).toFixed(1)}</b>
-                    <span>
-                      {lang === "ru"
-                        ? "м кромки"
-                        : lang === "ar"
-                          ? "م حواف"
-                          : "m edge"}
-                    </span>
-                  </div>
-                </div>
-                <p className="note">
-                  {lang === "ru"
-                    ? `Закупка: ${Math.round(cost.procurementRangeLow).toLocaleString()}–${Math.round(cost.procurementRangeHigh).toLocaleString()} EGP. Расход по площади: ${Math.round(cost.consumedTotal).toLocaleString()} EGP.`
-                    : lang === "ar"
-                      ? `تقريباً ${Math.round(cost.procurementRangeLow).toLocaleString()}–${Math.round(cost.procurementRangeHigh).toLocaleString()} EGP`
-                      : `Purchase estimate ${Math.round(cost.procurementRangeLow).toLocaleString()}–${Math.round(cost.procurementRangeHigh).toLocaleString()} EGP.`}
-                </p>
-                <div className={productionAudit.ready ? "fitStatus ok" : "fitStatus bad"}>
-                  <b>
-                    {productionAudit.ready
-                      ? localized(lang, "Готово по автоматическим проверкам", "Automated checks passed", "تم اجتياز الفحوصات التلقائية")
-                      : localized(lang, `Блокирующих проверок: ${productionAudit.blockers.length}`, `Blocking checks: ${productionAudit.blockers.length}`, `فحوصات مانعة: ${productionAudit.blockers.length}`)}
-                  </b>
-                  <span>{localized(lang, `Примечаний: ${productionAudit.warnings.length}`, `Notes: ${productionAudit.warnings.length}`, `ملاحظات: ${productionAudit.warnings.length}`)}</span>
-                </div>
-                <div className="segmented costPresetSelector">
-                  <button
-                    type="button"
-                    className={activeCostPreset === "budget" ? "active" : ""}
-                    aria-pressed={activeCostPreset === "budget"}
-                    onClick={() => applyCostPreset("budget")}
-                  >
-                    {lang === "ru"
-                      ? "ЛДСП + High Gloss"
-                      : lang === "ar"
-                        ? "اقتصادي 1500"
-                        : "MFC + High Gloss"}
-                  </button>
-                  <button
-                    type="button"
-                    className={activeCostPreset === "standard" ? "active" : ""}
-                    aria-pressed={activeCostPreset === "standard"}
-                    onClick={() => applyCostPreset("standard")}
-                  >
-                    {lang === "ru"
-                      ? "Стандарт"
-                      : lang === "ar"
-                        ? "لامع 2500"
-                        : "Standard"}
-                  </button>
-                  <button
-                    type="button"
-                    className={activeCostPreset === "premium" ? "active" : ""}
-                    aria-pressed={activeCostPreset === "premium"}
-                    onClick={() => applyCostPreset("premium")}
-                  >
-                    {lang === "ru"
-                      ? "Акрил"
-                      : lang === "ar"
-                        ? "جودة أعلى 4000"
-                        : "Acrylic"}
-                  </button>
-                </div>
-                <p className="note costPresetNote">
-                  {activeCostPreset
-                    ? localized(lang, `Сценарий применяется ко всей кухне (${furnitureModuleCount} мебельных модулей).`, `Scenario applies to the whole kitchen (${furnitureModuleCount} furniture modules).`, `يطبق السيناريو على المطبخ كاملاً (${furnitureModuleCount} وحدات أثاث).`)
-                    : localized(lang, "Активны свои цены для всей кухни.", "Custom whole-kitchen prices are active.", "الأسعار المخصصة للمطبخ بالكامل مفعلة.")}
-                </p>
-                <div className="dimensionGrid">
-                  {["mfc18", "highGlossMdfPvc18", "acrylicHighGlossMdf18"].map(
-                    (productId) => {
-                      const product = (MATERIAL_PRODUCTS as any)[productId];
-                      return (
-                        <NumberField
-                          key={productId}
-                          compact
-                          label={materialProductLabel(product, lang)}
-                          value={Math.round(cost.settings.materialPrices[productId] * 100) / 100}
-                          unit={localized(lang, "EGP/м²", "EGP/m²", "EGP/م²")}
-                          min={0}
-                          max={10000}
-                          onCommit={(n) => patchMaterialPrice(productId, n)}
-                        />
-                      );
-                    },
-                  )}
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru" ? "Отход" : lang === "ar" ? "هدر" : "Waste"
-                    }
-                    value={cost.settings.wastePercent}
-                    unit="%"
-                    min={0}
-                    max={60}
-                    onCommit={(n) => patchCost({ wastePercent: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Распил/лист"
-                        : lang === "ar"
-                          ? "قص/لوح"
-                          : "Cut/sheet"
-                    }
-                    value={cost.settings.cuttingPerSheet}
-                    unit="EGP"
-                    min={0}
-                    max={5000}
-                    onCommit={(n) => patchCost({ cuttingPerSheet: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Кромка до 1 мм/м"
-                        : lang === "ar"
-                          ? "حافة حتى 1 مم/م"
-                          : "Edge ≤1 mm/m"
-                    }
-                    value={cost.settings.edge08PerM}
-                    unit="EGP"
-                    min={0}
-                    max={1000}
-                    onCommit={(n) => patchCost({ edge08PerM: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Кромка свыше 1 мм/м"
-                        : lang === "ar"
-                          ? "حافة أكثر من 1 مم/م"
-                          : "Edge >1 mm/m"
-                    }
-                    value={cost.settings.edge2PerM}
-                    unit="EGP"
-                    min={0}
-                    max={1000}
-                    onCommit={(n) => patchCost({ edge2PerM: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Сервис"
-                        : lang === "ar"
-                          ? "خدمة"
-                          : "Service"
-                    }
-                    value={cost.settings.serviceBase}
-                    unit="EGP"
-                    min={0}
-                    max={50000}
-                    onCommit={(n) => patchCost({ serviceBase: n })}
-                  />
-                  <NumberField
-                    compact
-                    label={
-                      lang === "ru"
-                        ? "Доп. расходы"
-                        : lang === "ar"
-                          ? "إضافات"
-                          : "Extras"
-                    }
-                    value={cost.settings.extraCost}
-                    unit="EGP"
-                    min={0}
-                    max={100000}
-                    onCommit={(n) => patchCost({ extraCost: n })}
-                  />
-                </div>
-                <div className="costBreakdown">
-                  <small>
-                    {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
-                    : {cost.body.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
-                    {Math.round(cost.body.cost)} EGP
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Фасады"
-                      : lang === "ar"
-                        ? "واجهات"
-                        : "Fronts"}
-                    : {cost.front.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
-                    {Math.round(cost.front.cost)} EGP
-                  </small>
-                  <small>
-                    {lang === "ru" ? "Кромка" : lang === "ar" ? "حواف" : "Edge"}
-                    : {Math.round(cost.edge.cost)} EGP
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Распил/сервис"
-                      : lang === "ar"
-                        ? "قص/خدمة"
-                        : "Cut/service"}
-                    : {Math.round(cost.cutting)} EGP
-                  </small>
-                </div>
-                {!cost.countertopPriced && (
-                  <p className="warning">
-                    {lang === "ru"
-                      ? "Столешница пока не включена в цену: укажи цену за погонный метр позже."
-                      : lang === "ar"
-                        ? "سطح العمل غير محسوب حالياً."
-                        : "Countertop is not priced yet."}
-                  </p>
-                )}
-              </section>
-              <section>
-                <h3>
+                <details className="materialPriceDetails projectNotesDetails">
+                  <summary>
                   {lang === "ru"
                     ? "Стыки столешницы"
                     : lang === "ar"
                       ? "وصلات سطح العمل"
                       : "Countertop joints"}
-                </h3>
+                  </summary>
                 <div className="twoGrid">
                   <label className="field">
                     {lang === "ru"
@@ -2248,22 +2015,16 @@ export function App() {
                       ? "وصلة اليورو تخطيطية حالياً وتعتمد على قالب الورشة."
                       : "Euro joint is schematic; exact CNC profile depends on the shop template."}
                 </p>
+                </details>
               </section>
               <section>
                 <h3>
                   {lang === "ru"
-                    ? "Файл проекта"
+                    ? "Для мастерской"
                     : lang === "ar"
-                      ? "ملف المشروع"
-                      : "Project file"}
+                      ? "للورشة"
+                      : "For the workshop"}
                 </h3>
-                <button
-                  type="button"
-                  className="applyKitchenFinish"
-                  onClick={() => setProject((p: any) => updateAllEdgeThickness(p, 0.2))}
-                >
-                  {localized(lang, "Применить кромку 0,2 мм ко всей кухне", "Set all edge bands to 0.2 mm", "تطبيق حواف 0.2 مم على كل المطبخ")}
-                </button>
                 <input
                   ref={importInputRef}
                   className="hiddenFileInput"
@@ -2281,6 +2042,18 @@ export function App() {
                     });
                   }}
                 />
+                <div className="exportGrid">
+                  <button
+                    className="primary wide"
+                    onClick={() => guardProductionExport((draft) => printWorkshopSketchReport(project, model, { draft }))}
+                  >
+                    <PrintIcon />
+                    <span>{localized(lang, "A4 чертежи деталей · см + кромка", "A4 part sketches · cm + edging", "رسومات A4 · سم + حواف")}</span>
+                  </button>
+                </div>
+                <p className="note">{localized(lang, "Печатный бланк для мастера, не файл программы станка. Указан размер распила и отмечены стороны с кромкой.", "A printout for the technician, not a machine file. Cut dimensions and edged sides are marked.", "ورقة مطبوعة للفني وليست ملف آلة. توضح مقاس القص وجوانب الحواف.")}</p>
+                <details className="materialPriceDetails projectNotesDetails">
+                  <summary>{localized(lang, "Другие форматы и файлы", "Other formats and files", "صيغ وملفات أخرى")}</summary>
                 <div className="exportGrid">
                   <button onClick={() => downloadJson(project)}>
                     <DownloadIcon />
@@ -2329,6 +2102,7 @@ export function App() {
                     <span>{lang === "ru" ? "Ведомость для цеха · см / печать" : lang === "ar" ? "قائمة الورشة · سم / طباعة" : "Workshop list · cm / print"}</span>
                   </button>
                 </div>
+                </details>
                 {importNotice && (
                   <p
                     className={`importNotice ${importNotice.kind}`}
@@ -2337,13 +2111,6 @@ export function App() {
                     {importNotice.message}
                   </p>
                 )}
-                <p className="note">
-                  {lang === "ru"
-                    ? "Ведомость для цеха группирует детали по листам: размеры в сантиметрах, кромка по сторонам. CSV можно передать для импорта, если программа мастера поддерживает этот формат."
-                    : lang === "ar"
-                      ? "تجمع قائمة الورشة الأجزاء حسب اللوح مع الأبعاد بالسنتيمتر والحواف على كل جانب. يمكن استيراد CSV إذا كان برنامج الورشة يدعمه."
-                      : "The workshop list groups parts by sheet with centimetre dimensions and edge banding on each side. CSV can be imported if the shop software supports it."}
-                </p>
                 {!productionAudit.ready && (
                   <p className="warning">
                     {lang === "ru"
@@ -2352,6 +2119,8 @@ export function App() {
                   </p>
                 )}
               </section>
+              <details className="materialPriceDetails projectNotesDetails">
+                <summary>{localized(lang, "Синхронизация с ПК", "Sync with PC", "المزامنة مع الكمبيوتر")}</summary>
               <ProjectSyncPanel
                 lang={lang}
                 sync={projectSync}
@@ -2380,6 +2149,7 @@ export function App() {
                   }
                 }}
               />
+              </details>
               {!!model.warnings.length && (
                 <details className="materialPriceDetails projectNotesDetails">
                   <summary>

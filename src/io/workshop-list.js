@@ -31,6 +31,21 @@ export function workshopSheets(model, cost) {
   };
 }
 
+// Keep A4 cards in the same order and material batches as the workshop list.
+export function workshopCardPages(model, cost, perPage = 4) {
+  const { sheets, unplaced } = workshopSheets(model, cost);
+  const size = Math.max(1, Math.floor(perPage));
+  const pages = [];
+  for (const sheet of sheets) {
+    for (let start = 0; start < sheet.rows.length; start += size)
+      pages.push({ ...sheet, rows: sheet.rows.slice(start, start + size), unplaced: false });
+  }
+  for (let start = 0; start < unplaced.length; start += size)
+    pages.push({ role: 'unplaced', batch: null, sheet: null,
+      rows: unplaced.slice(start, start + size).map(part => ({ part, placement: null })), unplaced: true });
+  return pages;
+}
+
 function csvCell(value) {
   const text = String(value ?? '');
   return /[;"\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;

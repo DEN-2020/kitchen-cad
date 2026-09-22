@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createProject } from '../src/core/project.js';
 import { buildProject } from '../src/core/parts.js';
 import { estimateProjectCost } from '../src/core/cost.js';
-import { centimetres, workshopCutListCSV, workshopSheets } from '../src/io/workshop-list.js';
+import { centimetres, workshopCardPages, workshopCutListCSV, workshopSheets } from '../src/io/workshop-list.js';
 
 test('centimetre export preserves the model precision of one tenth millimetre', () => {
   assert.equal(centimetres(559.2), '55.92');
@@ -45,4 +45,16 @@ test('workshop sheets include every part once and use the actual edged blank', (
   assert.equal(draft.length, model.parts.length + 1);
   assert.ok(draft[0].endsWith('Статус / Status'));
   assert.ok(draft.slice(1).every((line) => line.endsWith('ЧЕРНОВИК / DRAFT')));
+});
+
+test('A4 cards cover each cut detail once without changing dimensions or edge sides', () => {
+  const project = createProject(), model = buildProject(project);
+  const original = JSON.stringify(model.parts);
+  const pages = workshopCardPages(model, estimateProjectCost(project, model));
+  assert.ok(pages.length > 0);
+  assert.ok(pages.every((page) => page.rows.length >= 1 && page.rows.length <= 4));
+  const cards = pages.flatMap((page) => page.rows.map(({ part }) => part));
+  assert.deepEqual(cards.map((part) => part.id).sort(), model.parts.map((part) => part.id).sort());
+  assert.equal(JSON.stringify(model.parts), original);
+  assert.ok(cards.every((part) => part.edges.length === 4 && part.blankU > 0 && part.blankV > 0));
 });
