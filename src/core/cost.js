@@ -20,6 +20,26 @@ export const COST_PRESETS=Object.freeze({
   premium:Object.freeze({bodyMaterialId:'melamineMdf18',frontMaterialId:'acrylicHighGlossMdf18'}),
 });
 
+// Workshop quote supplied by the owner. Product dimensions come from the catalog;
+// keep the estimator's internal unit as EGP/m² even when the shop quotes per sheet.
+export const WORKSHOP_SHEET_QUOTE=Object.freeze({body:1200,glossFront:3200,cuttingPerSheet:500});
+export function applyWorkshopSheetQuote(project){
+  const body=MATERIAL_PRODUCTS.mfc18,front=MATERIAL_PRODUCTS.highGlossMdfPvc18;
+  return{
+    ...project,
+    costing:{
+      ...(project.costing||{}),
+      materialPrices:{
+        ...(project.costing?.materialPrices||{}),
+        [body.id]:WORKSHOP_SHEET_QUOTE.body/(body.sheetWidth*body.sheetHeight/1e6),
+        [front.id]:WORKSHOP_SHEET_QUOTE.glossFront/(front.sheetWidth*front.sheetHeight/1e6),
+      },
+      cuttingPerSheet:WORKSHOP_SHEET_QUOTE.cuttingPerSheet,
+      serviceBase:0,
+    },
+  };
+}
+
 const n=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
 const areaM2=part=>Math.max(0,n(part.u,0))*Math.max(0,n(part.v,0))/1e6;
 

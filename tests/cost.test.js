@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {estimateProjectCost,edgeBandMeters,DEFAULT_COSTING,COST_PRESETS} from '../src/core/cost.js';
+import {estimateProjectCost,edgeBandMeters,DEFAULT_COSTING,COST_PRESETS,applyWorkshopSheetQuote} from '../src/core/cost.js';
 import {MATERIAL_PRODUCTS,materialSelectionPatch} from '../src/catalog/materials.js';
 
 test('edge meters follow four actual edged sides',()=>{
@@ -24,6 +24,24 @@ test('market presets separate carcass and door products',()=>{
  assert.equal(COST_PRESETS.budget.bodyMaterialId,'mfc18');
  assert.equal(COST_PRESETS.budget.frontMaterialId,'highGlossMdfPvc18');
  assert.equal(COST_PRESETS.premium.frontMaterialId,'acrylicHighGlossMdf18');
+});
+
+test('workshop sheet quote preserves EGP/m² accounting and clears unquoted service',()=>{
+ const original={costing:{materialPrices:{melamineMdf18:777},serviceBase:300,edge08PerM:12}};
+ const project=applyWorkshopSheetQuote(original);
+ assert.equal(original.costing.serviceBase,300);
+ assert.equal(project.costing.serviceBase,0);
+ assert.equal(project.costing.cuttingPerSheet,500);
+ assert.equal(project.costing.materialPrices.melamineMdf18,777);
+ const parts=[
+  {u:500,v:700,role:'body',materialProductId:'mfc18',edges:[0,0,0,0]},
+  {u:500,v:700,role:'front',materialProductId:'highGlossMdfPvc18',edges:[0,0,0,0]},
+ ];
+ const cost=estimateProjectCost(project,{parts});
+ assert.ok(Math.abs(cost.body.batches[0].referenceSheetPrice-1200)<1e-8);
+ assert.ok(Math.abs(cost.front.batches[0].referenceSheetPrice-3200)<1e-8);
+ assert.equal(cost.sheetCount,2);
+ assert.ok(Math.abs(cost.purchaseMaterials+cost.cutting-5400)<1e-8);
 });
 
 test('every estimator product carries its own dimensions, thickness and EGP per m2 price',()=>{
