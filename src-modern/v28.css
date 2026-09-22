@@ -426,6 +426,14 @@
 }
 .moduleTabs button.active{background:var(--surface-raised);color:var(--accent);box-shadow:inset 0 -2px var(--accent),0 2px 7px #00000018}
 .moduleTabHidden{display:none!important}
+.costTabHidden{display:none!important}
+.costTabs{position:sticky;top:-4px;z-index:5;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;margin:0 -4px 7px;padding:4px;border-radius:8px;background:color-mix(in srgb,var(--panel) 94%,transparent);box-shadow:0 5px 16px #00000010;backdrop-filter:blur(12px)}
+.costTabs button{min-height:38px;border:0;border-radius:6px;background:transparent;color:var(--muted);font-size:11px;font-weight:700}
+.costTabs button.active{background:var(--surface-raised);color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
+.costPanel .projectStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.costPanel .projectStats>div:first-child{grid-column:auto;border-bottom:0}
+.costAuditDetails{margin-top:8px;font-size:10px}
+.costAuditDetails>summary{cursor:pointer;color:var(--muted);font-weight:700}
 .applianceSelector{margin-bottom:8px}.applianceSelector button{flex:1}
 .equipmentExplanation{margin:0 0 9px;padding:7px 8px;border-left:3px solid var(--accent);background:var(--surface);border-radius:0 6px 6px 0}
 .fitStatus{display:flex;align-items:center;gap:7px;margin-top:8px;padding:7px 8px;border-radius:6px;background:var(--surface);font-size:9px}

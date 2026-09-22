@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {estimateProjectCost,edgeBandMeters,DEFAULT_COSTING,COST_PRESETS,applyWorkshopSheetQuote} from '../src/core/cost.js';
+import {estimateProjectCost,edgeBandMeters,DEFAULT_COSTING,DEFAULT_MATERIAL_PRICES,COST_PRESETS,applyWorkshopSheetQuote,migrateLegacyWorkshopQuote,normalizedCosting} from '../src/core/cost.js';
 import {MATERIAL_PRODUCTS,materialSelectionPatch} from '../src/catalog/materials.js';
 
 test('edge meters follow four actual edged sides',()=>{
@@ -17,7 +17,7 @@ test('cost uses square metres while sheet count stays purchasing guidance',()=>{
  const r=estimateProjectCost({costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0}},{parts});
  assert.equal(r.body.sheets,2);
  assert.equal(r.body.pricedArea,3);
- assert.equal(r.body.cost,3*MATERIAL_PRODUCTS.mfc18.pricePerM2);
+ assert.equal(r.body.cost,3*DEFAULT_MATERIAL_PRICES.mfc18);
 });
 
 test('market presets separate carcass and door products',()=>{
@@ -44,6 +44,21 @@ test('workshop sheet quote preserves EGP/m² accounting and clears unquoted serv
  assert.ok(Math.abs(cost.purchaseMaterials+cost.cutting-5400)<1e-8);
 });
 
+test('local workshop quote is the default and migrates only untouched old prices',()=>{
+ const fresh=normalizedCosting({});
+ assert.equal(fresh.cuttingPerSheet,500);
+ assert.equal(fresh.serviceBase,0);
+ assert.ok(Math.abs(fresh.materialPrices.mfc18*(1.22*2.44)-1200)<1e-8);
+ assert.ok(Math.abs(fresh.materialPrices.highGlossMdfPvc18*(1.22*2.8)-3200)<1e-8);
+ const old={costing:{materialPrices:{mfc18:540,highGlossMdfPvc18:1150},cuttingPerSheet:100,serviceBase:300}};
+ assert.equal(normalizedCosting(old).cuttingPerSheet,500);
+ assert.equal(old.costing.cuttingPerSheet,100);
+ assert.equal(migrateLegacyWorkshopQuote(old).costing.cuttingPerSheet,500);
+ const custom={costing:{...old.costing,materialPrices:{...old.costing.materialPrices,mfc18:600}}};
+ assert.equal(normalizedCosting(custom).materialPrices.mfc18,600);
+ assert.equal(migrateLegacyWorkshopQuote(custom),custom);
+});
+
 test('every estimator product carries its own dimensions, thickness and EGP per m2 price',()=>{
  for(const product of Object.values(MATERIAL_PRODUCTS)){
   assert.ok(product.sheetWidth>0);
@@ -64,7 +79,7 @@ test('default 15 percent waste follows area times price formula',()=>{
  const part={u:1000,v:1000,role:'front',materialProductId:'highGlossMdfPvc18',edges:[0,0,0,0]};
  const r=estimateProjectCost({costing:{...DEFAULT_COSTING,serviceBase:0,cuttingPerSheet:0}},{parts:[part]});
  assert.equal(r.front.pricedArea,1.15);
- assert.equal(r.front.cost,1.15*MATERIAL_PRODUCTS.highGlossMdfPvc18.pricePerM2);
+ assert.equal(r.front.cost,1.15*DEFAULT_MATERIAL_PRICES.highGlossMdfPvc18);
 });
 
 test('estimate exposes uncertainty range around total',()=>{

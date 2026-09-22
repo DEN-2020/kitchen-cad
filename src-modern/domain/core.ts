@@ -21,7 +21,7 @@ import {
   materialSelectionPatch,
   modulePlacementPolicy,
 } from "../../src/catalog/materials.js";
-import { COST_PRESETS } from "../../src/core/cost.js";
+import { COST_PRESETS, migrateLegacyWorkshopQuote } from "../../src/core/cost.js";
 import {
   applianceBayMeasurements,
   applianceDefaults,
@@ -641,7 +641,7 @@ export function loadEditorProject() {
   }
 }
 export function decodeEditorProject(text: string) {
-  return normalizeEditorProject(decodeProject(text));
+  return migrateLegacyWorkshopQuote(normalizeEditorProject(decodeProject(text)));
 }
 export function saveEditorProject(project: any): boolean {
   try {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { estimateProjectCost, DEFAULT_COSTING } from '../src/core/cost.js';
+import { estimateProjectCost, DEFAULT_COSTING, DEFAULT_MATERIAL_PRICES } from '../src/core/cost.js';
 import { MODULE_PLACEMENT, MODULE_TYPES, modulePlacementPolicy } from '../src/catalog/materials.js';
 import { resolvePlacementPose, rotatedFootprint } from '../src/core/placement.js';
 import { doorHingeFrame, doorOpenAngle, objectInDoorFrame } from '../src/core/door-motion.js';
@@ -13,15 +13,15 @@ test('matte and gloss fronts use separate sheet stocks and prices',()=>{
  assert.equal(result.front.matte.sheets,1);
  assert.equal(result.front.gloss.sheets,1);
  assert.equal(result.front.matte.cost,.35*700);
- assert.equal(result.front.gloss.cost,.35*1150);
- assert.equal(result.front.cost,.35*(700+1150));
+ assert.equal(result.front.gloss.cost,.35*DEFAULT_MATERIAL_PRICES.highGlossMdfPvc18);
+ assert.equal(result.front.cost,.35*(700+DEFAULT_MATERIAL_PRICES.highGlossMdfPvc18));
 });
 
 test('changing a front from matte to gloss changes the estimate',()=>{
  const project={costing:{...DEFAULT_COSTING,wastePercent:0,serviceBase:0,cuttingPerSheet:0}};
  const matte=estimateProjectCost(project,{parts:[front(false)]});
  const gloss=estimateProjectCost(project,{parts:[front(true)]});
- assert.ok(Math.abs((gloss.total-matte.total)-.35*(1150-700))<1e-9);
+ assert.ok(Math.abs((gloss.total-matte.total)-.35*(DEFAULT_MATERIAL_PRICES.highGlossMdfPvc18-700))<1e-9);
 });
 
 test('placement registry covers every catalog module',()=>{

@@ -87,7 +87,7 @@ import {
   tr,
   type Lang,
 } from "./i18n";
-import { estimateProjectCost, COST_PRESETS, applyWorkshopSheetQuote } from "../src/core/cost.js";
+import { estimateProjectCost, COST_PRESETS } from "../src/core/cost.js";
 import { hardwareProductLabel, hardwareUnitLabel } from "../src/core/hardware.js";
 import { countPartsInOffcuts } from "../src/core/sheet-layout.js";
 import { applianceBayMeasurements, applianceHobApprovalSignature } from "../src/core/appliance-bay.js";
@@ -452,6 +452,7 @@ export function App() {
     [catalogQuery, setCatalogQuery] = useState(""),
     [catalogSearchOpen, setCatalogSearchOpen] = useState(false),
     [moduleTab, setModuleTab] = useState<ModuleTab>("geometry"),
+    [costTab, setCostTab] = useState<"summary" | "sheets" | "prices">("summary"),
     [cameraResetKey, setCameraResetKey] = useState(0);
   const importInputRef = useRef<HTMLInputElement>(null),
     projectRef = useRef(project);
@@ -1421,7 +1422,16 @@ export function App() {
             </div>
           ) : panel === "cost" ? (
             <div className="inspectorBody costPanel">
-              <section>
+              <div className="costTabs" role="tablist" aria-label={localized(lang, "Разделы сметы", "Estimate sections", "أقسام التقدير")}>
+                {([
+                  ["summary", localized(lang, "Итог", "Summary", "الإجمالي")],
+                  ["sheets", localized(lang, "Листы", "Sheets", "الألواح")],
+                  ["prices", localized(lang, "Цены", "Prices", "الأسعار")],
+                ] as const).map(([id, label]) => (
+                  <button key={id} type="button" role="tab" aria-selected={costTab === id} className={costTab === id ? "active" : ""} onClick={() => setCostTab(id)}>{label}</button>
+                ))}
+              </div>
+              <section className={costTab === "summary" ? "" : "costTabHidden"}>
                 <h3>
                   {lang === "ru"
                     ? "Смета проекта"
@@ -1435,40 +1445,20 @@ export function App() {
                     <span>{localized(lang, "EGP к закупке", "EGP purchase", "EGP للشراء")}</span>
                   </div>
                   <div>
-                    <b>
-                      {Math.round(cost.procurementRangeLow).toLocaleString()}–
-                      {Math.round(cost.procurementRangeHigh).toLocaleString()}
-                    </b>
-                    <span>
-                      {lang === "ru"
-                        ? "диапазон"
-                        : lang === "ar"
-                          ? "النطاق"
-                          : "range"}
-                    </span>
-                  </div>
-                  <div>
-                    <b>{cost.sheetCount}</b>
-                    <span>
-                      {lang === "ru"
-                        ? "листов"
-                        : lang === "ar"
-                          ? "ألواح"
-                          : "sheets"}
-                    </span>
-                  </div>
-                  <div>
                     <b>{Math.round(cost.purchaseMaterials + cost.cutting).toLocaleString()}</b>
                     <span>{localized(lang, "EGP листы + распил", "EGP sheets + cutting", "EGP ألواح + قص")}</span>
                   </div>
                 </div>
                 <p className="note">
                   {lang === "ru"
-                    ? `Считается вся кухня: ${furnitureModuleCount} мебельных модулей. Главный итог использует реально покупаемые целые листы; стоимость израсходованной площади — ${Math.round(cost.consumedTotal).toLocaleString()} EGP.`
+                    ? `Вся кухня: ${furnitureModuleCount} модулей, ${cost.sheetCount} листов. В общем итоге также учтены кромка и фурнитура.`
                     : lang === "ar"
-                      ? "يتم حساب المطبخ كاملاً، وتُفصل الألواح حسب الخامة واللون والسماكة."
-                      : `Whole-kitchen estimate for ${furnitureModuleCount} furniture modules. The main total uses whole sheets; consumed-area cost is ${Math.round(cost.consumedTotal).toLocaleString()} EGP.`}
+                      ? `المطبخ بالكامل: ${furnitureModuleCount} خزائن، ${cost.sheetCount} ألواح. الإجمالي يشمل الحواف والإكسسوارات.`
+                      : `Whole kitchen: ${furnitureModuleCount} cabinets, ${cost.sheetCount} sheets. The full total also includes edging and hardware.`}
                 </p>
+                {!cost.countertopPriced && <p className="warning">{localized(lang, "Столешница пока не оценена и не входит в итог.", "Countertop is unpriced and excluded from the total.", "سطح العمل غير مسعّر ولا يدخل في الإجمالي.")}</p>}
+                <details className="costAuditDetails">
+                  <summary>{localized(lang, `Проверки проекта · ${productionAudit.blockers.length} проблем`, `Project checks · ${productionAudit.blockers.length} blockers`, `فحص المشروع · ${productionAudit.blockers.length} مشكلات`)}</summary>
                 <div className={productionAudit.ready ? "fitStatus ok" : "fitStatus bad"}>
                   <b>
                     {productionAudit.ready
@@ -1493,15 +1483,21 @@ export function App() {
                     ))}
                   </div>
                 )}
+                </details>
               </section>
-              <section>
+              <section className={costTab === "prices" ? "" : "costTabHidden"}>
                 <h3>
                   {lang === "ru"
-                    ? "Ценовой сценарий"
+                    ? "Цены материалов"
                     : lang === "ar"
-                      ? "الخامات"
-                      : "Price scenario"}
+                      ? "أسعار الخامات"
+                      : "Material prices"}
                 </h3>
+                <p className="note costFormulaNote">
+                  {localized(lang, "По умолчанию: лист корпуса 1200 EGP, лист глянца 3200 EGP, распил 500 EGP/лист. Форматы 122×244 и 122×280 см — проверь у мастера.", "Defaults: body sheet 1200 EGP, gloss sheet 3200 EGP, cutting 500 EGP/sheet. Confirm 122×244 and 122×280 cm stock sizes with the shop.", "الافتراضي: لوح الهيكل 1200 جنيه، اللامع 3200، القص 500 جنيه/لوح. تأكد من مقاس 122×244 و122×280 سم.")}
+                </p>
+                <details className="materialPriceDetails">
+                  <summary>{localized(lang, "Сменить материалы всей кухни", "Change materials for the whole kitchen", "تغيير خامات المطبخ بالكامل")}</summary>
                 <div className="segmented costPresetSelector">
                   <button
                     type="button"
@@ -1545,22 +1541,13 @@ export function App() {
                     ? localized(lang, "Сценарий применяет материалы корпуса и фасадов ко всем мебельным модулям.", "The preset applies body and front products to every furniture module.", "يطبق السيناريو خامات الهيكل والواجهات على جميع وحدات الأثاث.")
                     : localized(lang, "В кухне используются разные материалы. Цена считается для каждой детали по её материалу.", "Mixed products are used. Each part is priced by its own material.", "يستخدم المطبخ خامات مختلفة، وتحسب تكلفة كل قطعة حسب خامتها.")}
                 </p>
-                <button
-                  type="button"
-                  className="workshopQuoteButton"
-                  onClick={() => setProject((p: any) => applyWorkshopSheetQuote(p))}
-                >
-                  {localized(lang, "Цены мастера: корпус 1200 · глянец 3200 · распил 500 EGP/лист", "Workshop quote: body 1200 · gloss 3200 · cutting 500 EGP/sheet", "سعر الورشة: الهيكل 1200 · اللامع 3200 · القص 500 جنيه/لوح")}
-                </button>
-                <p className="note costFormulaNote">
-                  {localized(lang, "Применяет цены к листам 122×244 и 122×280 см, обнуляет неподтверждённый сервисный сбор. Проверь материал и формат у мастера; кромка и фурнитура считаются отдельно.", "Applies prices to 122×244 and 122×280 cm sheets and clears the unconfirmed service fee. Confirm material and size with the shop; edging and hardware are separate.", "يطبق الأسعار على ألواح 122×244 و122×280 سم ويلغي رسوم الخدمة غير المؤكدة. تأكد من الخامة والمقاس؛ الحواف والإكسسوارات منفصلة.")}
-                </p>
+                </details>
                 <p className="note costFormulaNote">
                   {localized(
                     lang,
-                    "Материал = площадь деталей × цена за м² × (1 + отход). Формат листа влияет на подсказку закупки, но не искажает цену.",
-                    "Material = part area × EGP/m² × waste factor. Sheet size is used for the purchasing estimate.",
-                    "الخامة = مساحة القطع × السعر لكل م² × معامل الهدر. يستخدم مقاس اللوح لتقدير الشراء.",
+                    "Цена листа внутри пересчитана в EGP/м². К закупке считаются целые листы; запас может увеличить их количество.",
+                    "Sheet prices are stored internally as EGP/m². Purchasing uses whole sheets; waste allowance may increase their count.",
+                    "يخزن سعر اللوح داخلياً لكل متر مربع. الشراء يحسب الألواح الكاملة وقد تزيد نسبة الهدر عددها.",
                   )}
                 </p>
                 {!!cost.materialWarnings.length && (
@@ -1583,7 +1570,7 @@ export function App() {
                     )}
                   </p>
                 )}
-                <details className="materialPriceDetails" open>
+                <details className="materialPriceDetails">
                   <summary>
                     {localized(lang, "Цены материалов, EGP/м²", "Material prices, EGP/m²", "أسعار الخامات، EGP/م²")}
                   </summary>
@@ -1595,7 +1582,7 @@ export function App() {
                           key={product.id}
                           compact
                           label={materialProductLabel(product, lang)}
-                          value={cost.settings.materialPrices[product.id]}
+                          value={Math.round(cost.settings.materialPrices[product.id] * 100) / 100}
                           unit={localized(lang, "EGP/м²", "EGP/m²", "EGP/م²")}
                           min={0}
                           max={10000}
@@ -1636,7 +1623,7 @@ export function App() {
                   />
                 </div>
               </section>
-              <section>
+              <section className={costTab === "prices" ? "" : "costTabHidden"}>
                 <h3>
                   {lang === "ru"
                     ? "Работы и кромка"
@@ -1707,7 +1694,7 @@ export function App() {
                   />
                 </div>
               </section>
-              <section>
+              <section className={costTab === "prices" ? "" : "costTabHidden"}>
                 <h3>
                   {lang === "ru"
                     ? "Столешница и прочее"
@@ -1807,130 +1794,23 @@ export function App() {
                   </details>
                 )}
               </section>
-              <section>
+              <section className={costTab === "prices" ? "costTabHidden" : ""}>
                 <h3>
-                  {lang === "ru"
-                    ? "Разбивка"
-                    : lang === "ar"
-                      ? "التفاصيل"
-                      : "Breakdown"}
+                  {costTab === "summary"
+                    ? localized(lang, "Из чего сложилась цена", "Cost breakdown", "تفاصيل التكلفة")
+                    : localized(lang, "Листы и остатки", "Sheets and offcuts", "الألواح والبقايا")}
                 </h3>
-                <div className="costBreakdown">
-                  <small>
-                    {localized(lang, "Итого к закупке", "Purchase total", "إجمالي الشراء")}: {" "}
-                    <b>{Math.round(cost.procurementTotal).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {localized(lang, "Израсходованный материал и работы", "Consumed material & work", "الخامات والعمل المستهلك")}: {" "}
-                    <b>{Math.round(cost.consumedTotal).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {lang === "ru" ? "Корпус" : lang === "ar" ? "هيكل" : "Body"}
-                    : {cost.body.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
-                    <b>{Math.round(cost.body.cost).toLocaleString()} EGP</b>
-                  </small>
-                  {!!cost.front.matte.sheets && <small>
-                    {lang === "ru" ? "Фасады · матовые" : lang === "ar" ? "واجهات مطفية" : "Fronts · matte"}
-                    : {cost.front.matte.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
-                    <b>{Math.round(cost.front.matte.cost).toLocaleString()} EGP</b>
-                  </small>}
-                  {!!cost.front.gloss.sheets && <small>
-                    {lang === "ru" ? "Фасады · глянец" : lang === "ar" ? "واجهات لامعة" : "Fronts · gloss"}
-                    : {cost.front.gloss.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
-                    <b>{Math.round(cost.front.gloss.cost).toLocaleString()} EGP</b>
-                  </small>}
-                  <small>
-                    {lang === "ru"
-                      ? "Задники"
-                      : lang === "ar"
-                        ? "ظهر"
-                        : "Backs"}
-                    : {cost.back.pricedArea.toFixed(2)} {areaUnit(lang)} ={" "}
-                    <b>{Math.round(cost.back.cost).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {localized(lang, "Закупка целыми листами (справочно)", "Whole-sheet purchase (reference)", "شراء الألواح الكاملة (مرجعي)")}: {" "}
-                    <b>{Math.round(cost.purchaseMaterials).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {localized(lang, "Листы + распил/сервис", "Sheets + cutting/service", "الألواح + القص/الخدمة")}: {" "}
-                    <b>{Math.round(cost.purchaseMaterials + cost.cutting).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Кромка корпуса"
-                      : lang === "ar"
-                        ? "حواف الهيكل"
-                        : "Body edge"}
-                    :{" "}
-                    <b>
-                      {cost.edge.body.meters.toFixed(1)} {meterUnit(lang)} ·{" "}
-                      {Math.round(cost.edge.body.cost).toLocaleString()} EGP
-                    </b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Кромка фасадов"
-                      : lang === "ar"
-                        ? "حواف الواجهات"
-                        : "Front edge"}
-                    :{" "}
-                    <b>
-                      {cost.edge.front.meters.toFixed(1)} {meterUnit(lang)} ·{" "}
-                      {Math.round(cost.edge.front.cost).toLocaleString()} EGP
-                    </b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Кромка до 1 / свыше 1 мм"
-                      : lang === "ar"
-                        ? "حواف حتى 1 / أكثر من 1 مم"
-                        : "Edge ≤1 / >1 mm"}
-                    :{" "}
-                    <b>
-                      {cost.edge.meters08.toFixed(1)} /{" "}
-                      {cost.edge.meters2.toFixed(1)} {meterUnit(lang)}
-                    </b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Распил/сервис"
-                      : lang === "ar"
-                        ? "قص/خدمة"
-                        : "Cut/service"}
-                    : <b>{Math.round(cost.cutting).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Столешница"
-                      : lang === "ar"
-                        ? "سطح العمل"
-                        : "Countertop"}
-                    : <b>{Math.round(cost.countertop).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Фурнитура"
-                      : lang === "ar"
-                        ? "إكسسوارات"
-                        : "Hardware"}
-                    : <b>{Math.round(cost.hardware).toLocaleString()} EGP</b>
-                  </small>
-                  <small>
-                    {lang === "ru"
-                      ? "Дополнительно"
-                      : lang === "ar"
-                        ? "إضافات"
-                        : "Extras"}
-                    : <b>{Math.round(cost.extras).toLocaleString()} EGP</b>
-                  </small>
+                <div className={costTab === "summary" ? "costBreakdown" : "costTabHidden"}>
+                  {([
+                    [localized(lang, "Листы", "Sheets", "الألواح"), cost.purchaseMaterials],
+                    [localized(lang, "Распил", "Cutting", "القص"), cost.cutting],
+                    [localized(lang, "Кромка · ориентир", "Edging · estimate", "الحواف · تقديري"), cost.edge.cost],
+                    [localized(lang, "Фурнитура · ориентир", "Hardware · estimate", "الإكسسوارات · تقديري"), cost.hardware],
+                    ...(cost.countertopPriced && cost.countertop > 0 ? [[localized(lang, "Столешница", "Countertop", "سطح العمل"), cost.countertop] as const] : []),
+                    ...(cost.extras > 0 ? [[localized(lang, "Дополнительно", "Extras", "إضافات"), cost.extras] as const] : []),
+                  ] as const).map(([label, value]) => <small key={label}>{label}<b>{Math.round(value).toLocaleString()} EGP</b></small>)}
                 </div>
-                {!cost.countertopPriced && (
-                  <p className="warning">
-                    {localized(lang, "Столешница не включена в итог: цена за погонный метр пока не указана.", "Countertop is not included: price per metre has not been entered.", "سطح العمل غير مشمول: لم يُدخل سعر المتر بعد.")}
-                  </p>
-                )}
-                <details className="costStockDetails" open>
+                <details className={costTab === "sheets" ? "costStockDetails" : "costTabHidden"} open>
                   <summary>
                     {localized(lang, "Листы по фактическим материалам", "Sheets by actual material", "الألواح حسب الخامة الفعلية")}
                     <span>{cost.sheetCount}</span>
@@ -2011,9 +1891,9 @@ export function App() {
                   <p className="note">
                     {localized(
                       lang,
-                      "Цена сметы по-прежнему считается по м² с заданным запасом. Раскладка отдельно показывает, сколько целых листов реально покупать и какие прямоугольные остатки можно сохранить. Это предварительный раскрой: порядок резов и технологические поля нужно подтвердить в цехе.",
-                      "The estimate still uses m² plus the configured reserve. Nesting separately shows whole sheets to buy and reusable rectangular offcuts. It remains a preliminary layout for workshop confirmation.",
-                      "يستخدم التقدير المساحة بالمتر المربع مع الاحتياطي المحدد. ويبين مخطط القص عدد الألواح الكاملة المطلوب شراؤها والبقايا المستطيلة القابلة للاستخدام. يجب اعتماد ترتيب القص والهوامش في الورشة.",
+                      "Стоимость закупки берётся за целые листы. Раскладка показывает возможные остатки, но окончательную карту резов и технологические поля должен подтвердить мастер.",
+                      "Purchase cost uses whole sheets. The layout shows possible offcuts; the shop must confirm the final cutting plan and margins.",
+                      "تكلفة الشراء للألواح الكاملة. المخطط يعرض البقايا المحتملة، لكن يجب أن تؤكد الورشة خطة القص والهوامش النهائية.",
                     )}
                   </p>
                 </details>
@@ -2139,7 +2019,7 @@ export function App() {
                           key={productId}
                           compact
                           label={materialProductLabel(product, lang)}
-                          value={cost.settings.materialPrices[productId]}
+                          value={Math.round(cost.settings.materialPrices[productId] * 100) / 100}
                           unit={localized(lang, "EGP/м²", "EGP/m²", "EGP/م²")}
                           min={0}
                           max={10000}

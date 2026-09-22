@@ -2,15 +2,19 @@ import { MATERIAL_PRODUCTS, inferMaterialProductId } from '../catalog/materials.
 import { planSheetLayout } from './sheet-layout.js';
 import { buildHardwareBill, DEFAULT_HARDWARE_PRICES, priceHardwareBill } from './hardware.js';
 
-export const DEFAULT_MATERIAL_PRICES=Object.freeze(Object.fromEntries(
-  Object.values(MATERIAL_PRODUCTS).map(product=>[product.id,product.pricePerM2]),
-));
+// Confirmed local workshop quote, 22 Sep 2026. Sheet dimensions remain catalog data.
+export const WORKSHOP_SHEET_QUOTE=Object.freeze({body:1200,glossFront:3200,cuttingPerSheet:500});
+export const DEFAULT_MATERIAL_PRICES=Object.freeze({
+  ...Object.fromEntries(Object.values(MATERIAL_PRODUCTS).map(product=>[product.id,product.pricePerM2])),
+  mfc18:WORKSHOP_SHEET_QUOTE.body/(MATERIAL_PRODUCTS.mfc18.sheetWidth*MATERIAL_PRODUCTS.mfc18.sheetHeight/1e6),
+  highGlossMdfPvc18:WORKSHOP_SHEET_QUOTE.glossFront/(MATERIAL_PRODUCTS.highGlossMdfPvc18.sheetWidth*MATERIAL_PRODUCTS.highGlossMdfPvc18.sheetHeight/1e6),
+});
 
 export const DEFAULT_COSTING=Object.freeze({
   currency:'EGP',wastePercent:15,materialPrices:DEFAULT_MATERIAL_PRICES,
   hardwarePrices:DEFAULT_HARDWARE_PRICES,hardwarePriceVersion:2,
   sawKerf:4,sheetEdgeTrim:10,
-  cuttingPerSheet:100,serviceBase:300,edge08PerM:12,edge2PerM:25,
+  cuttingPerSheet:WORKSHOP_SHEET_QUOTE.cuttingPerSheet,serviceBase:0,edge08PerM:12,edge2PerM:25,
   countertopPerM:0,hardwareFixed:0,extraCost:0,uncertaintyPercent:12,
 });
 
@@ -20,9 +24,7 @@ export const COST_PRESETS=Object.freeze({
   premium:Object.freeze({bodyMaterialId:'melamineMdf18',frontMaterialId:'acrylicHighGlossMdf18'}),
 });
 
-// Workshop quote supplied by the owner. Product dimensions come from the catalog;
-// keep the estimator's internal unit as EGP/m² even when the shop quotes per sheet.
-export const WORKSHOP_SHEET_QUOTE=Object.freeze({body:1200,glossFront:3200,cuttingPerSheet:500});
+// Explicitly applying the local quote never changes geometry or material selection.
 export function applyWorkshopSheetQuote(project){
   const body=MATERIAL_PRODUCTS.mfc18,front=MATERIAL_PRODUCTS.highGlossMdfPvc18;
   return{
@@ -39,12 +41,18 @@ export function applyWorkshopSheetQuote(project){
     },
   };
 }
+export function migrateLegacyWorkshopQuote(project){
+  const c=project.costing;
+  return c?.materialPrices?.mfc18===540&&c.materialPrices.highGlossMdfPvc18===1150&&c.cuttingPerSheet===100&&c.serviceBase===300
+    ? applyWorkshopSheetQuote(project)
+    : project;
+}
 
 const n=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
 const areaM2=part=>Math.max(0,n(part.u,0))*Math.max(0,n(part.v,0))/1e6;
 
 export function normalizedCosting(project={}){
-  const raw=project.costing||{},c={...DEFAULT_COSTING,...raw};
+  const raw=migrateLegacyWorkshopQuote(project).costing||{},c={...DEFAULT_COSTING,...raw};
   c.materialPrices={...DEFAULT_MATERIAL_PRICES,...(raw.materialPrices||{})};
   const savedHardwarePrices=raw.hardwarePriceVersion===2?(raw.hardwarePrices||{}):{};
   c.hardwarePrices={...DEFAULT_HARDWARE_PRICES,...savedHardwarePrices};c.hardwarePriceVersion=2;
