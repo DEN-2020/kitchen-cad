@@ -43,10 +43,10 @@ def draw_card(pdf, part, x, y, width, height):
     fit_text(pdf, f"{part['sequence']} · {part['id']}   {part['name']}", x + pad, top - 3, width - 80, 11, True)
     fit_text(pdf, "1 шт.", x + width - 44, top - 3, 38, 9, True)
     fit_text(pdf, f"{part['material']} · {part['decor']}", x + pad, top - 20, width - 2 * pad, 8)
-    cut = f"РАСПИЛ ДО КРОМКИ: {cm(part['blankU'])} × {cm(part['blankV'])} × {cm(part['thickness'])} см"
+    cut = f"ГОТОВЫЙ РАЗМЕР ПОСЛЕ КРОМКИ: {cm(part['u'])} × {cm(part['v'])} × {cm(part['thickness'])} см"
     fit_text(pdf, cut, x + pad, top - 39, width - 2 * pad, 10, True)
 
-    u, v = max(float(part["blankU"]), 1), max(float(part["blankV"]), 1)
+    u, v = max(float(part["u"]), 1), max(float(part["v"]), 1)
     draw_left, draw_bottom, max_w, max_h = x + 52, y + 93, width - 100, 76
     scale = min(max_w / u, max_h / v)
     w, h = max(18, u * scale), max(12, v * scale)
@@ -89,7 +89,7 @@ def draw_card(pdf, part, x, y, width, height):
     )
     fit_text(pdf, "КРОМКА — толстые стороны чертежа", x + pad, y + 60, width - 2 * pad, 8, True)
     fit_text(pdf, edge_text, x + pad, y + 45, width - 2 * pad, 8)
-    fit_text(pdf, f"После кромки: {cm(part['u'])} × {cm(part['v'])} см", x + pad, y + 27, width - 2 * pad, 8)
+    fit_text(pdf, f"Заготовка до кромки: {cm(part['blankU'])} × {cm(part['blankV'])} см", x + pad, y + 27, width - 2 * pad, 8)
     fit_text(pdf, "Схема не в масштабе; резать по указанным числам.", x + pad, y + 12, width - 2 * pad, 7)
 
 

@@ -12,6 +12,11 @@ export const SUBSTRATES = Object.freeze({
  * sheet dimensions remain product data and are only used for stock planning.
  */
 export const MATERIAL_PRODUCTS = Object.freeze({
+  mfc16: Object.freeze({
+    id:'mfc16',name:'ЛДСП / MFC меламин 16 мм',nameEn:'MFC / melamine chipboard 16 mm',nameAr:'خشب حبيبي ميلامين 16 مم',
+    substrate:'ldsp',finish:'matte',roles:Object.freeze(['body']),sheetWidth:1220,sheetHeight:2440,thickness:16,
+    pricePerM2:410,marketMinPerM2:0,marketMaxPerM2:0,
+  }),
   mfc18: Object.freeze({
     id:'mfc18',name:'ЛДСП / MFC меламин 18 мм',nameEn:'MFC / melamine chipboard 18 mm',nameAr:'خشب حبيبي ميلامين 18 مم',
     substrate:'ldsp',finish:'matte',roles:Object.freeze(['body','front']),sheetWidth:1220,sheetHeight:2440,thickness:18,
