@@ -62,10 +62,7 @@ export function applianceBayMeasurements(module, projectDefaults = {}) {
         ? Number(module.applianceSideClearance)
         : defaults.sideClearance,
     ),
-    board = Math.max(
-      0,
-      Number(module?.constructionBoard) || Number(module?.board) || 18,
-    ),
+    board = Math.max(0, Number(module?.board) || 18),
     supportMode = ["both", "left", "right", "none"].includes(
       module?.applianceSupportMode,
     )

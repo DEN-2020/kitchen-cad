@@ -46,6 +46,49 @@ export function workshopCardPages(model, cost, perPage = 4) {
   return pages;
 }
 
+// Compact workshop table in the same shape used by common panel-cutting software:
+// one row per identical cut size and edge pattern, with an explicit quantity.
+// Dimensions here are blanks BEFORE edging; the finished dimensions remain attached
+// to every row so the workshop and the scene can be cross-checked without guessing.
+export function workshopGroupedRows(model) {
+  const groups = new Map();
+  for (const part of model.parts || []) {
+    const edges = part.edges || [0, 0, 0, 0];
+    const key = [
+      part.role, part.materialProductId, part.decor, part.thickness,
+      part.blankU, part.blankV, part.u, part.v, part.edgeType, ...edges,
+    ].join('|');
+    let row = groups.get(key);
+    if (!row) {
+      row = {
+        role: part.role,
+        materialProductId: part.materialProductId,
+        decor: part.decor,
+        thickness: part.thickness,
+        blankU: part.blankU,
+        blankV: part.blankV,
+        u: part.u,
+        v: part.v,
+        edgeType: part.edgeType,
+        edges: [...edges],
+        parts: [],
+        quantity: 0,
+        rotationAllowed: !['oak', 'walnut', 'marble'].includes(part.decor),
+      };
+      groups.set(key, row);
+    }
+    row.parts.push(part);
+    row.quantity += 1;
+  }
+  const roleOrder = { body: 0, front: 1, back: 2 };
+  return [...groups.values()].sort((a, b) =>
+    (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9) ||
+    String(a.materialProductId).localeCompare(String(b.materialProductId)) ||
+    String(a.decor).localeCompare(String(b.decor)) ||
+    b.blankV - a.blankV || b.blankU - a.blankU ||
+    a.parts[0].id.localeCompare(b.parts[0].id));
+}
+
 function csvCell(value) {
   const text = String(value ?? '');
   return /[;"\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;

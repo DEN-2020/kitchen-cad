@@ -47,7 +47,7 @@ function cabinetFrontProjection(m){const t=Math.max(0,Number(m.frontThickness)||
 export function buildProject(project){
  const modules=layoutProject(project),parts=[],objects=[],warnings=[],issues=[];
  modules.forEach((m,index)=>{
-  const w=m.width,h=m.height,d=m.depth,t=m.board,r=Math.max(t,Number(m.constructionBoard)||t),b=m.back,id=`M${String(index+1).padStart(2,'0')}`;
+  const w=m.width,h=m.height,d=m.depth,t=m.board,r=t,b=m.back,id=`M${String(index+1).padStart(2,'0')}`;
   const mb=moduleBounds(m),out=mb.x<0||mb.z<0||mb.x+mb.width>project.room.width||mb.z+mb.depth>project.room.depth||m.y+h>project.room.height;
   if(out&&!isRoomElementType(m.type)){issues.push({type:'module-out',moduleId:m.id,message:`${id}: модуль выходит за пределы комнаты.`});warnings.push(`${id}: модуль выходит за пределы комнаты.`)}
   if(isDisplayOnlyType(m.type)){displayGeometry(m,id,objects);return}
@@ -69,17 +69,17 @@ export function buildProject(project){
   };
   addCornerFillers();
   if(m.type==='wallMicrowaveCombo'){
-   const carcassW=Math.max(560,Math.min(w,Number(m.comboCabinetWidth)||590)),inner=carcassW-2*r,bodyD=Math.max(280,Math.min(d,Number(m.comboCabinetDepth)||316)),niche=Math.max(360,Math.min(h-280-3*r,Number(m.comboNicheHeight)||420)),dividerY=r+niche+r/2,upperStart=r+niche+r,upperClear=Math.max(220,h-upperStart-r),topX=w/2,leftX=topX-carcassW/2+t/2,rightX=topX+carcassW/2-t/2;
-   add('LSL','Нижняя боковина ниши СВЧ левая',bodyD,niche,t,[0,m.bodyEdge,0,0],[t,niche,bodyD],[leftX,r+niche/2,bodyD/2]);
-   add('LSR','Нижняя боковина ниши СВЧ правая',bodyD,niche,t,[0,m.bodyEdge,0,0],[t,niche,bodyD],[rightX,r+niche/2,bodyD/2]);
+   const carcassW=Math.max(560,Math.min(w,Number(m.comboCabinetWidth)||590)),inner=carcassW-2*t,bodyD=Math.max(280,Math.min(d,Number(m.comboCabinetDepth)||316)),shelfThickness=m.frontThickness,minUpperClear=200,maxNiche=Math.max(360,h-shelfThickness-2*t-minUpperClear),niche=Math.max(360,Math.min(maxNiche,Number(m.comboNicheHeight)||420)),lowerStart=shelfThickness,lowerEnd=lowerStart+niche,dividerY=lowerEnd+t/2,upperStart=lowerEnd+t,upperClear=Math.max(0,h-upperStart-t),topX=w/2,leftX=topX-carcassW/2+t/2,rightX=topX+carcassW/2-t/2;
+   add('LSL','Нижняя боковина ниши СВЧ левая',bodyD,niche,t,[0,m.bodyEdge,0,0],[t,niche,bodyD],[leftX,lowerStart+niche/2,bodyD/2]);
+   add('LSR','Нижняя боковина ниши СВЧ правая',bodyD,niche,t,[0,m.bodyEdge,0,0],[t,niche,bodyD],[rightX,lowerStart+niche/2,bodyD/2]);
    add('USL','Верхняя боковина шкафа СВЧ левая',bodyD,upperClear,t,[0,m.bodyEdge,0,0],[t,upperClear,bodyD],[leftX,upperStart+upperClear/2,bodyD/2]);
    add('USR','Верхняя боковина шкафа СВЧ правая',bodyD,upperClear,t,[0,m.bodyEdge,0,0],[t,upperClear,bodyD],[rightX,upperStart+upperClear/2,bodyD/2]);
    add('MSH','Нижняя полка ниши СВЧ',w,d,m.frontThickness,[0,0,0,m.frontEdge],[w,m.frontThickness,d],[topX,m.frontThickness/2,d/2],'front');
    add('UDV','Разделительная полка над СВЧ',inner,bodyD,t,[0,0,0,m.bodyEdge],[inner,t,bodyD],[topX,dividerY,bodyD/2]);
    add('UTP','Крышка шкафа с нишей СВЧ',inner,bodyD,t,[0,0,0,m.bodyEdge],[inner,t,bodyD],[topX,h-t/2,bodyD/2]);
    add('UMR','Монтажная планка шкафа с нишей СВЧ',inner,100,t,[0,0,0,0],[inner,100,t],[topX,h-t-50,t/2]);
-   if(frontsEnabled){const doorStart=r+niche,fw=carcassW-2*m.gap,fh=Math.max(220,h-doorStart-2*m.gap),front=add('F1','Фасад верхнего шкафа',fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[topX,doorStart+m.gap+fh/2,bodyD+2+m.frontThickness/2],'front',{hingeSide:'left',hingeMountPartId:`${id}-USL`,hingeType:'overlay-110'});frontExtras(m,id,objects,topX,doorStart+m.gap+fh/2,bodyD+m.frontThickness+4,fw,fh,'left',front.id)}
-   const mw=Math.max(380,Math.min(inner-40,Number(m.comboMicrowaveWidth)||440)),mh=Math.max(220,Math.min(niche-80,Number(m.comboMicrowaveHeight)||259)),md=Math.max(300,Math.min(d,Number(m.comboMicrowaveDepth)||338)),my=r+mh/2,mz=d-md/2,metal=appearance('graphite','#788388'),dark=appearance('graphite','#141b1f');
+   if(frontsEnabled){const doorStart=lowerEnd,fw=carcassW-2*m.gap,fh=Math.max(220,h-doorStart-2*m.gap),front=add('F1','Фасад верхнего шкафа',fw,fh,m.frontThickness,[m.frontEdge,m.frontEdge,m.frontEdge,m.frontEdge],[fw,fh,m.frontThickness],[topX,doorStart+m.gap+fh/2,bodyD+2+m.frontThickness/2],'front',{hingeSide:'left',hingeMountPartId:`${id}-USL`,hingeType:'overlay-110'});frontExtras(m,id,objects,topX,doorStart+m.gap+fh/2,bodyD+m.frontThickness+4,fw,fh,'left',front.id)}
+   const mw=Math.max(380,Math.min(inner-40,Number(m.comboMicrowaveWidth)||440)),mh=Math.max(220,Math.min(niche-80,Number(m.comboMicrowaveHeight)||259)),md=Math.max(300,Math.min(d,Number(m.comboMicrowaveDepth)||338)),my=lowerStart+mh/2,mz=d-md/2,metal=appearance('graphite','#788388'),dark=appearance('graphite','#141b1f');
    pushBox(objects,m,id,'MICRO-BODY',[mw,mh,md],[w/2,my,mz],metal,'appliance');
    pushBox(objects,m,id,'MICRO-GLASS',[mw-92,mh-58,14],[w/2-24,my,d+2],dark,'appliance-detail');
    pushBox(objects,m,id,'MICRO-CONTROL',[64,mh-52,14],[w/2+mw/2-43,my,d+3],metal,'appliance-detail');

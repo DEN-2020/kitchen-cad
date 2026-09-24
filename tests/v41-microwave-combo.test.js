@@ -28,3 +28,28 @@ test('over-hood microwave combo is a wall catalog module with real cut parts', (
   assert.equal(model.objects.some((object) => object.role === 'support' && object.id.includes('BRACKET')), false);
   assert.ok(model.issues.some((issue) => issue.type === 'microwave-combo-confirmation'));
 });
+
+test('16 mm microwave combo closes every carcass joint while keeping 18 mm visible shelf', () => {
+  const project = createProject();
+  const combo = createModule('wallMicrowaveCombo');
+  combo.width = 600;
+  combo.height = 620;
+  combo.board = 16;
+  combo.frontThickness = 18;
+  combo.comboCabinetWidth = 590;
+  combo.comboCabinetDepth = 316;
+  combo.comboNicheHeight = 360;
+  project.modules = [combo];
+  const parts = buildProject(project).parts;
+  const bySuffix = (suffix) => parts.find((part) => part.id.endsWith(`-${suffix}`));
+
+  assert.equal(bySuffix('UDV').u, 558);
+  assert.equal(bySuffix('UTP').u, 558);
+  assert.equal(bySuffix('UMR').u, 558);
+  assert.equal(bySuffix('USL').v, 210);
+  assert.equal(bySuffix('MSH').thickness, 18);
+  assert.deepEqual([bySuffix('F1').u, bySuffix('F1').v], [586, 238]);
+  assert.equal(bySuffix('LSL').center[1] - combo.elevation, 198);
+  assert.equal(bySuffix('UDV').center[1] - combo.elevation, 386);
+  assert.equal(bySuffix('USL').center[1] - combo.elevation, 499);
+});

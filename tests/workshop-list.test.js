@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createProject } from '../src/core/project.js';
 import { buildProject } from '../src/core/parts.js';
 import { estimateProjectCost } from '../src/core/cost.js';
-import { centimetres, workshopCardPages, workshopCutListCSV, workshopSheets } from '../src/io/workshop-list.js';
+import { centimetres, workshopCardPages, workshopCutListCSV, workshopGroupedRows, workshopSheets } from '../src/io/workshop-list.js';
 
 test('centimetre export preserves the model precision of one tenth millimetre', () => {
   assert.equal(centimetres(559.2), '55.92');
@@ -57,4 +57,14 @@ test('A4 cards cover each cut detail once without changing dimensions or edge si
   assert.deepEqual(cards.map((part) => part.id).sort(), model.parts.map((part) => part.id).sort());
   assert.equal(JSON.stringify(model.parts), original);
   assert.ok(cards.every((part) => part.edges.length === 4 && part.blankU > 0 && part.blankV > 0));
+});
+
+test('master-style grouped rows preserve every part and never merge different edge patterns', () => {
+  const project = createProject(), model = buildProject(project);
+  const rows = workshopGroupedRows(model);
+  assert.equal(rows.reduce((sum, row) => sum + row.quantity, 0), model.parts.length);
+  assert.ok(rows.every((row) => row.parts.length === row.quantity));
+  assert.ok(rows.every((row) => row.parts.every((part) =>
+    part.blankU === row.blankU && part.blankV === row.blankV &&
+    JSON.stringify(part.edges) === JSON.stringify(row.edges))));
 });
