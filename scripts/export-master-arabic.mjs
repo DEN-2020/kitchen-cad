@@ -23,19 +23,16 @@ const roleConfig = {
   body: {
     title: 'الهيكل',
     material: 'ميلامين MFC سماكة 16 مم',
-    edge: 'حافة ABS سماكة 0.2 مم حيث توجد العلامة 1',
     sheet: cost.body?.batches?.[0],
   },
   front: {
     title: 'الواجهات',
     material: 'MDF High Gloss رمادي سماكة 18 مم',
-    edge: 'حافة ABS سماكة 1 مم حيث توجد العلامة 1',
     sheet: cost.front?.batches?.[0],
   },
   back: {
     title: 'الظهر',
     material: 'HDF أبيض سماكة 3 مم',
-    edge: 'بدون حافة',
     sheet: cost.back?.batches?.[0],
   },
 };
@@ -81,6 +78,18 @@ const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
 const checked = () => '<span class="check">✓</span>';
 const edge = (value) => Number(value) > 0 ? '1' : '';
 const roleRows = (role) => grouped.filter((item) => item.role === role);
+
+function edgeDescription(role) {
+  const thicknesses = [...new Set(
+    roleRows(role)
+      .flatMap((item) => item.edges || [])
+      .map(Number)
+      .filter((value) => value > 0),
+  )].sort((a, b) => a - b);
+  if (!thicknesses.length) return 'بدون حافة';
+  const values = thicknesses.map((value) => String(Math.round(value * 100) / 100)).join(' / ');
+  return `حافة ABS سماكة ${values} مم حيث توجد العلامة 1`;
+}
 
 function labelFor(group) {
   const ids = group.parts.map((part) => part.id).sort().join('|');
@@ -137,7 +146,7 @@ function page(role, pageNumber) {
     </table>
     <div class="notes" dir="rtl">
       <div><strong>مهم:</strong> الطول والعرض هما مقاس القص قبل تركيب الحواف. الوحدة: سم.</div>
-      <div>العلامة 1 تعني تركيب الحافة على هذا الجانب. ${config.edge}.</div>
+      <div>العلامة 1 تعني تركيب الحافة على هذا الجانب. ${edgeDescription(role)}.</div>
       <div>المراجعة: ${row.revision} - يجب مراجعة المقاسات وسمك اللوح والحواف قبل القص.</div>
     </div>
   </section>`;
