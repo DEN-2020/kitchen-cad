@@ -9,6 +9,7 @@ import { workshopCutListCSV, workshopSheets } from '../src/io/workshop-list.js';
 
 const projectId = process.argv[2] || 'main';
 const outputDir = resolve(process.argv[3] || 'output/workshop');
+const reportLanguage = ['ru', 'en', 'ar'].includes(process.argv[4]) ? process.argv[4] : null;
 const dataDirectory = process.env.KITCHEN_CAD_DATA_DIR || join(process.env.LOCALAPPDATA || '', 'KitchenCAD');
 const database = new DatabaseSync(join(dataDirectory, 'data.db'), { readOnly: true });
 const row = database.prepare('SELECT payload, revision FROM projects WHERE id = ?').get(projectId);
@@ -16,6 +17,11 @@ database.close();
 if (!row) throw new Error(`No saved project with id ${projectId}`);
 
 const project = JSON.parse(row.payload);
+if (reportLanguage) {
+  project.ui = { ...(project.ui || {}), language: reportLanguage };
+  if (reportLanguage === 'ar' && project.name === 'Моя кухня') project.name = 'مطبخي';
+  if (reportLanguage === 'en' && project.name === 'Моя кухня') project.name = 'My kitchen';
+}
 const model = buildProject(project);
 const cost = estimateProjectCost(project, model);
 const audit = auditProductionReadiness(project, model, cost);
